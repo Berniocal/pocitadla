@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Kalorimetrická kalkulačka</title>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['\\[','\\]']] },
+    svg: { fontCache: 'global' },
+    startup: { typeset: false }
+  };
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+:root{
+  --bg:#fbf6ee; --panel:#ffffff; --ink:#2b2b2b; --muted:#6f6a63;
+  --line:#ead8bf; --accent:#f4bd62; --accent2:#8ccfbd; --ok:#fff2a8;
+  --soft:#f7efe3; --bad:#ffe0dd;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+.app{display:grid;grid-template-columns:360px 1fr;min-height:100vh}
+aside{padding:18px;border-right:1px solid var(--line);background:#fffaf2;position:sticky;top:0;height:100vh;overflow:auto}
+main{padding:22px;overflow:auto}
+h1{font-size:25px;margin:0 0 12px} h2{font-size:22px;margin:0 0 12px} h3{font-size:18px;margin:18px 0 8px}
+.small{font-size:13px;color:var(--muted);line-height:1.35}.pill{display:inline-block;padding:4px 9px;border-radius:999px;background:var(--soft);border:1px solid var(--line);font-size:12px;margin:2px}
+.mode{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:15px;background:var(--panel);padding:11px 12px;margin:7px 0;cursor:pointer;font-weight:700;color:var(--ink)}
+.mode.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(244,189,98,.25);background:#fff8e8}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px;margin:14px 0;box-shadow:0 4px 18px rgba(70,50,20,.05)}
+.field{display:grid;grid-template-columns:1fr 105px 48px;gap:8px;align-items:center;margin:8px 0;padding:7px;border-radius:13px;border:1px solid transparent}
+.field.computed{background:var(--ok);border-color:#ecd25a}.field label{font-size:14px;line-height:1.2}.field input{width:100%;padding:9px 8px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:white;color:var(--ink)}
+.field input:focus{outline:2px solid rgba(140,207,189,.7);border-color:var(--accent2)}
+.field input[list]{background-image:linear-gradient(45deg, transparent 50%, var(--muted) 50%),linear-gradient(135deg, var(--muted) 50%, transparent 50%);background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:28px}
+.unit{font-size:13px;color:var(--muted)}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:white;border-radius:12px;padding:9px 11px;cursor:pointer;font-weight:700}.btn:hover{background:#fff8e8}
+.resultBox{background:#f8fffc;border:1px solid #aee1d1;border-radius:22px;padding:18px;margin-bottom:16px}.steps{display:grid;gap:12px}.step{background:white;border:1px solid var(--line);border-left:7px solid var(--accent);border-radius:17px;padding:14px;overflow-x:auto}.step b{display:block;margin-bottom:8px}.deriveRows{display:grid;gap:10px;margin-top:8px}.deriveRow{display:grid;grid-template-columns:34px minmax(150px,1fr) 2fr;gap:12px;align-items:center;background:#fffdf9;border:1px solid var(--line);border-radius:14px;padding:10px}.deriveNo{width:26px;height:26px;border-radius:999px;background:#e8f6ef;border:1px solid #aee1d1;display:flex;align-items:center;justify-content:center;font-weight:800;color:#126b42}.deriveText{font-size:14px;color:var(--muted);line-height:1.25}.deriveMath{overflow-x:auto;text-align:center}.warn{background:var(--bad);border:1px solid #f2a29a;border-radius:14px;padding:10px;margin-top:10px}.muted{color:var(--muted)}
+@media(max-width:850px){.app{grid-template-columns:1fr}aside{height:auto;position:relative;border-right:0;border-bottom:1px solid var(--line)}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <h1>Kalorimetrická kalkulačka</h1>
+  <p class="small">Vyber typ úlohy. Doplň libovolné hodnoty. Jakmile je možné něco dopočítat, hodnota se objeví ve žlutém poli a vpravo se ukáže vzorový výpočet.</p>
+  <div id="modes"></div>
+  <div class="card">
+    <h3>Vstupní veličiny</h3>
+    <div id="fields"></div>
+    <div class="btnrow">
+      <button class="btn" id="randomExample">Generovat náhodný příklad</button>
+      <button class="btn" id="clearComputed">Smazat dopočítané</button>
+      <button class="btn" id="clearAll">Smazat vše</button>
+    </div>
+  </div>
+</aside>
+<main>
+  <div class="resultBox">
+    <h2 id="status">Zadej hodnoty</h2>
+    <div id="equation" class="muted"></div>
+  </div>
+  <div class="steps" id="steps"></div>
+</main>
+</div>
+<script>
+const modes = [
+ {id:'mix', name:'1) Bez kalorimetru, bez skupenské přeměny'},
+ {id:'mixCal', name:'2) V kalorimetru, bez skupenské přeměny'},
+ {id:'phase', name:'3) Bez kalorimetru, se skupenskou přeměnou'},
+ {id:'phaseCal', name:'4) V kalorimetru, se skupenskou přeměnou'}
+];
+const labels = {
+ m1:['m₁','kg','hmotnost teplejší látky'], c1:['c₁','J·kg⁻¹·°C⁻¹','měrná tepelná kapacita teplejší látky'], t1:['t₁','°C','počáteční teplota teplejší látky'],
+ m2:['m₂','kg','hmotnost chladnější látky'], c2:['c₂','J·kg⁻¹·°C⁻¹','měrná tepelná kapacita chladnější látky'], t2:['t₂','°C','počáteční teplota chladnější látky'],
+ t:['t','°C','výsledná teplota'], Ck:['Cₖ','J·°C⁻¹','tepelná kapacita kalorimetru'], tk:['tₖ','°C','počáteční teplota kalorimetru'],
+ tt:['tₜ','°C','teplota tání/tuhnutí'], l:['l','J·kg⁻¹','měrné skupenské teplo'], tFinal:['t','°C','výsledná teplota']
+};
+
+const heatCapacities = [
+  ['voda', 4180], ['led', 2100], ['pára', 2000], ['hliník', 900], ['sklo', 840],
+  ['beton', 880], ['železo / ocel', 460], ['měď', 383], ['mosaz', 380],
+  ['zinek', 390], ['stříbro', 235], ['olovo', 130], ['rtuť', 140],
+  ['líh / ethanol', 2400], ['olej', 2000]
+];
+function heatCapacityDatalist(id){
+  return `<datalist id="${id}">` + heatCapacities.map(([name,c]) => `<option value="${c}" label="${name} — ${c} J·kg⁻¹·°C⁻¹"></option>`).join('') + `</datalist>`;
+}
+const visible = {
+ mix:['m1','c1','t1','m2','c2','t2','t'],
+ mixCal:['m1','c1','t1','m2','c2','t2','Ck','tk','t'],
+ phase:['m1','c1','t1','m2','c2','t2','tt','l','tFinal'],
+ phaseCal:['m1','c1','t1','m2','c2','t2','Ck','tk','tt','l','tFinal']
+};
+let mode='mix';
+const values = {}; const computed = {}; let typingTimer=null;
+const $ = id => document.getElementById(id);
+function fmt(x,d=2){ if(!isFinite(x)) return ''; return Number(x).toLocaleString('cs-CZ',{maximumFractionDigits:d,minimumFractionDigits:d}).replace(/\s/g,'\u202f'); }
+function latexNum(x,d=2){ return fmt(x,d).replace(',', '{,}'); }
+function val(k){ const v = parseFloat(String(values[k]??'').replace(',','.')); return Number.isFinite(v)?v:null; }
+function setComputed(k,v){ if(val(k)==null && isFinite(v)){ values[k]=String(Math.round(v*100)/100).replace('.',','); computed[k]=true; return true; } return false; }
+function clearComputed(){ for(const k of Object.keys(computed)){ if(computed[k]) delete values[k]; } for(const k in computed) delete computed[k]; renderFields(); calculate(); }
+function clearAll(){ for(const k in values) delete values[k]; for(const k in computed) delete computed[k]; renderFields(); calculate(); }
+function renderModes(){ $('modes').innerHTML=modes.map(m=>`<button class="mode ${m.id===mode?'active':''}" data-mode="${m.id}">${m.name}</button>`).join(''); document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>{mode=b.dataset.mode; for(const k in computed){delete values[k]; delete computed[k];} renderModes(); renderFields(); calculate();}); }
+function renderFields(){
+ const keys=visible[mode];
+ $('fields').innerHTML=keys.map(k=>{
+   const l=labels[k];
+   const listId = (k==='c1'||k==='c2') ? `list_${k}` : '';
+   const listAttr = listId ? ` list="${listId}" title="Můžeš napsat vlastní hodnotu nebo vybrat látku ze seznamu."` : '';
+   const dl = listId ? heatCapacityDatalist(listId) : '';
+   return `<div class="field ${computed[k]?'computed':''}" id="row_${k}"><label for="${k}"><b>${l[0]}</b><br><span class="small">${l[2]}</span></label><input inputmode="decimal" id="${k}" value="${values[k]??''}" placeholder="?" autocomplete="off"${listAttr}>${dl}<span class="unit">${l[1]}</span></div>`
+ }).join('');
+ keys.forEach(k=>{
+   const input=$(k);
+   input.addEventListener('input',e=>{values[k]=e.target.value; computed[k]=false; clearTimeout(typingTimer); typingTimer=setTimeout(calculate,80);});
+   if(k==='c1'||k==='c2'){
+     const openList=()=>{ try{ if(input.showPicker) input.showPicker(); }catch(e){} };
+     input.addEventListener('focus',()=>setTimeout(openList,40));
+     input.addEventListener('click',()=>setTimeout(openList,40));
+   }
+ });
+}
+function variableLatex(k){
+ const map={m1:'m_1',c1:'c_1',t1:'t_1',m2:'m_2',c2:'c_2',t2:'t_2',t:'t',Ck:'C_k',tk:'t_k',tFinal:'t'};
+ return map[k] || k;
+}
+function linearFormulaFor(x, includeCal){
+ const calA = includeCal ? '+C_k(t-t_k)' : '';
+ const calB = includeCal ? '-C_k(t-t_k)' : '';
+ const calC = includeCal ? '+C_kt_k' : '';
+ const calD = includeCal ? '+C_k' : '';
+ const formulas={
+   t:`t=\\frac{m_1c_1t_1+m_2c_2t_2${calC}}{m_1c_1+m_2c_2${calD}}`,
+   t1:`t_1=t+\\frac{m_2c_2(t-t_2)${calA}}{m_1c_1}`,
+   t2:`t_2=t-\\frac{m_1c_1(t_1-t)${calB}}{m_2c_2}`,
+   m1:`m_1=\\frac{m_2c_2(t-t_2)${calA}}{c_1(t_1-t)}`,
+   m2:`m_2=\\frac{m_1c_1(t_1-t)${calB}}{c_2(t-t_2)}`,
+   c1:`c_1=\\frac{m_2c_2(t-t_2)${calA}}{m_1(t_1-t)}`,
+   c2:`c_2=\\frac{m_1c_1(t_1-t)${calB}}{m_2(t-t_2)}`,
+   Ck:`C_k=\\frac{m_1c_1(t_1-t)-m_2c_2(t-t_2)}{t-t_k}`,
+   tk:`t_k=t-\\frac{m_1c_1(t_1-t)-m_2c_2(t-t_2)}{C_k}`
+ };
+ return formulas[x] || '';
+}
+
+function linearDerivationFor(x, includeCal){
+ const base = includeCal ? 'm_1c_1(t_1-t)=m_2c_2(t-t_2)+C_k(t-t_k)' : 'm_1c_1(t_1-t)=m_2c_2(t-t_2)';
+ const plusCal = includeCal ? '+C_k(t-t_k)' : '';
+ const minusCal = includeCal ? '-C_k(t-t_k)' : '';
+ const expCal = includeCal ? '+C_kt-C_kt_k' : '';
+ const numCal = includeCal ? '+C_kt_k' : '';
+ const facCal = includeCal ? '+C_k' : '';
+ const A = `m_1c_1(t_1-t)`;
+ const B = `m_2c_2(t-t_2)`;
+ const C = `C_k(t-t_k)`;
+ const arr={
+  t:[
+   {txt:'Výchozí kalorimetrická rovnice', eq:base},
+   {txt:'Rozeznásobíme závorky na obou stranách', eq:`m_1c_1t_1-m_1c_1t=m_2c_2t-m_2c_2t_2${expCal}`},
+   {txt:'Přičteme člen m_1c_1t k oběma stranám', eq:`m_1c_1t_1=m_1c_1t+m_2c_2t-m_2c_2t_2${expCal}`},
+   {txt:'Přičteme člen m_2c_2t_2 k oběma stranám', eq:`m_1c_1t_1+m_2c_2t_2=m_1c_1t+m_2c_2t${includeCal?'+C_kt-C_kt_k':''}`},
+   ...(includeCal ? [{txt:'Přičteme člen C_kt_k k oběma stranám', eq:`m_1c_1t_1+m_2c_2t_2+C_kt_k=m_1c_1t+m_2c_2t+C_kt`}] : []),
+   {txt:'Vytkneme společné t na pravé straně', eq:`m_1c_1t_1+m_2c_2t_2${numCal}=t(m_1c_1+m_2c_2${facCal})`},
+   {txt:'Vydělíme celý výraz závorkou u t', eq:linearFormulaFor('t',includeCal)}
+  ],
+  t1:[
+   {txt:'Výchozí kalorimetrická rovnice', eq:base},
+   {txt:'Rozeznásobíme závorku s t_1 na levé straně', eq:`m_1c_1t_1-m_1c_1t=m_2c_2(t-t_2)${plusCal}`},
+   {txt:'Přičteme člen m_1c_1t k oběma stranám', eq:`m_1c_1t_1=m_2c_2(t-t_2)${plusCal}+m_1c_1t`},
+   {txt:'Vydělíme celý výraz součinem m_1c_1', eq:`t_1=\\frac{m_2c_2(t-t_2)${plusCal}+m_1c_1t}{m_1c_1}`},
+   {txt:'Oddělíme člen s t', eq:linearFormulaFor('t1',includeCal)}
+  ],
+  t2:[
+   {txt:'Výchozí kalorimetrická rovnice', eq:base},
+   ...(includeCal ? [{txt:'Odečteme člen C_k(t-t_k) od obou stran', eq:`m_1c_1(t_1-t)-C_k(t-t_k)=m_2c_2(t-t_2)`}] : []),
+   {txt:'Prohodíme strany, aby byl člen s t_2 vlevo', eq:`m_2c_2(t-t_2)=m_1c_1(t_1-t)${minusCal}`},
+   {txt:'Vydělíme celý výraz součinem m_2c_2', eq:`t-t_2=\\frac{m_1c_1(t_1-t)${minusCal}}{m_2c_2}`},
+   {txt:'Odečteme t od obou stran', eq:`-t_2=\\frac{m_1c_1(t_1-t)${minusCal}}{m_2c_2}-t`},
+   {txt:'Vynásobíme rovnici číslem -1', eq:linearFormulaFor('t2',includeCal)}
+  ],
+  m1:[
+   {txt:'Výchozí kalorimetrická rovnice', eq:base},
+   ...(includeCal ? [{txt:'Odečteme člen C_k(t-t_k) od obou stran', eq:`m_1c_1(t_1-t)-C_k(t-t_k)=m_2c_2(t-t_2)`},
+                 {txt:'Přičteme člen C_k(t-t_k) k oběma stranám', eq:`m_1c_1(t_1-t)=m_2c_2(t-t_2)+C_k(t-t_k)`}] : []),
+   {txt:'Člen s m_1 je už osamostatněný', eq:`m_1c_1(t_1-t)=m_2c_2(t-t_2)${plusCal}`},
+   {txt:'Vydělíme celý výraz součinem c_1(t_1-t)', eq:linearFormulaFor('m1',includeCal)}
+  ],
+  m2:[
+   {txt:'Výchozí kalorimetrická rovnice', eq:base},
+   ...(includeCal ? [{txt:'Odečteme člen C_k(t-t_k) od obou stran', eq:`m_1c_1(t_1-t)-C_k(t-t_k)=m_2c_2(t-t_2)`}] : []),
+   {txt:'Prohodíme strany, aby byl člen s m_2 vlevo', eq:`m_2c_2(t-t_2)=m_1c_1(t_1-t)${minusCal}`},
+   {txt:'Vydělíme celý výraz součinem c_2(t-t_2)', eq:linearFormulaFor('m2',includeCal)}
+  ],
+  c1:[
+   {txt:'Výchozí kalorimetrická rovnice', eq:base},
+   ...(includeCal ? [{txt:'Odečteme člen C_k(t-t_k) od obou stran', eq:`m_1c_1(t_1-t)-C_k(t-t_k)=m_2c_2(t-t_2)`},
+                 {txt:'Přičteme člen C_k(t-t_k) k oběma stranám', eq:`m_1c_1(t_1-t)=m_2c_2(t-t_2)+C_k(t-t_k)`}] : []),
+   {txt:'Přeskupíme součiny u c_1', eq:`c_1\\,m_1(t_1-t)=m_2c_2(t-t_2)${plusCal}`},
+   {txt:'Vydělíme celý výraz součinem m_1(t_1-t)', eq:linearFormulaFor('c1',includeCal)}
+  ],
+  c2:[
+   {txt:'Výchozí kalorimetrická rovnice', eq:base},
+   ...(includeCal ? [{txt:'Odečteme člen C_k(t-t_k) od obou stran', eq:`m_1c_1(t_1-t)-C_k(t-t_k)=m_2c_2(t-t_2)`}] : []),
+   {txt:'Prohodíme strany a přeskupíme součiny u c_2', eq:`c_2\\,m_2(t-t_2)=m_1c_1(t_1-t)${minusCal}`},
+   {txt:'Vydělíme celý výraz součinem m_2(t-t_2)', eq:linearFormulaFor('c2',includeCal)}
+  ],
+  Ck:[
+   {txt:'Výchozí kalorimetrická rovnice', eq:base},
+   {txt:'Odečteme člen m_2c_2(t-t_2) od obou stran', eq:`m_1c_1(t_1-t)-m_2c_2(t-t_2)=C_k(t-t_k)`},
+   {txt:'Prohodíme strany, aby bylo C_k vlevo', eq:`C_k(t-t_k)=m_1c_1(t_1-t)-m_2c_2(t-t_2)`},
+   {txt:'Vydělíme celý výraz závorkou (t-t_k)', eq:linearFormulaFor('Ck',includeCal)}
+  ],
+  tk:[
+   {txt:'Výchozí kalorimetrická rovnice', eq:base},
+   {txt:'Odečteme člen m_2c_2(t-t_2) od obou stran', eq:`m_1c_1(t_1-t)-m_2c_2(t-t_2)=C_k(t-t_k)`},
+   {txt:'Prohodíme strany, aby byl člen s t_k vlevo', eq:`C_k(t-t_k)=m_1c_1(t_1-t)-m_2c_2(t-t_2)`},
+   {txt:'Vydělíme celý výraz součinem C_k', eq:`t-t_k=\\frac{m_1c_1(t_1-t)-m_2c_2(t-t_2)}{C_k}`},
+   {txt:'Odečteme t od obou stran', eq:`-t_k=\\frac{m_1c_1(t_1-t)-m_2c_2(t-t_2)}{C_k}-t`},
+   {txt:'Vynásobíme rovnici číslem -1', eq:linearFormulaFor('tk',includeCal)}
+  ]
+ };
+ return arr[x] || [{txt:'Výchozí rovnice', eq:base}];
+}
+function derivationHtml(x, includeCal){
+ const rows = linearDerivationFor(x, includeCal);
+ return `<div class="deriveRows">` + rows.map((row,i)=>`<div class="deriveRow"><div class="deriveNo">${i+1}</div><div class="deriveText">${row.txt}</div><div class="deriveMath">\\[${row.eq}\\]</div></div>`).join('') + `</div>`;
+}
+
+
+
+function linearSubstitutionFor(x, includeCal){
+ const n=(k,d=2)=>latexNum(val(k),d);
+ const c1n=n('c1',0), c2n=n('c2',0);
+ const calPlus = includeCal ? `+${n('Ck',0)}\\cdot(${n('t')}-${n('tk')})` : '';
+ const calMinus = includeCal ? `-${n('Ck',0)}\\cdot(${n('t')}-${n('tk')})` : '';
+ const calNum = includeCal ? `+${n('Ck',0)}\\cdot ${n('tk')}` : '';
+ const calDen = includeCal ? `+${n('Ck',0)}` : '';
+ const parts={
+   t:`\\frac{${n('m1')}\\cdot ${c1n}\\cdot ${n('t1')}+${n('m2')}\\cdot ${c2n}\\cdot ${n('t2')}${calNum}}{${n('m1')}\\cdot ${c1n}+${n('m2')}\\cdot ${c2n}${calDen}}`,
+   t1:`${n('t')}+\\frac{${n('m2')}\\cdot ${c2n}\\cdot(${n('t')}-${n('t2')})${calPlus}}{${n('m1')}\\cdot ${c1n}}`,
+   t2:`${n('t')}-\\frac{${n('m1')}\\cdot ${c1n}\\cdot(${n('t1')}-${n('t')})${calMinus}}{${n('m2')}\\cdot ${c2n}}`,
+   m1:`\\frac{${n('m2')}\\cdot ${c2n}\\cdot(${n('t')}-${n('t2')})${calPlus}}{${c1n}\\cdot(${n('t1')}-${n('t')})}`,
+   m2:`\\frac{${n('m1')}\\cdot ${c1n}\\cdot(${n('t1')}-${n('t')})${calMinus}}{${c2n}\\cdot(${n('t')}-${n('t2')})}`,
+   c1:`\\frac{${n('m2')}\\cdot ${c2n}\\cdot(${n('t')}-${n('t2')})${calPlus}}{${n('m1')}\\cdot(${n('t1')}-${n('t')})}`,
+   c2:`\\frac{${n('m1')}\\cdot ${c1n}\\cdot(${n('t1')}-${n('t')})${calMinus}}{${n('m2')}\\cdot(${n('t')}-${n('t2')})}`,
+   Ck:`\\frac{${n('m1')}\\cdot ${c1n}\\cdot(${n('t1')}-${n('t')})-${n('m2')}\\cdot ${c2n}\\cdot(${n('t')}-${n('t2')})}{${n('t')}-${n('tk')}}`,
+   tk:`${n('t')}-\\frac{${n('m1')}\\cdot ${c1n}\\cdot(${n('t1')}-${n('t')})-${n('m2')}\\cdot ${c2n}\\cdot(${n('t')}-${n('t2')})}{${n('Ck',0)}}`
+ };
+ return parts[x] || '';
+}
+function solveLinear(includeCal){
+ let changed=false; const steps=[];
+ const keys = includeCal?['m1','c1','t1','m2','c2','t2','Ck','tk','t']:['m1','c1','t1','m2','c2','t2','t'];
+ const miss=keys.filter(k=>val(k)==null);
+ let solvedKey = keys.find(k=>computed[k] && val(k)!=null) || null;
+ let m1=val('m1'),c1=val('c1'),t1=val('t1'),m2=val('m2'),c2=val('c2'),t2=val('t2'),Ck=includeCal?val('Ck'):0,tk=includeCal?val('tk'):0,t=val('t');
+ if(miss.length===1){ const x=miss[0]; let r=null;
+   if(x==='t') r=(m1*c1*t1+m2*c2*t2+(includeCal?Ck*tk:0))/(m1*c1+m2*c2+(includeCal?Ck:0));
+   if(x==='t1') r=(m2*c2*(t-t2)+(includeCal?Ck*(t-tk):0))/(m1*c1)+t;
+   if(x==='t2') r=t-(m1*c1*(t1-t)-(includeCal?Ck*(t-tk):0))/(m2*c2);
+   if(x==='m1') r=(m2*c2*(t-t2)+(includeCal?Ck*(t-tk):0))/(c1*(t1-t));
+   if(x==='m2') r=(m1*c1*(t1-t)-(includeCal?Ck*(t-tk):0))/(c2*(t-t2));
+   if(x==='c1') r=(m2*c2*(t-t2)+(includeCal?Ck*(t-tk):0))/(m1*(t1-t));
+   if(x==='c2') r=(m1*c1*(t1-t)-(includeCal?Ck*(t-tk):0))/(m2*(t-t2));
+   if(includeCal && x==='Ck') r=(m1*c1*(t1-t)-m2*c2*(t-t2))/(t-tk);
+   if(includeCal && x==='tk') r=t-(m1*c1*(t1-t)-m2*c2*(t-t2))/Ck;
+   if(r!=null && isFinite(r)){ changed=setComputed(x,r); solvedKey=x; }
+ }
+ const eq = includeCal ? '\\[m_1c_1(t_1-t)=m_2c_2(t-t_2)+C_k(t-t_k)\\]' : '\\[m_1c_1(t_1-t)=m_2c_2(t-t_2)\\]';
+ steps.push(`<div class="step"><b>1) Použitá kalorimetrická rovnice</b>${eq}</div>`);
+ if(solvedKey && keys.every(k=>val(k)!=null)){
+   const unit = labels[solvedKey]?.[1] || '';
+   const unitLatex = unit ? `\\,\\mathrm{${unit.replaceAll('·','\\cdot ').replaceAll('⁻','^{-').replaceAll('¹','1}')}}` : '';
+   steps.push(`<div class="step"><b>2) Vyjádření dopočítané veličiny ${labels[solvedKey][0]} krok za krokem</b>${derivationHtml(solvedKey, includeCal)}</div>`);
+   steps.push(`<div class="step"><b>3) Dosazení</b>\\[${variableLatex(solvedKey)}=${linearSubstitutionFor(solvedKey, includeCal)}=${latexNum(val(solvedKey))}${unitLatex}\\]</div>`);
+ }
+ const tNow=val('t');
+ if(tNow!=null && ['m1','c1','t1','m2','c2','t2'].every(k=>val(k)!=null) && (!includeCal || ['Ck','tk'].every(k=>val(k)!=null))){
+   steps.push(`<div class="step"><b>${solvedKey?'4':'2'}) Kontrola tepla</b>\\[Q_\\text{odevzdané}=m_1c_1(t_1-t)=${latexNum(val('m1')*val('c1')*(val('t1')-tNow),2)}\\,\\mathrm{J}\\]\\[Q_\\text{přijaté}=${includeCal?'m_2c_2(t-t_2)+C_k(t-t_k)':'m_2c_2(t-t_2)'}=${latexNum(val('m2')*val('c2')*(tNow-val('t2'))+(includeCal?val('Ck')*(tNow-val('tk')):0),2)}\\,\\mathrm{J}\\]</div>`);
+ }
+ return {changed, steps, ready:steps.length>1};
+}
+
+function solvePhase(includeCal){
+ const steps=[]; const req=['m1','c1','t1','m2','c2','t2','tt','l']; if(includeCal) req.push('Ck','tk');
+ steps.push(`<div class="step"><b>1) Model se skupenskou přeměnou</b>\\[Q_\\text{teplé}=m_1c_1(t_1-t)\\]\\[Q_\\text{ohřev na tání}=m_2c_2(t_t-t_2),\\qquad Q_\\text{tání}=m_2l\\]</div>`);
+ if(req.some(k=>val(k)==null)) return {changed:false, steps, ready:false};
+ const QhotToTt=val('m1')*val('c1')*(val('t1')-val('tt')) + (includeCal?val('Ck')*(val('tk')-val('tt')):0);
+ const Qwarm=val('m2')*val('c2')*(val('tt')-val('t2'));
+ const Qmelt=val('m2')*val('l');
+ let t=val('tt'), note='';
+ if(QhotToTt < Qwarm){
+   t=(val('m1')*val('c1')*val('t1')+val('m2')*val('c2')*val('t2')+(includeCal?val('Ck')*val('tk'):0))/(val('m1')*val('c1')+val('m2')*val('c2')+(includeCal?val('Ck'):0));
+   note='Pevná látka se ani nedostane na teplotu tání.';
+ } else if(QhotToTt < Qwarm+Qmelt){
+   t=val('tt'); note='Část pevné látky roztaje, směs zůstane na teplotě tání.';
+ } else {
+   t=(val('m1')*val('c1')*val('tt')+val('m2')*val('c2')*val('tt')+(QhotToTt-Qwarm-Qmelt)+(includeCal?0:0))/(val('m1')*val('c1')+val('m2')*val('c2'));
+   note='Pevná látka roztaje celá a vzniklá kapalina se ještě ohřeje.';
+ }
+ const changed=setComputed('tFinal',t);
+ steps.push(`<div class="step"><b>2) Porovnání tepel</b>\\[Q_\\text{dostupné do }t_t=${latexNum(QhotToTt)}\\,\\mathrm{J}\\]\\[Q_\\text{ohřev na }t_t=${latexNum(Qwarm)}\\,\\mathrm{J},\\qquad Q_\\text{tání}=${latexNum(Qmelt)}\\,\\mathrm{J}\\]</div>`);
+ steps.push(`<div class="step"><b>3) Závěr</b><p>${note}</p>\\[t=${latexNum(t)}\,^\\circ\\mathrm{C}\\]</div>`);
+ return {changed, steps, ready:true};
+}
+
+function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function nice(v,d=2){ return String(Math.round(v*Math.pow(10,d))/Math.pow(10,d)).replace('.',','); }
+function resetValues(){ for(const k in values) delete values[k]; for(const k in computed) delete computed[k]; }
+function fillObject(obj){ resetValues(); for(const [k,v] of Object.entries(obj)) values[k]=nice(v, (k==='c1'||k==='c2'||k==='Ck'||k==='l')?0:2); }
+function generateRandomExample(){
+ if(mode==='mix' || mode==='mixCal'){
+   const includeCal = mode==='mixCal';
+   const cOptions=[4200,3900,2500,900,840,460];
+   let obj={
+     m1: randInt(20,90)/100,
+     c1: pick(cOptions),
+     t1: randInt(50,95),
+     m2: randInt(20,120)/100,
+     c2: pick(cOptions),
+     t2: randInt(5,30)
+   };
+   if(includeCal){ obj.Ck=randInt(40,250); obj.tk=obj.t2; }
+   obj.t=(obj.m1*obj.c1*obj.t1+obj.m2*obj.c2*obj.t2+(includeCal?obj.Ck*obj.tk:0))/(obj.m1*obj.c1+obj.m2*obj.c2+(includeCal?obj.Ck:0));
+   const unknowns = includeCal ? ['t','t1','t2','m1','m2','c1','c2','Ck','tk'] : ['t','t1','t2','m1','m2','c1','c2'];
+   let missing = pick(unknowns);
+   if(missing==='tk' && Math.abs(obj.t-obj.tk)<1) missing='Ck';
+   fillObject(obj);
+   delete values[missing]; delete computed[missing];
+   renderFields(); calculate();
+   return;
+ }
+ const includeCal = mode==='phaseCal';
+ const obj={
+   m1: randInt(40,120)/100,
+   c1:4200,
+   t1:randInt(60,95),
+   m2:randInt(5,35)/100,
+   c2:2100,
+   t2:randInt(-15,-1),
+   tt:0,
+   l:334000
+ };
+ if(includeCal){ obj.Ck=randInt(40,180); obj.tk=randInt(15,25); }
+ fillObject(obj);
+ delete values.tFinal; delete computed.tFinal;
+ renderFields(); calculate();
+}
+
+function calculate(){
+ const r = (mode==='mix')?solveLinear(false):(mode==='mixCal')?solveLinear(true):(mode==='phase')?solvePhase(false):solvePhase(true);
+ renderFieldsPreserveFocus();
+ $('status').textContent = r.ready ? 'Výpočet je možný' : 'Zatím chybí hodnoty';
+ $('equation').innerHTML = `<span class="pill">${modes.find(m=>m.id===mode).name}</span>`;
+ $('steps').innerHTML = r.steps.join('') + (!r.ready?'<div class="warn">Doplň další hodnoty. Žlutě označím vše, co půjde dopočítat.</div>':'');
+ if(window.MathJax) MathJax.typesetPromise([$ ('steps'), $('equation')]);
+}
+function renderFieldsPreserveFocus(){ const active=document.activeElement; const id=active&&active.id; const pos=active&&active.selectionStart; renderFields(); if(id && $(id) && !computed[id]){ $(id).focus(); try{$(id).setSelectionRange(pos,pos)}catch(e){} } }
+$('randomExample').onclick=generateRandomExample; $('clearComputed').onclick=clearComputed; $('clearAll').onclick=clearAll;
+renderModes(); renderFields(); calculate();
+</script>
+</body>
+</html>
