@@ -8,7 +8,14 @@
   window.MathJax = {
     tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['\\[','\\]']] },
     svg: { fontCache: 'global' },
-    startup: { typeset: false }
+    startup: {
+      typeset: false,
+      ready: () => {
+        MathJax.startup.defaultReady();
+        window.mathJaxReady = true;
+        if (typeof window.typesetMath === 'function') window.typesetMath();
+      }
+    }
   };
 </script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
@@ -28,8 +35,9 @@ h1{font-size:25px;margin:0 0 12px} h2{font-size:22px;margin:0 0 12px} h3{font-si
 .mode{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:15px;background:var(--panel);padding:11px 12px;margin:7px 0;cursor:pointer;font-weight:700;color:var(--ink)}
 .mode.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(244,189,98,.25);background:#fff8e8}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px;margin:14px 0;box-shadow:0 4px 18px rgba(70,50,20,.05)}
-.field{display:grid;grid-template-columns:1fr 105px 48px;gap:8px;align-items:center;margin:8px 0;padding:7px;border-radius:13px;border:1px solid transparent}
-.field.computed{background:var(--ok);border-color:#ecd25a}.field label{font-size:14px;line-height:1.2}.field input{width:100%;padding:9px 8px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:white;color:var(--ink)}
+.field{display:grid;grid-template-columns:minmax(120px,1fr) minmax(86px,116px) 48px;gap:8px;align-items:center;margin:8px 0;padding:8px;border-radius:13px;border:1px solid transparent}
+.field.unknown{background:#eef9f6;border-color:#8ccfbd}.field.unknown.computed{background:var(--ok);border-color:#ecd25a}.field input[readonly]{background:#fffdf5;font-weight:800;color:#7a4e00}.labelBlock{min-width:0;display:flex;flex-direction:column;gap:6px}.unknownPick{display:inline-flex;align-items:center;align-self:flex-start;gap:6px;font-size:12px;color:#286d60;cursor:pointer;user-select:none;white-space:nowrap;background:#f8fffc;border:1px solid #aee1d1;border-radius:999px;padding:3px 8px;line-height:1.1}.unknownPick input{width:auto;min-width:0;flex:0 0 auto;accent-color:var(--accent2);cursor:pointer;margin:0}
+.field.computed{background:var(--ok);border-color:#ecd25a}.field label{font-size:14px;line-height:1.2;min-width:0}.field input{width:100%;min-width:0;padding:9px 8px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:white;color:var(--ink)}
 .field input:focus{outline:2px solid rgba(140,207,189,.7);border-color:var(--accent2)}
 .field input[list]{background-image:linear-gradient(45deg, transparent 50%, var(--muted) 50%),linear-gradient(135deg, var(--muted) 50%, transparent 50%);background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:28px}
 .unit{font-size:13px;color:var(--muted)}
@@ -42,14 +50,13 @@ h1{font-size:25px;margin:0 0 12px} h2{font-size:22px;margin:0 0 12px} h3{font-si
 <div class="app">
 <aside>
   <h1>Kalorimetrická kalkulačka</h1>
-  <p class="small">Vyber typ úlohy. Doplň libovolné hodnoty. Jakmile je možné něco dopočítat, hodnota se objeví ve žlutém poli a vpravo se ukáže vzorový výpočet.</p>
+  <p class="small">Vyber typ úlohy. Zaškrtni jednu veličinu jako neznámou a doplň ostatní hodnoty. Jakmile je vstupů dostatek, neznámá se automaticky dopočítá ve žlutém poli a vpravo se ukáže vzorový výpočet.</p>
   <div id="modes"></div>
   <div class="card">
     <h3>Vstupní veličiny</h3>
     <div id="fields"></div>
     <div class="btnrow">
       <button class="btn" id="randomExample">Generovat náhodný příklad</button>
-      <button class="btn" id="clearComputed">Smazat dopočítané</button>
       <button class="btn" id="clearAll">Smazat vše</button>
     </div>
   </div>
@@ -70,9 +77,9 @@ const modes = [
  {id:'phaseCal', name:'4) V kalorimetru, se skupenskou přeměnou'}
 ];
 const labels = {
- m1:['m₁','kg','hmotnost teplejší látky'], c1:['c₁','J·kg⁻¹·°C⁻¹','měrná tepelná kapacita teplejší látky'], t1:['t₁','°C','počáteční teplota teplejší látky'],
- m2:['m₂','kg','hmotnost chladnější látky'], c2:['c₂','J·kg⁻¹·°C⁻¹','měrná tepelná kapacita chladnější látky'], t2:['t₂','°C','počáteční teplota chladnější látky'],
- t:['t','°C','výsledná teplota'], Ck:['Cₖ','J·°C⁻¹','tepelná kapacita kalorimetru'], tk:['tₖ','°C','počáteční teplota kalorimetru'],
+ m1:['m₁','kg','hmotnost teplejší látky'], c1:['c₁','J·kg⁻¹·K⁻¹','měrná tepelná kapacita teplejší látky'], t1:['t₁','°C','počáteční teplota teplejší látky'],
+ m2:['m₂','kg','hmotnost chladnější látky'], c2:['c₂','J·kg⁻¹·K⁻¹','měrná tepelná kapacita chladnější látky'], t2:['t₂','°C','počáteční teplota chladnější látky'],
+ t:['t','°C','výsledná teplota'], Ck:['Cₖ','J·K⁻¹','tepelná kapacita kalorimetru'], tk:['tₖ','°C','počáteční teplota kalorimetru'],
  tt:['tₜ','°C','teplota tání/tuhnutí'], l:['l','J·kg⁻¹','měrné skupenské teplo'], tFinal:['t','°C','výsledná teplota']
 };
 
@@ -83,7 +90,7 @@ const heatCapacities = [
   ['líh / ethanol', 2400], ['olej', 2000]
 ];
 function heatCapacityDatalist(id){
-  return `<datalist id="${id}">` + heatCapacities.map(([name,c]) => `<option value="${c}" label="${name} — ${c} J·kg⁻¹·°C⁻¹"></option>`).join('') + `</datalist>`;
+  return `<datalist id="${id}">` + heatCapacities.map(([name,c]) => `<option value="${c}" label="${name} — ${c} J·kg⁻¹·K⁻¹"></option>`).join('') + `</datalist>`;
 }
 const visible = {
  mix:['m1','c1','t1','m2','c2','t2','t'],
@@ -93,26 +100,60 @@ const visible = {
 };
 let mode='mix';
 const values = {}; const computed = {}; let typingTimer=null;
+const unknownByMode = {mix:'t', mixCal:'t', phase:'tFinal', phaseCal:'tFinal'};
+function currentUnknown(){
+  const keys = visible[mode] || [];
+  if(!keys.includes(unknownByMode[mode])) unknownByMode[mode] = keys.includes('t') ? 't' : keys[keys.length-1];
+  return unknownByMode[mode];
+}
+function selectUnknown(k){
+  const previous = currentUnknown();
+  if(previous && computed[previous]){ delete values[previous]; delete computed[previous]; }
+  unknownByMode[mode]=k;
+  delete values[k];
+  delete computed[k];
+  renderFields();
+  calculate();
+}
 const $ = id => document.getElementById(id);
 function fmt(x,d=2){ if(!isFinite(x)) return ''; return Number(x).toLocaleString('cs-CZ',{maximumFractionDigits:d,minimumFractionDigits:d}).replace(/\s/g,'\u202f'); }
 function latexNum(x,d=2){ return fmt(x,d).replace(',', '{,}'); }
 function val(k){ const v = parseFloat(String(values[k]??'').replace(',','.')); return Number.isFinite(v)?v:null; }
-function setComputed(k,v){ if(val(k)==null && isFinite(v)){ values[k]=String(Math.round(v*100)/100).replace('.',','); computed[k]=true; return true; } return false; }
+function setComputed(k,v){
+  if(k!==currentUnknown()) return false;
+  if(isFinite(v)){
+    values[k]=String(Math.round(v*100)/100).replace('.',',');
+    computed[k]=true;
+    return true;
+  }
+  return false;
+}
+function clearSelectedComputed(){
+  const k=currentUnknown();
+  if(computed[k]){ delete values[k]; delete computed[k]; }
+}
 function clearComputed(){ for(const k of Object.keys(computed)){ if(computed[k]) delete values[k]; } for(const k in computed) delete computed[k]; renderFields(); calculate(); }
 function clearAll(){ for(const k in values) delete values[k]; for(const k in computed) delete computed[k]; renderFields(); calculate(); }
-function renderModes(){ $('modes').innerHTML=modes.map(m=>`<button class="mode ${m.id===mode?'active':''}" data-mode="${m.id}">${m.name}</button>`).join(''); document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>{mode=b.dataset.mode; for(const k in computed){delete values[k]; delete computed[k];} renderModes(); renderFields(); calculate();}); }
+function renderModes(){ $('modes').innerHTML=modes.map(m=>`<button class="mode ${m.id===mode?'active':''}" data-mode="${m.id}">${m.name}</button>`).join(''); document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>{mode=b.dataset.mode; currentUnknown(); for(const k in computed){delete values[k]; delete computed[k];} renderModes(); renderFields(); calculate();}); }
 function renderFields(){
  const keys=visible[mode];
+ const u=currentUnknown();
  $('fields').innerHTML=keys.map(k=>{
    const l=labels[k];
    const listId = (k==='c1'||k==='c2') ? `list_${k}` : '';
    const listAttr = listId ? ` list="${listId}" title="Můžeš napsat vlastní hodnotu nebo vybrat látku ze seznamu."` : '';
    const dl = listId ? heatCapacityDatalist(listId) : '';
-   return `<div class="field ${computed[k]?'computed':''}" id="row_${k}"><label for="${k}"><b>${l[0]}</b><br><span class="small">${l[2]}</span></label><input inputmode="decimal" id="${k}" value="${values[k]??''}" placeholder="?" autocomplete="off"${listAttr}>${dl}<span class="unit">${l[1]}</span></div>`
+   const checked = k===u ? ' checked' : '';
+   const readOnly = k===u ? ' readonly' : '';
+   const placeholder = k===u ? 'neznámá' : '?';
+   return `<div class="field ${k===u?'unknown':''} ${computed[k]?'computed':''}" id="row_${k}"><div class="labelBlock"><label for="${k}"><b>${l[0]}</b><br><span class="small">${l[2]}</span></label><label class="unknownPick" title="Označit ${l[0]} jako jedinou neznámou"><input type="checkbox" data-unknown="${k}"${checked}><span>neznámá</span></label></div><input inputmode="decimal" id="${k}" value="${values[k]??''}" placeholder="${placeholder}" autocomplete="off"${listAttr}${readOnly}>${dl}<span class="unit">${l[1]}</span></div>`
  }).join('');
  keys.forEach(k=>{
    const input=$(k);
-   input.addEventListener('input',e=>{values[k]=e.target.value; computed[k]=false; clearTimeout(typingTimer); typingTimer=setTimeout(calculate,80);});
+   const box=document.querySelector(`input[data-unknown="${k}"]`);
+   box.addEventListener('change',e=>{ if(e.target.checked || k!==currentUnknown()) selectUnknown(k); else e.target.checked=true; });
+   if(k===u) return;
+   input.addEventListener('input',e=>{values[k]=e.target.value; computed[k]=false; clearSelectedComputed(); clearTimeout(typingTimer); typingTimer=setTimeout(calculate,80);});
    if(k==='c1'||k==='c2'){
      const openList=()=>{ try{ if(input.showPicker) input.showPicker(); }catch(e){} };
      input.addEventListener('focus',()=>setTimeout(openList,40));
@@ -251,10 +292,12 @@ function linearSubstitutionFor(x, includeCal){
 function solveLinear(includeCal){
  let changed=false; const steps=[];
  const keys = includeCal?['m1','c1','t1','m2','c2','t2','Ck','tk','t']:['m1','c1','t1','m2','c2','t2','t'];
- const miss=keys.filter(k=>val(k)==null);
- let solvedKey = keys.find(k=>computed[k] && val(k)!=null) || null;
+ let solvedKey = null;
+ const x=currentUnknown();
+ if(computed[x]){ delete values[x]; delete computed[x]; }
  let m1=val('m1'),c1=val('c1'),t1=val('t1'),m2=val('m2'),c2=val('c2'),t2=val('t2'),Ck=includeCal?val('Ck'):0,tk=includeCal?val('tk'):0,t=val('t');
- if(miss.length===1){ const x=miss[0]; let r=null;
+ const missingInputs = keys.filter(k=>k!==x && val(k)==null);
+ if(keys.includes(x) && missingInputs.length===0){ let r=null;
    if(x==='t') r=(m1*c1*t1+m2*c2*t2+(includeCal?Ck*tk:0))/(m1*c1+m2*c2+(includeCal?Ck:0));
    if(x==='t1') r=(m2*c2*(t-t2)+(includeCal?Ck*(t-tk):0))/(m1*c1)+t;
    if(x==='t2') r=t-(m1*c1*(t1-t)-(includeCal?Ck*(t-tk):0))/(m2*c2);
@@ -271,37 +314,103 @@ function solveLinear(includeCal){
  if(solvedKey && keys.every(k=>val(k)!=null)){
    const unit = labels[solvedKey]?.[1] || '';
    const unitLatex = unit ? `\\,\\mathrm{${unit.replaceAll('·','\\cdot ').replaceAll('⁻','^{-').replaceAll('¹','1}')}}` : '';
-   steps.push(`<div class="step"><b>2) Vyjádření dopočítané veličiny ${labels[solvedKey][0]} krok za krokem</b>${derivationHtml(solvedKey, includeCal)}</div>`);
+   steps.push(`<div class="step"><b>2) Vyjádření vybrané neznámé ${labels[solvedKey][0]} krok za krokem</b>${derivationHtml(solvedKey, includeCal)}</div>`);
    steps.push(`<div class="step"><b>3) Dosazení</b>\\[${variableLatex(solvedKey)}=${linearSubstitutionFor(solvedKey, includeCal)}=${latexNum(val(solvedKey))}${unitLatex}\\]</div>`);
  }
  const tNow=val('t');
  if(tNow!=null && ['m1','c1','t1','m2','c2','t2'].every(k=>val(k)!=null) && (!includeCal || ['Ck','tk'].every(k=>val(k)!=null))){
    steps.push(`<div class="step"><b>${solvedKey?'4':'2'}) Kontrola tepla</b>\\[Q_\\text{odevzdané}=m_1c_1(t_1-t)=${latexNum(val('m1')*val('c1')*(val('t1')-tNow),2)}\\,\\mathrm{J}\\]\\[Q_\\text{přijaté}=${includeCal?'m_2c_2(t-t_2)+C_k(t-t_k)':'m_2c_2(t-t_2)'}=${latexNum(val('m2')*val('c2')*(tNow-val('t2'))+(includeCal?val('Ck')*(tNow-val('tk')):0),2)}\\,\\mathrm{J}\\]</div>`);
  }
- return {changed, steps, ready:steps.length>1};
+ return {changed, steps, ready:!!solvedKey, missingInputs};
 }
 
-function solvePhase(includeCal){
- const steps=[]; const req=['m1','c1','t1','m2','c2','t2','tt','l']; if(includeCal) req.push('Ck','tk');
- steps.push(`<div class="step"><b>1) Model se skupenskou přeměnou</b>\\[Q_\\text{teplé}=m_1c_1(t_1-t)\\]\\[Q_\\text{ohřev na tání}=m_2c_2(t_t-t_2),\\qquad Q_\\text{tání}=m_2l\\]</div>`);
- if(req.some(k=>val(k)==null)) return {changed:false, steps, ready:false};
- const QhotToTt=val('m1')*val('c1')*(val('t1')-val('tt')) + (includeCal?val('Ck')*(val('tk')-val('tt')):0);
- const Qwarm=val('m2')*val('c2')*(val('tt')-val('t2'));
- const Qmelt=val('m2')*val('l');
- let t=val('tt'), note='';
+function computePhaseFinal(includeCal, data){
+ const get=k=>Number(data[k]);
+ const QhotToTt=get('m1')*get('c1')*(get('t1')-get('tt')) + (includeCal?get('Ck')*(get('tk')-get('tt')):0);
+ const Qwarm=get('m2')*get('c2')*(get('tt')-get('t2'));
+ const Qmelt=get('m2')*get('l');
+ let t=get('tt'), note='';
  if(QhotToTt < Qwarm){
-   t=(val('m1')*val('c1')*val('t1')+val('m2')*val('c2')*val('t2')+(includeCal?val('Ck')*val('tk'):0))/(val('m1')*val('c1')+val('m2')*val('c2')+(includeCal?val('Ck'):0));
+   t=(get('m1')*get('c1')*get('t1')+get('m2')*get('c2')*get('t2')+(includeCal?get('Ck')*get('tk'):0))/(get('m1')*get('c1')+get('m2')*get('c2')+(includeCal?get('Ck'):0));
    note='Pevná látka se ani nedostane na teplotu tání.';
  } else if(QhotToTt < Qwarm+Qmelt){
-   t=val('tt'); note='Část pevné látky roztaje, směs zůstane na teplotě tání.';
+   t=get('tt'); note='Část pevné látky roztaje, směs zůstane na teplotě tání.';
  } else {
-   t=(val('m1')*val('c1')*val('tt')+val('m2')*val('c2')*val('tt')+(QhotToTt-Qwarm-Qmelt)+(includeCal?0:0))/(val('m1')*val('c1')+val('m2')*val('c2'));
+   t=(get('m1')*get('c1')*get('tt')+get('m2')*get('c2')*get('tt')+(QhotToTt-Qwarm-Qmelt))/(get('m1')*get('c1')+get('m2')*get('c2'));
    note='Pevná látka roztaje celá a vzniklá kapalina se ještě ohřeje.';
  }
- const changed=setComputed('tFinal',t);
- steps.push(`<div class="step"><b>2) Porovnání tepel</b>\\[Q_\\text{dostupné do }t_t=${latexNum(QhotToTt)}\\,\\mathrm{J}\\]\\[Q_\\text{ohřev na }t_t=${latexNum(Qwarm)}\\,\\mathrm{J},\\qquad Q_\\text{tání}=${latexNum(Qmelt)}\\,\\mathrm{J}\\]</div>`);
- steps.push(`<div class="step"><b>3) Závěr</b><p>${note}</p>\\[t=${latexNum(t)}\,^\\circ\\mathrm{C}\\]</div>`);
- return {changed, steps, ready:true};
+ return {t,QhotToTt,Qwarm,Qmelt,note};
+}
+function phaseDomain(k){
+ const ranges={
+   m1:[0.001,20], m2:[0.001,20], c1:[1,10000], c2:[1,10000],
+   Ck:[0.001,10000], l:[0,1000000], t1:[-100,500], t2:[-100,500], tt:[-100,500], tk:[-100,500]
+ };
+ return ranges[k] || [-100,500];
+}
+function solvePhaseNumerically(x, includeCal){
+ const target=val('tFinal');
+ if(target==null) return null;
+ const keys = includeCal?['m1','c1','t1','m2','c2','t2','Ck','tk','tt','l']:['m1','c1','t1','m2','c2','t2','tt','l'];
+ const data={};
+ for(const k of keys){ if(k!==x){ const v=val(k); if(v==null) return null; data[k]=v; } }
+ const [lo,hi]=phaseDomain(x);
+ const f=z=>{ data[x]=z; const r=computePhaseFinal(includeCal,data).t-target; return Number.isFinite(r)?r:null; };
+ let best=null, bestAbs=Infinity;
+ let prevZ=lo, prevF=f(lo);
+ const samples=220;
+ for(let i=0;i<=samples;i++){
+   const z=lo+(hi-lo)*i/samples;
+   const fz=f(z);
+   if(fz==null) continue;
+   const af=Math.abs(fz);
+   if(af<bestAbs){ bestAbs=af; best=z; }
+   if(af<1e-6) return z;
+   if(prevF!=null && prevF*fz<0){
+     let a=prevZ,b=z,fa=prevF,fb=fz;
+     for(let j=0;j<80;j++){
+       const mid=(a+b)/2, fm=f(mid);
+       if(fm==null) break;
+       if(Math.abs(fm)<1e-7) return mid;
+       if(fa*fm<=0){ b=mid; fb=fm; } else { a=mid; fa=fm; }
+     }
+     return (a+b)/2;
+   }
+   prevZ=z; prevF=fz;
+ }
+ return bestAbs<0.05 ? best : null;
+}
+function solvePhase(includeCal){
+ const steps=[];
+ const keys = includeCal?['m1','c1','t1','m2','c2','t2','Ck','tk','tt','l','tFinal']:['m1','c1','t1','m2','c2','t2','tt','l','tFinal'];
+ const x=currentUnknown();
+ if(computed[x]){ delete values[x]; delete computed[x]; }
+ steps.push(`<div class="step"><b>1) Model se skupenskou přeměnou</b>\\[Q_\\text{teplé}=m_1c_1(t_1-t_t)${includeCal?'+C_k(t_k-t_t)':''}\\]\\[Q_\\text{ohřev na tání}=m_2c_2(t_t-t_2),\\qquad Q_\\text{tání}=m_2l\\]</div>`);
+ let solvedKey=null;
+ if(x==='tFinal'){
+   const req=keys.filter(k=>k!=='tFinal');
+   if(req.every(k=>val(k)!=null)){
+     const data={}; req.forEach(k=>data[k]=val(k));
+     const r=computePhaseFinal(includeCal,data);
+     if(setComputed('tFinal',r.t)) solvedKey='tFinal';
+   }
+ } else if(keys.includes(x)){
+   const req=keys.filter(k=>k!==x);
+   if(req.every(k=>val(k)!=null)){
+     const r=solvePhaseNumerically(x, includeCal);
+     if(r!=null && setComputed(x,r)) solvedKey=x;
+   }
+ }
+ const knownForCheck = keys.every(k=>val(k)!=null);
+ if(solvedKey && knownForCheck){
+   const data={};
+   (includeCal?['m1','c1','t1','m2','c2','t2','Ck','tk','tt','l']:['m1','c1','t1','m2','c2','t2','tt','l']).forEach(k=>data[k]=val(k));
+   const r=computePhaseFinal(includeCal,data);
+   steps.push(`<div class="step"><b>2) Vybraná neznámá</b><p>Zaškrtnutá veličina je <b>${labels[solvedKey][0]}</b>. ${solvedKey==='tFinal'?'Výsledná teplota se spočítá přímo z porovnání tepel.':'Tuto veličinu program dopočítal numericky tak, aby vyšla zadaná výsledná teplota.'}</p>\\[${variableLatex(solvedKey)}=${latexNum(val(solvedKey))}\\]</div>`);
+   steps.push(`<div class="step"><b>3) Porovnání tepel</b>\\[Q_\\text{dostupné do }t_t=${latexNum(r.QhotToTt)}\\,\\mathrm{J}\\]\\[Q_\\text{ohřev na }t_t=${latexNum(r.Qwarm)}\\,\\mathrm{J},\\qquad Q_\\text{tání}=${latexNum(r.Qmelt)}\\,\\mathrm{J}\\]</div>`);
+   steps.push(`<div class="step"><b>4) Závěr</b><p>${r.note}</p>\\[t=${latexNum(r.t)}\,^\\circ\\mathrm{C}\\]</div>`);
+ }
+ return {changed:!!solvedKey, steps, ready:!!solvedKey, missingInputs:keys.filter(k=>k!==x && val(k)==null)};
 }
 
 function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
@@ -324,41 +433,60 @@ function generateRandomExample(){
    if(includeCal){ obj.Ck=randInt(40,250); obj.tk=obj.t2; }
    obj.t=(obj.m1*obj.c1*obj.t1+obj.m2*obj.c2*obj.t2+(includeCal?obj.Ck*obj.tk:0))/(obj.m1*obj.c1+obj.m2*obj.c2+(includeCal?obj.Ck:0));
    const unknowns = includeCal ? ['t','t1','t2','m1','m2','c1','c2','Ck','tk'] : ['t','t1','t2','m1','m2','c1','c2'];
-   let missing = pick(unknowns);
-   if(missing==='tk' && Math.abs(obj.t-obj.tk)<1) missing='Ck';
+   const selected = currentUnknown();
+   const missing = unknowns.includes(selected) ? selected : 't';
    fillObject(obj);
+   unknownByMode[mode]=missing;
    delete values[missing]; delete computed[missing];
    renderFields(); calculate();
    return;
  }
  const includeCal = mode==='phaseCal';
  const obj={
-   m1: randInt(40,120)/100,
+   m1: randInt(90,160)/100,
    c1:4200,
-   t1:randInt(60,95),
-   m2:randInt(5,35)/100,
+   t1:randInt(75,95),
+   m2:randInt(5,15)/100,
    c2:2100,
-   t2:randInt(-15,-1),
+   t2:randInt(-12,-2),
    tt:0,
    l:334000
  };
  if(includeCal){ obj.Ck=randInt(40,180); obj.tk=randInt(15,25); }
+ obj.tFinal = computePhaseFinal(includeCal, obj).t;
+ const phaseUnknowns = includeCal ? ['m1','c1','t1','m2','c2','t2','Ck','tk','tt','l','tFinal'] : ['m1','c1','t1','m2','c2','t2','tt','l','tFinal'];
+ const selected = currentUnknown();
+ const missing = phaseUnknowns.includes(selected) ? selected : 'tFinal';
  fillObject(obj);
- delete values.tFinal; delete computed.tFinal;
+ unknownByMode[mode]=missing;
+ delete values[missing]; delete computed[missing];
  renderFields(); calculate();
 }
+
+
+function typesetMath(){
+ const nodes = [$('steps'), $('equation')].filter(Boolean);
+ if(window.MathJax && MathJax.typesetPromise){
+   try{ if(MathJax.typesetClear) MathJax.typesetClear(nodes); }catch(e){}
+   MathJax.typesetPromise(nodes).catch(err=>console.warn('MathJax typeset failed:', err));
+ }
+}
+window.typesetMath = typesetMath;
 
 function calculate(){
  const r = (mode==='mix')?solveLinear(false):(mode==='mixCal')?solveLinear(true):(mode==='phase')?solvePhase(false):solvePhase(true);
  renderFieldsPreserveFocus();
- $('status').textContent = r.ready ? 'Výpočet je možný' : 'Zatím chybí hodnoty';
- $('equation').innerHTML = `<span class="pill">${modes.find(m=>m.id===mode).name}</span>`;
- $('steps').innerHTML = r.steps.join('') + (!r.ready?'<div class="warn">Doplň další hodnoty. Žlutě označím vše, co půjde dopočítat.</div>':'');
- if(window.MathJax) MathJax.typesetPromise([$ ('steps'), $('equation')]);
+ const u=currentUnknown();
+ $('status').textContent = r.ready ? `Dopočítaná neznámá: ${labels[u][0]}` : `Zatím chybí hodnoty pro ${labels[u][0]}`;
+ $('equation').innerHTML = `<span class="pill">${modes.find(m=>m.id===mode).name}</span><span class="pill">neznámá: ${labels[u][0]}</span>`;
+ const missing = (r.missingInputs && r.missingInputs.length) ? ` Chybí ještě: ${r.missingInputs.map(k=>labels[k][0]).join(', ')}.` : '';
+ $('steps').innerHTML = r.steps.join('') + (!r.ready?`<div class="warn">Doplň hodnoty ve všech polích kromě zaškrtnuté neznámé.${missing}</div>`:'');
+ typesetMath();
 }
-function renderFieldsPreserveFocus(){ const active=document.activeElement; const id=active&&active.id; const pos=active&&active.selectionStart; renderFields(); if(id && $(id) && !computed[id]){ $(id).focus(); try{$(id).setSelectionRange(pos,pos)}catch(e){} } }
-$('randomExample').onclick=generateRandomExample; $('clearComputed').onclick=clearComputed; $('clearAll').onclick=clearAll;
+function renderFieldsPreserveFocus(){ const active=document.activeElement; const id=active&&active.id; const pos=active&&active.selectionStart; renderFields(); if(id && $(id) && id!==currentUnknown() && !computed[id]){ $(id).focus(); try{$(id).setSelectionRange(pos,pos)}catch(e){} } }
+$('randomExample').onclick=generateRandomExample; $('clearAll').onclick=clearAll;
 renderModes(); renderFields(); calculate();
+window.addEventListener('load', () => setTimeout(typesetMath, 0));
 </script>
 </body>
 </html>
