@@ -132,15 +132,37 @@ h1{font-size:25px;margin:0 0 12px} h2{font-size:22px;margin:0 0 12px} h3{font-si
 const modes = [
  {id:'mix', name:'1) Bez kalorimetru, bez skupenské přeměny'},
  {id:'mixCal', name:'2) V kalorimetru, bez skupenské přeměny'},
- {id:'phase', name:'3) Bez kalorimetru, se skupenskou přeměnou'},
- {id:'phaseCal', name:'4) V kalorimetru, se skupenskou přeměnou'}
+ {id:'melt', name:'3) Tání / tuhnutí'},
+ {id:'boil', name:'4) Vypařování / kondenzace'}
 ];
 const labels = {
  m1:['m₁','kg','hmotnost teplejší látky'], c1:['c₁','J·kg⁻¹·K⁻¹','měrná tepelná kapacita teplejší látky'], t1:['t₁','°C','počáteční teplota teplejší látky'],
  m2:['m₂','kg','hmotnost chladnější látky'], c2:['c₂','J·kg⁻¹·K⁻¹','měrná tepelná kapacita chladnější látky'], t2:['t₂','°C','počáteční teplota chladnější látky'],
+ m3:['m₃','kg','hmotnost 3. části'], t3:['t₃','°C','počáteční teplota 3. části'],
  t:['t','°C','výsledná teplota'], Ck:['Cₖ','J·K⁻¹','tepelná kapacita kalorimetru'], tk:['tₖ','°C','počáteční teplota kalorimetru'],
- tt:['tₜ','°C','teplota tání/tuhnutí'], l:['l','J·kg⁻¹','měrné skupenské teplo'], tFinal:['t','°C','výsledná teplota']
+ cIce:['cₗ','J·kg⁻¹·K⁻¹','měrná tepelná kapacita ledu'],
+ cWater:['cᵥ','J·kg⁻¹·K⁻¹','měrná tepelná kapacita vody'],
+ cSteam:['cₚ','J·kg⁻¹·K⁻¹','měrná tepelná kapacita páry'],
+ tM:['tₜ','°C','teplota tání/tuhnutí'],
+ tB:['tᵥ','°C','teplota varu/kondenzace'],
+ lT:['lₜ','J·kg⁻¹','měrné skupenské teplo tání/tuhnutí'],
+ lV:['lᵥ','J·kg⁻¹','měrné skupenské teplo vypařování/kondenzace'],
+ tFinal:['t','°C','výsledná teplota']
 };
+const phaseFieldLabels = {
+ melt: {
+   m1:['mₗ','kg','hmotnost ledu'], t1:['tₗ','°C','počáteční teplota ledu'],
+   m2:['mᵥ','kg','hmotnost vody'], t2:['tᵥ₀','°C','počáteční teplota vody']
+ },
+ boil: {
+   m1:['mᵥ','kg','hmotnost vody'], t1:['tᵥ₀','°C','počáteční teplota vody'],
+   m2:['mₚ','kg','hmotnost páry'], t2:['tₚ','°C','počáteční teplota páry']
+ }
+};
+function labelFor(k){
+  if((mode==='melt' || mode==='boil') && phaseFieldLabels[mode] && phaseFieldLabels[mode][k]) return phaseFieldLabels[mode][k];
+  return labels[k];
+}
 
 const heatCapacities = [
   ['voda', 4180], ['led', 2100], ['pára', 2000], ['hliník', 900], ['sklo', 840],
@@ -154,12 +176,12 @@ function heatCapacityDatalist(id){
 const visible = {
  mix:['m1','c1','t1','m2','c2','t2','t'],
  mixCal:['m1','c1','t1','m2','c2','t2','Ck','tk','t'],
- phase:['m1','c1','t1','m2','c2','t2','tt','l','tFinal'],
- phaseCal:['m1','c1','t1','m2','c2','t2','Ck','tk','tt','l','tFinal']
+ melt:['m1','t1','m2','t2','cIce','cWater','tM','lT','tFinal'],
+ boil:['m1','t1','m2','t2','cWater','cSteam','tB','lV','tFinal']
 };
 let mode='mix';
 const values = {}; const computed = {}; let typingTimer=null;
-const unknownByMode = {mix:'t', mixCal:'t', phase:'tFinal', phaseCal:'tFinal'};
+const unknownByMode = {mix:'t', mixCal:'t', melt:'tFinal', boil:'tFinal'};
 function currentUnknown(){
   const keys = visible[mode] || [];
   if(!keys.includes(unknownByMode[mode])) unknownByMode[mode] = keys.includes('t') ? 't' : keys[keys.length-1];
@@ -177,6 +199,7 @@ function selectUnknown(k){
 const $ = id => document.getElementById(id);
 function fmt(x,d=2){ if(!isFinite(x)) return ''; return Number(x).toLocaleString('cs-CZ',{maximumFractionDigits:d,minimumFractionDigits:d}).replace(/\s/g,'\u202f'); }
 function latexNum(x,d=2){ return fmt(x,d).replace(',', '{,}'); }
+function latexTerm(x,d=2){ const s=latexNum(x,d); return Number(x)<0 ? `\\left(${s}\\right)` : s; }
 function val(k){ const v = parseFloat(String(values[k]??'').replace(',','.')); return Number.isFinite(v)?v:null; }
 function setComputed(k,v){
   if(k!==currentUnknown()) return false;
@@ -198,8 +221,8 @@ function renderFields(){
  const keys=visible[mode];
  const u=currentUnknown();
  $('fields').innerHTML=keys.map(k=>{
-   const l=labels[k];
-   const listId = (k==='c1'||k==='c2') ? `list_${k}` : '';
+   const l=labelFor(k);
+   const listId = (k==='c1'||k==='c2'||k==='cIce'||k==='cWater'||k==='cSteam') ? `list_${k}` : '';
    const listAttr = listId ? ` list="${listId}" title="Můžeš napsat vlastní hodnotu nebo vybrat látku ze seznamu."` : '';
    const dl = listId ? heatCapacityDatalist(listId) : '';
    const checked = k===u ? ' checked' : '';
@@ -221,7 +244,7 @@ function renderFields(){
  });
 }
 function variableLatex(k){
- const map={m1:'m_1',c1:'c_1',t1:'t_1',m2:'m_2',c2:'c_2',t2:'t_2',t:'t',Ck:'C_k',tk:'t_k',tFinal:'t'};
+ const map={m1:'m_1',c1:'c_1',t1:'t_1',m2:'m_2',c2:'c_2',t2:'t_2',m3:'m_3',t3:'t_3',t:'t',Ck:'C_k',tk:'t_k',cIce:'c_l',cWater:'c_v',cSteam:'c_p',tM:'t_t',tB:'t_v',lT:'l_t',lV:'l_v',tFinal:'t'};
  return map[k] || k;
 }
 function linearFormulaFor(x, includeCal){
@@ -373,7 +396,7 @@ function solveLinear(includeCal){
  if(solvedKey && keys.every(k=>val(k)!=null)){
    const unit = labels[solvedKey]?.[1] || '';
    const unitLatex = unit ? `\\,\\mathrm{${unit.replaceAll('·','\\cdot ').replaceAll('⁻','^{-').replaceAll('¹','1}')}}` : '';
-   steps.push(`<div class="step"><b>2) Vyjádření vybrané neznámé ${labels[solvedKey][0]} krok za krokem</b>${derivationHtml(solvedKey, includeCal)}</div>`);
+   steps.push(`<div class="step"><b>2) Vyjádření vybrané neznámé ${labelFor(solvedKey)[0]} krok za krokem</b>${derivationHtml(solvedKey, includeCal)}</div>`);
    steps.push(`<div class="step"><b>3) Dosazení</b>\\[${variableLatex(solvedKey)}=${linearSubstitutionFor(solvedKey, includeCal)}=${latexNum(val(solvedKey))}${unitLatex}\\]</div>`);
  }
  const tNow=val('t');
@@ -383,41 +406,190 @@ function solveLinear(includeCal){
  return {changed, steps, ready:!!solvedKey, missingInputs};
 }
 
-function computePhaseFinal(includeCal, data){
- const get=k=>Number(data[k]);
- const QhotToTt=get('m1')*get('c1')*(get('t1')-get('tt')) + (includeCal?get('Ck')*(get('tk')-get('tt')):0);
- const Qwarm=get('m2')*get('c2')*(get('tt')-get('t2'));
- const Qmelt=get('m2')*get('l');
- let t=get('tt'), note='';
- if(QhotToTt < Qwarm){
-   t=(get('m1')*get('c1')*get('t1')+get('m2')*get('c2')*get('t2')+(includeCal?get('Ck')*get('tk'):0))/(get('m1')*get('c1')+get('m2')*get('c2')+(includeCal?get('Ck'):0));
-   note='Pevná látka se ani nedostane na teplotu tání.';
- } else if(QhotToTt < Qwarm+Qmelt){
-   t=get('tt'); note='Část pevné látky roztaje, směs zůstane na teplotě tání.';
- } else {
-   t=(get('m1')*get('c1')*get('tt')+get('m2')*get('c2')*get('tt')+(QhotToTt-Qwarm-Qmelt))/(get('m1')*get('c1')+get('m2')*get('c2'));
-   note='Pevná látka roztaje celá a vzniklá kapalina se ještě ohřeje.';
+
+function phaseConfig(kind){
+  if(kind==='boil'){
+    return {
+      kind:'boil', title:'Vypařování / kondenzace', refTempKey:'tB',
+      baseText:()=>`Převedeme vodu a páru na vodu o teplotě ${fmt(val('tB'))} °C.`,
+      components:[['m1','t1'],['m2','t2']],
+      required:['cWater','cSteam','tB','lV']
+    };
+  }
+  return {
+    kind:'melt', title:'Tání / tuhnutí', refTempKey:'tM',
+    baseText:()=>`Převedeme led a vodu na vodu o teplotě ${fmt(val('tM'))} °C.`,
+    components:[['m1','t1'],['m2','t2']],
+    required:['cIce','cWater','tM','lT']
+  };
+}
+function activePhaseComponents(kind){
+ return phaseConfig(kind).components;
+}
+function phaseMissingInputs(kind, x){
+ const cfg=phaseConfig(kind);
+ const miss=[];
+ for(const k of cfg.required){ if(k!==x && val(k)==null) miss.push(k); }
+ for(const [mk,tk] of cfg.components){
+   if(mk!==x && val(mk)==null) miss.push(mk);
+   if(tk!==x && val(tk)==null) miss.push(tk);
  }
- return {t,QhotToTt,Qwarm,Qmelt,note};
+ if(x!=='tFinal' && val('tFinal')==null) miss.push('tFinal');
+ return [...new Set(miss)];
+}
+function getPhaseData(kind, x){
+ const data={};
+ const cfg=phaseConfig(kind);
+ for(const k of cfg.required){
+   if(k!==x){ const v=val(k); if(v==null) return null; data[k]=v; }
+ }
+ data.parts=[];
+ for(const [mk,tk] of cfg.components){
+   if(mk!==x){ const m=val(mk); if(m==null) return null; data[mk]=m; }
+   if(tk!==x){ const t=val(tk); if(t==null) return null; data[tk]=t; }
+   data.parts.push([mk,tk]);
+ }
+ return data;
+}
+function phaseReferenceText(kind, d){
+ if(kind==='melt') return `vodu o teplotě ${fmt(d.tM)} °C`;
+ return `vodu o teplotě ${fmt(d.tB)} °C`;
+}
+function phaseMaterialName(kind, T, d, mk){
+ if(kind==='melt') return mk==='m1' ? 'ledu' : 'vody';
+ return mk==='m1' ? 'vody' : 'páry';
+}
+function phaseRowToReference(kind, mk, tk, m, T, d){
+ let Q=0, signed=0, role='neutral', segment='water';
+ if(kind==='melt'){
+   if(mk==='m1'){
+     segment='ice';
+     Q = m*d.cIce*(d.tM-T) + m*d.lT;
+     signed = -Q;
+   } else {
+     segment='water';
+     Q = m*d.cWater*(T-d.tM);
+     signed = Q;
+   }
+ } else {
+   if(mk==='m1'){
+     segment='water';
+     Q = m*d.cWater*(d.tB-T);
+     signed = -Q;
+   } else {
+     segment='steam';
+     Q = m*d.cSteam*(T-d.tB) + m*d.lV;
+     signed = Q;
+   }
+ }
+ if(signed>1e-9) role='releases';
+ else if(signed<-1e-9) role='absorbs';
+ return {mk,tk,m,T,Q:Math.abs(Q),signed,role,segment};
+}
+function phaseTemperatureFromBalance(kind, balance, totalMass, d){
+ if(!(totalMass>0)) return null;
+ if(kind==='melt'){
+   const ref=d.tM;
+   if(balance>=0){
+     const dt=balance/(totalMass*d.cWater);
+     return {t:ref+dt, state:'voda', waterMass:totalMass, iceMass:0, steamMass:0, deltaT:dt,
+       note: balance>1e-9 ? 'Voda odevzdala víc tepla, než led potřeboval. Všechen led roztaje a zbytek tepla ohřeje výslednou vodu.' : 'Bilance vyjde přesně nulová: výsledkem je voda při teplotě tání.'};
+   }
+   const missing=-balance;
+   const freezeAll=totalMass*d.lT;
+   if(missing<=freezeAll+1e-9){
+     const iceMass=Math.min(totalMass, missing/d.lT);
+     return {t:ref, state:'led + voda', waterMass:Math.max(0,totalMass-iceMass), iceMass, steamMass:0, deltaT:0,
+       note:'Vyhrál led: ΔQ vyšlo záporně. Část vody zůstane jako led a směs má teplotu tání.'};
+   }
+   const extra=missing-freezeAll;
+   const dt=extra/(totalMass*d.cIce);
+   return {t:ref-dt, state:'led', waterMass:0, iceMass:totalMass, steamMass:0, deltaT:dt,
+     note:'Led vyhrál tak výrazně, že ztuhne všechna voda a výsledný led se ještě ochladí pod teplotu tání.'};
+ }
+ const ref=d.tB;
+ if(balance>=0){
+   const vaporizeAll=totalMass*d.lV;
+   if(balance<=vaporizeAll+1e-9){
+     const steamMass=Math.min(totalMass, balance/d.lV);
+     return {t:ref, state:'voda + pára', waterMass:Math.max(0,totalMass-steamMass), iceMass:0, steamMass, deltaT:0,
+       note: balance>1e-9 ? 'Vyhrála pára: ΔQ vyšlo kladně. Přebytečné teplo vypaří část vody a směs zůstane na teplotě varu.' : 'Bilance vyjde přesně nulová: výsledkem je voda při teplotě varu.'};
+   }
+   const extra=balance-vaporizeAll;
+   const dt=extra/(totalMass*d.cSteam);
+   return {t:ref+dt, state:'pára', waterMass:0, iceMass:0, steamMass:totalMass, deltaT:dt,
+     note:'Pára vyhrála tak výrazně, že se vypaří všechna voda a výsledná pára se ještě ohřeje nad teplotu varu.'};
+ }
+ const missing=-balance;
+ const dt=missing/(totalMass*d.cWater);
+ return {t:ref-dt, state:'voda', waterMass:totalMass, iceMass:0, steamMass:0, deltaT:dt,
+   note:'Vyhrála voda: ΔQ vyšlo záporně. Pára zkondenzuje a výsledná voda se ochladí pod teplotu varu.'};
+}
+function computePhase(kind, d){
+ let totalMass=0, balance=0, rows=[];
+ for(const [mk,tk] of d.parts){
+   const m=Number(d[mk]), T=Number(d[tk]);
+   if(!(m>0)) continue;
+   const row=phaseRowToReference(kind, mk, tk, m, T, d);
+   totalMass += m;
+   balance += row.signed;
+   rows.push(row);
+ }
+ if(!(totalMass>0)) return null;
+ const final=phaseTemperatureFromBalance(kind, balance, totalMass, d);
+ return {totalMass,Qbalance:balance,final,rows};
+}
+function phaseQFormula(row, kind, d){
+ const i=row.mk.replace('m','');
+ const m=latexNum(row.m), T=latexTerm(row.T), cW=latexNum(d.cWater,0);
+ if(Math.abs(row.Q)<1e-9) return `Q_${i}=0\\,\\mathrm{J}`;
+ if(kind==='melt'){
+   const cI=latexNum(d.cIce,0), TM=latexTerm(d.tM);
+   if(row.segment==='ice'){
+     return `Q_${i}=m_${i}c_l(t_t-t_${i})+m_${i}l_t=${m}\\cdot ${cI}\\cdot(${TM}-${T})+${m}\\cdot ${latexNum(d.lT,0)}=${latexNum(row.Q)}\\,\\mathrm{J}`;
+   }
+   return `Q_${i}=m_${i}c_v(t_${i}-t_t)=${m}\\cdot ${cW}\\cdot(${T}-${TM})=${latexNum(row.Q)}\\,\\mathrm{J}`;
+ }
+ const TB=latexTerm(d.tB), cS=latexNum(d.cSteam,0);
+ if(row.segment==='water'){
+   return `Q_${i}=m_${i}c_v(t_v-t_${i})=${m}\\cdot ${cW}\\cdot(${TB}-${T})=${latexNum(row.Q)}\\,\\mathrm{J}`;
+ }
+ return `Q_${i}=m_${i}c_p(t_${i}-t_v)+m_${i}l_v=${m}\\cdot ${cS}\\cdot(${T}-${TB})+${m}\\cdot ${latexNum(d.lV,0)}=${latexNum(row.Q)}\\,\\mathrm{J}`;
+}
+function phaseMainEquation(kind){
+ return `\\[\\Delta Q=Q_\\text{odevzdané}-Q_\\text{přijaté}\\]`;
 }
 function phaseDomain(k){
  const ranges={
-   m1:[0.001,20], m2:[0.001,20], c1:[1,10000], c2:[1,10000],
-   Ck:[0.001,10000], l:[0,1000000], t1:[-100,500], t2:[-100,500], tt:[-100,500], tk:[-100,500]
+   m1:[0.001,20], m2:[0.001,20],
+   t1:[-80,250], t2:[-80,250], tFinal:[-80,250],
+   cIce:[100,5000], cWater:[500,8000], cSteam:[500,5000],
+   tM:[-50,50], tB:[30,200], lT:[1000,800000], lV:[10000,3500000]
  };
  return ranges[k] || [-100,500];
 }
-function solvePhaseNumerically(x, includeCal){
+function solvePhaseNumerically(x, kind){
  const target=val('tFinal');
  if(target==null) return null;
- const keys = includeCal?['m1','c1','t1','m2','c2','t2','Ck','tk','tt','l']:['m1','c1','t1','m2','c2','t2','tt','l'];
- const data={};
- for(const k of keys){ if(k!==x){ const v=val(k); if(v==null) return null; data[k]=v; } }
+ const baseMissing = phaseMissingInputs(kind, x);
+ if(baseMissing.length) return null;
  const [lo,hi]=phaseDomain(x);
- const f=z=>{ data[x]=z; const r=computePhaseFinal(includeCal,data).t-target; return Number.isFinite(r)?r:null; };
+ const f=z=>{
+   const old=values[x];
+   values[x]=String(z);
+   const d=getPhaseData(kind, x);
+   let out=null;
+   if(d){
+     d[x]=z;
+     const r=computePhase(kind,d);
+     if(r) out=r.final.t-target;
+   }
+   if(old===undefined) delete values[x]; else values[x]=old;
+   return Number.isFinite(out)?out:null;
+ };
  let best=null, bestAbs=Infinity;
  let prevZ=lo, prevF=f(lo);
- const samples=220;
+ const samples=420;
  for(let i=0;i<=samples;i++){
    const z=lo+(hi-lo)*i/samples;
    const fz=f(z);
@@ -426,57 +598,97 @@ function solvePhaseNumerically(x, includeCal){
    if(af<bestAbs){ bestAbs=af; best=z; }
    if(af<1e-6) return z;
    if(prevF!=null && prevF*fz<0){
-     let a=prevZ,b=z,fa=prevF,fb=fz;
+     let a=prevZ,b=z,fa=prevF;
      for(let j=0;j<80;j++){
        const mid=(a+b)/2, fm=f(mid);
        if(fm==null) break;
        if(Math.abs(fm)<1e-7) return mid;
-       if(fa*fm<=0){ b=mid; fb=fm; } else { a=mid; fa=fm; }
+       if(fa*fm<=0){ b=mid; } else { a=mid; fa=fm; }
      }
      return (a+b)/2;
    }
    prevZ=z; prevF=fz;
  }
- return bestAbs<0.05 ? best : null;
+ return bestAbs<0.03 ? best : null;
 }
-function solvePhase(includeCal){
+function phaseBalanceLatex(r){
+ const rel = r.rows.filter(row=>row.role==='releases').map(row=>`Q_${row.mk.replace('m','')}`);
+ const abs = r.rows.filter(row=>row.role==='absorbs').map(row=>`Q_${row.mk.replace('m','')}`);
+ const left = rel.length ? rel.join('+') : '0';
+ const right = abs.length ? abs.join('+') : '0';
+ return `\\Delta Q=${left}-(${right})=${latexNum(r.Qbalance)}\\,\\mathrm{J}`;
+}
+function phaseFinalMath(kind, r, d){
+ const f=r.final;
+ const m=latexNum(r.totalMass);
+ const absQ=latexNum(Math.abs(r.Qbalance));
+ if(kind==='melt'){
+   if(r.Qbalance>=0){
+     const dt=(r.Qbalance)/(r.totalMass*d.cWater);
+     return `<p>Toto teplo se „vrátí“ do výsledné vody od teploty tání.</p>\\[\\Delta Q=m_\\text{celk}c_v\\Delta t\\]\\[\\Delta t=\\frac{\\Delta Q}{m_\\text{celk}c_v}=\\frac{${latexNum(r.Qbalance)}}{${m}\\cdot ${latexNum(d.cWater,0)}}=${latexNum(dt)}\\,^\\circ\\mathrm{C}\\]\\[t=t_t+\\Delta t=${latexNum(d.tM)}+${latexNum(dt)}=${latexNum(f.t)}\\,^\\circ\\mathrm{C}\\]`;
+   }
+   const miss=-r.Qbalance;
+   const freezeAll=r.totalMass*d.lT;
+   if(miss<=freezeAll+1e-9){
+     return `<p>Vyhrál led, takže \\(\\Delta Q\\) vyšlo záporně. Ne všechno roztaje; část zůstane ledem.</p>\\[m_\\text{ledu}=\\frac{|\\Delta Q|}{l_t}=\\frac{${absQ}}{${latexNum(d.lT,0)}}=${latexNum(f.iceMass)}\\,\\mathrm{kg}\\]\\[m_\\text{vody}=m_\\text{celk}-m_\\text{ledu}=${m}-${latexNum(f.iceMass)}=${latexNum(f.waterMass)}\\,\\mathrm{kg}\\]\\[t=t_t=${latexNum(f.t)}\\,^\\circ\\mathrm{C}\\]`;
+   }
+   const extra=miss-freezeAll;
+   const dt=extra/(r.totalMass*d.cIce);
+   return `<p>Led vyhrál tak moc, že by ztuhla všechna voda. Zbytek chybějícího tepla ochladí výsledný led pod teplotu tání.</p>\\[Q_\\text{na ztuhnutí všeho}=m_\\text{celk}l_t=${m}\\cdot ${latexNum(d.lT,0)}=${latexNum(freezeAll)}\\,\\mathrm{J}\\]\\[Q_\\text{navíc}=|\\Delta Q|-m_\\text{celk}l_t=${absQ}-${latexNum(freezeAll)}=${latexNum(extra)}\\,\\mathrm{J}\\]\\[\\Delta t=\\frac{Q_\\text{navíc}}{m_\\text{celk}c_l}=\\frac{${latexNum(extra)}}{${m}\\cdot ${latexNum(d.cIce,0)}}=${latexNum(dt)}\\,^\\circ\\mathrm{C}\\]\\[t=t_t-\\Delta t=${latexNum(d.tM)}-${latexNum(dt)}=${latexNum(f.t)}\\,^\\circ\\mathrm{C}\\]`;
+ }
+ if(r.Qbalance>=0){
+   const vaporizeAll=r.totalMass*d.lV;
+   if(r.Qbalance<=vaporizeAll+1e-9){
+     return `<p>Vyhrála pára, takže zbylé teplo vypaří část vody. Teplota zůstane na teplotě varu.</p>\\[m_\\text{páry}=\\frac{\\Delta Q}{l_v}=\\frac{${latexNum(r.Qbalance)}}{${latexNum(d.lV,0)}}=${latexNum(f.steamMass)}\\,\\mathrm{kg}\\]\\[m_\\text{vody}=m_\\text{celk}-m_\\text{páry}=${m}-${latexNum(f.steamMass)}=${latexNum(f.waterMass)}\\,\\mathrm{kg}\\]\\[t=t_v=${latexNum(f.t)}\\,^\\circ\\mathrm{C}\\]`;
+   }
+   const extra=r.Qbalance-vaporizeAll;
+   const dt=extra/(r.totalMass*d.cSteam);
+   return `<p>Pára vyhrála tak moc, že se vypaří všechna voda. Zbytek tepla ohřeje výslednou páru nad teplotu varu.</p>\\[Q_\\text{na vypaření všeho}=m_\\text{celk}l_v=${m}\\cdot ${latexNum(d.lV,0)}=${latexNum(vaporizeAll)}\\,\\mathrm{J}\\]\\[Q_\\text{navíc}=\\Delta Q-m_\\text{celk}l_v=${latexNum(r.Qbalance)}-${latexNum(vaporizeAll)}=${latexNum(extra)}\\,\\mathrm{J}\\]\\[\\Delta t=\\frac{Q_\\text{navíc}}{m_\\text{celk}c_p}=\\frac{${latexNum(extra)}}{${m}\\cdot ${latexNum(d.cSteam,0)}}=${latexNum(dt)}\\,^\\circ\\mathrm{C}\\]\\[t=t_v+\\Delta t=${latexNum(d.tB)}+${latexNum(dt)}=${latexNum(f.t)}\\,^\\circ\\mathrm{C}\\]`;
+ }
+ const miss=-r.Qbalance;
+ const dt=miss/(r.totalMass*d.cWater);
+ return `<p>Vyhrála voda, takže \\(\\Delta Q\\) vyšlo záporně. Pára zkondenzuje a výsledná voda bude pod teplotou varu.</p>\\[\\Delta t=\\frac{|\\Delta Q|}{m_\\text{celk}c_v}=\\frac{${absQ}}{${m}\\cdot ${latexNum(d.cWater,0)}}=${latexNum(dt)}\\,^\\circ\\mathrm{C}\\]\\[t=t_v-\\Delta t=${latexNum(d.tB)}-${latexNum(dt)}=${latexNum(f.t)}\\,^\\circ\\mathrm{C}\\]`;
+}
+function solvePhase(kind){
  const steps=[];
- const keys = includeCal?['m1','c1','t1','m2','c2','t2','Ck','tk','tt','l','tFinal']:['m1','c1','t1','m2','c2','t2','tt','l','tFinal'];
  const x=currentUnknown();
  if(computed[x]){ delete values[x]; delete computed[x]; }
- steps.push(`<div class="step"><b>1) Model se skupenskou přeměnou</b>\\[Q_\\text{teplé}=m_1c_1(t_1-t_t)${includeCal?'+C_k(t_k-t_t)':''}\\]\\[Q_\\text{ohřev na tání}=m_2c_2(t_t-t_2),\\qquad Q_\\text{tání}=m_2l\\]</div>`);
+ let missing=phaseMissingInputs(kind, x);
  let solvedKey=null;
- if(x==='tFinal'){
-   const req=keys.filter(k=>k!=='tFinal');
-   if(req.every(k=>val(k)!=null)){
-     const data={}; req.forEach(k=>data[k]=val(k));
-     const r=computePhaseFinal(includeCal,data);
-     if(setComputed('tFinal',r.t)) solvedKey='tFinal';
-   }
- } else if(keys.includes(x)){
-   const req=keys.filter(k=>k!==x);
-   if(req.every(k=>val(k)!=null)){
-     const r=solvePhaseNumerically(x, includeCal);
+ if(missing.length===0){
+   if(x==='tFinal'){
+     const d=getPhaseData(kind, x);
+     if(d){ const r=computePhase(kind,d); if(r && setComputed('tFinal',r.final.t)) solvedKey='tFinal'; }
+   } else if(visible[mode].includes(x)){
+     const r=solvePhaseNumerically(x, kind);
      if(r!=null && setComputed(x,r)) solvedKey=x;
    }
  }
- const knownForCheck = keys.every(k=>val(k)!=null);
- if(solvedKey && knownForCheck){
-   const data={};
-   (includeCal?['m1','c1','t1','m2','c2','t2','Ck','tk','tt','l']:['m1','c1','t1','m2','c2','t2','tt','l']).forEach(k=>data[k]=val(k));
-   const r=computePhaseFinal(includeCal,data);
-   steps.push(`<div class="step"><b>2) Vybraná neznámá</b><p>Zaškrtnutá veličina je <b>${labels[solvedKey][0]}</b>. ${solvedKey==='tFinal'?'Výsledná teplota se spočítá přímo z porovnání tepel.':'Tuto veličinu program dopočítal numericky tak, aby vyšla zadaná výsledná teplota.'}</p>\\[${variableLatex(solvedKey)}=${latexNum(val(solvedKey))}\\]</div>`);
-   steps.push(`<div class="step"><b>3) Porovnání tepel</b>\\[Q_\\text{dostupné do }t_t=${latexNum(r.QhotToTt)}\\,\\mathrm{J}\\]\\[Q_\\text{ohřev na }t_t=${latexNum(r.Qwarm)}\\,\\mathrm{J},\\qquad Q_\\text{tání}=${latexNum(r.Qmelt)}\\,\\mathrm{J}\\]</div>`);
-   steps.push(`<div class="step"><b>4) Závěr</b><p>${r.note}</p>\\[t=${latexNum(r.t)}\,^\\circ\\mathrm{C}\\]</div>`);
+ const d=getPhaseData(kind, null);
+ const canShow = d && computePhase(kind,d);
+ steps.push(`<div class="step"><b>1) Princip výpočtu</b><p>${canShow ? (kind==='boil' ? 'Převedeme jednu vodu a jednu páru na ' + phaseReferenceText(kind,d) + '.' : 'Převedeme jeden led a jednu vodu na ' + phaseReferenceText(kind,d) + '.') : (kind==='boil'?'Převedeme jednu vodu a jednu páru na vodu o teplotě varu.':'Převedeme jeden led a jednu vodu na vodu o teplotě tání.')}</p>${phaseMainEquation(kind)}<p class="small">Tepla počítáme jako kladné částky. V bilanci je pak odečítáme podle toho, jestli je daná část odevzdává, nebo přijímá.</p></div>`);
+ if(solvedKey && canShow){
+   const r=computePhase(kind,d);
+   if(solvedKey!=='tFinal'){
+     steps.push(`<div class="step"><b>2) Dopočítání vybrané neznámé ${labelFor(solvedKey)[0]}</b><p>Vybraná veličina se dopočítala tak, aby po energetické bilanci vyšla zadaná výsledná teplota.</p>\\[${variableLatex(solvedKey)}=${latexNum(val(solvedKey), (solvedKey.startsWith('c')||solvedKey.startsWith('l'))?0:2)}\\]</div>`);
+   }
+   let n = solvedKey==='tFinal' ? 2 : 3;
+   const partRows = r.rows.map((row)=>{
+     const action = row.role==='releases' ? 'teplo odevzdává' : (row.role==='absorbs' ? 'teplo přijímá' : 'bez výměny tepla vůči referenčnímu stavu');
+     return `<p><b>${fmt(row.m)} kg ${phaseMaterialName(kind,row.T,d,row.mk)} o teplotě ${fmt(row.T)} °C na ${phaseReferenceText(kind,d)}</b> ⇒ ${action}.</p>\\[${phaseQFormula(row,kind,d)}\\]`;
+   }).join('');
+   steps.push(`<div class="step"><b>${n++}) Převod jednotlivých částí</b>${partRows}</div>`);
+   steps.push(`<div class="step"><b>${n++}) Celková bilance</b>\\[${phaseBalanceLatex(r)}\\]\\[m_\\text{celk}=${r.rows.map(row=>`m_${row.mk.replace('m','')}`).join('+')}=${latexNum(r.totalMass)}\\,\\mathrm{kg}\\]</div>`);
+   steps.push(`<div class="step"><b>${n}) Výsledek</b><p>${r.final.note}</p>${phaseFinalMath(kind,r,d)}<p><b>Výsledná teplota: ${fmt(r.final.t)} °C</b></p></div>`);
  }
- return {changed:!!solvedKey, steps, ready:!!solvedKey, missingInputs:keys.filter(k=>k!==x && val(k)==null)};
+ return {changed:!!solvedKey, steps, ready:!!solvedKey, missingInputs:phaseMissingInputs(kind, currentUnknown())};
 }
 
 function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
 function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 function nice(v,d=2){ return String(Math.round(v*Math.pow(10,d))/Math.pow(10,d)).replace('.',','); }
 function resetValues(){ for(const k in values) delete values[k]; for(const k in computed) delete computed[k]; }
-function fillObject(obj){ resetValues(); for(const [k,v] of Object.entries(obj)) values[k]=nice(v, (k==='c1'||k==='c2'||k==='Ck'||k==='l')?0:2); }
+function fillObject(obj){ resetValues(); for(const [k,v] of Object.entries(obj)) values[k]=nice(v, (k==='c1'||k==='c2'||k==='Ck'||k==='cIce'||k==='cWater'||k==='cSteam'||k==='lT'||k==='lV')?0:2); }
 function generateRandomExample(){
  if(mode==='mix' || mode==='mixCal'){
    const includeCal = mode==='mixCal';
@@ -500,26 +712,41 @@ function generateRandomExample(){
    renderFields(); calculate();
    return;
  }
- const includeCal = mode==='phaseCal';
- const obj={
-   m1: randInt(90,160)/100,
-   c1:4200,
-   t1:randInt(75,95),
-   m2:randInt(5,15)/100,
-   c2:2100,
-   t2:randInt(-12,-2),
-   tt:0,
-   l:334000
- };
- if(includeCal){ obj.Ck=randInt(40,180); obj.tk=randInt(15,25); }
- obj.tFinal = computePhaseFinal(includeCal, obj).t;
- const phaseUnknowns = includeCal ? ['m1','c1','t1','m2','c2','t2','Ck','tk','tt','l','tFinal'] : ['m1','c1','t1','m2','c2','t2','tt','l','tFinal'];
- const selected = currentUnknown();
- const missing = phaseUnknowns.includes(selected) ? selected : 'tFinal';
- fillObject(obj);
- unknownByMode[mode]=missing;
- delete values[missing]; delete computed[missing];
- renderFields(); calculate();
+ if(mode==='melt'){
+   const obj={
+     m1: randInt(5,45)/100, t1: -randInt(5,20),
+     m2: randInt(30,140)/100, t2: randInt(15,70),
+     cIce:2100, cWater:4200, tM:0, lT:334000
+   };
+   const d={...obj, parts:[['m1','t1'],['m2','t2']]};
+   obj.tFinal = computePhase('melt', d).final.t;
+   const unknowns=['m1','t1','m2','t2','cIce','cWater','tM','lT','tFinal'];
+   const selected=currentUnknown();
+   const missing=unknowns.includes(selected) ? selected : 'tFinal';
+   fillObject(obj);
+   unknownByMode[mode]=missing;
+   delete values[missing]; delete computed[missing];
+   renderFields(); calculate();
+   return;
+ }
+ if(mode==='boil'){
+   const obj={
+     m1: randInt(50,200)/100, t1: randInt(10,70),
+     m2: randInt(10,80)/100, t2: randInt(100,140),
+     cWater:4200, cSteam:1840,
+     tB:100, lV:2260000
+   };
+   const d={...obj, parts:[['m1','t1'],['m2','t2']]};
+   obj.tFinal = computePhase('boil', d).final.t;
+   const unknowns=['m1','t1','m2','t2','cWater','cSteam','tB','lV','tFinal'];
+   const selected=currentUnknown();
+   const missing=unknowns.includes(selected) ? selected : 'tFinal';
+   fillObject(obj);
+   unknownByMode[mode]=missing;
+   delete values[missing]; delete computed[missing];
+   renderFields(); calculate();
+   return;
+ }
 }
 
 
@@ -533,13 +760,14 @@ function typesetMath(){
 window.typesetMath = typesetMath;
 
 function calculate(){
- const r = (mode==='mix')?solveLinear(false):(mode==='mixCal')?solveLinear(true):(mode==='phase')?solvePhase(false):solvePhase(true);
+ const r = (mode==='mix')?solveLinear(false):(mode==='mixCal')?solveLinear(true):(mode==='melt')?solvePhase('melt'):solvePhase('boil');
  renderFieldsPreserveFocus();
  const u=currentUnknown();
- $('status').textContent = r.ready ? `Dopočítaná neznámá: ${labels[u][0]}` : `Zatím chybí hodnoty pro ${labels[u][0]}`;
- $('equation').innerHTML = `<span class="pill">${modes.find(m=>m.id===mode).name}</span><span class="pill">neznámá: ${labels[u][0]}</span>`;
- const missing = (r.missingInputs && r.missingInputs.length) ? ` Chybí ještě: ${r.missingInputs.map(k=>labels[k][0]).join(', ')}.` : '';
- $('steps').innerHTML = r.steps.join('') + (!r.ready?`<div class="warn">Doplň hodnoty ve všech polích kromě zaškrtnuté neznámé.${missing}</div>`:'');
+ $('status').textContent = r.ready ? `Dopočítaná neznámá: ${labelFor(u)[0]}` : `Zatím chybí hodnoty pro ${labelFor(u)[0]}`;
+ $('equation').innerHTML = `<span class="pill">${modes.find(m=>m.id===mode).name}</span><span class="pill">neznámá: ${labelFor(u)[0]}</span>`;
+ const missing = (r.missingInputs && r.missingInputs.length) ? ` Chybí ještě: ${r.missingInputs.map(k=>labelFor(k)[0]).join(', ')}.` : '';
+ const warnBase = (mode==='melt'||mode==='boil') ? 'Doplň hodnoty u obou látek a konstant.' : 'Doplň hodnoty ve všech polích kromě zaškrtnuté neznámé.';
+ $('steps').innerHTML = r.steps.join('') + (!r.ready?`<div class="warn">${warnBase}${missing}</div>`:'');
  typesetMath();
 }
 function renderFieldsPreserveFocus(){ const active=document.activeElement; const id=active&&active.id; const pos=active&&active.selectionStart; renderFields(); if(id && $(id) && id!==currentUnknown() && !computed[id]){ $(id).focus(); try{$(id).setSelectionRange(pos,pos)}catch(e){} } }
