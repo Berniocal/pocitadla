@@ -500,12 +500,12 @@ function phaseTemperatureFromBalance(kind, balance, totalMass, d){
    if(missing<=freezeAll+1e-9){
      const iceMass=Math.min(totalMass, missing/d.lT);
      return {t:ref, state:'led + voda', waterMass:Math.max(0,totalMass-iceMass), iceMass, steamMass:0, deltaT:0,
-       note:'Vyhrál led: ΔQ vyšlo záporně. Část vody zůstane jako led a směs má teplotu tání.'};
+       note:'Tepla nestačí na roztání všeho ledu. Vyjde směs led + voda, takže teplota zůstane na teplotě tání.'};
    }
    const extra=missing-freezeAll;
    const dt=extra/(totalMass*d.cIce);
    return {t:ref-dt, state:'led', waterMass:0, iceMass:totalMass, steamMass:0, deltaT:dt,
-     note:'Led vyhrál tak výrazně, že ztuhne všechna voda a výsledný led se ještě ochladí pod teplotu tání.'};
+     note:'ΔQ vyšlo záporně tak výrazně, že ztuhne všechna voda a výsledný led se ochladí pod teplotu tání.'};
  }
  const ref=d.tB;
  if(balance>=0){
@@ -513,7 +513,7 @@ function phaseTemperatureFromBalance(kind, balance, totalMass, d){
    if(balance<=vaporizeAll+1e-9){
      const steamMass=Math.min(totalMass, balance/d.lV);
      return {t:ref, state:'voda + pára', waterMass:Math.max(0,totalMass-steamMass), iceMass:0, steamMass, deltaT:0,
-       note: balance>1e-9 ? 'Vyhrála pára: ΔQ vyšlo kladně. Přebytečné teplo vypaří část vody a směs zůstane na teplotě varu.' : 'Bilance vyjde přesně nulová: výsledkem je voda při teplotě varu.'};
+       note: balance>1e-9 ? 'Přebytečné teplo vypaří jen část vody. Vyjde směs voda + pára, takže teplota zůstane na teplotě varu.' : 'Bilance vyjde přesně nulová: výsledkem je voda při teplotě varu.'};
    }
    const extra=balance-vaporizeAll;
    const dt=extra/(totalMass*d.cSteam);
@@ -523,7 +523,7 @@ function phaseTemperatureFromBalance(kind, balance, totalMass, d){
  const missing=-balance;
  const dt=missing/(totalMass*d.cWater);
  return {t:ref-dt, state:'voda', waterMass:totalMass, iceMass:0, steamMass:0, deltaT:dt,
-   note:'Vyhrála voda: ΔQ vyšlo záporně. Pára zkondenzuje a výsledná voda se ochladí pod teplotu varu.'};
+   note:'ΔQ vyšlo záporně. Pára zkondenzuje a výsledná voda se ochladí pod teplotu varu.'};
 }
 function computePhase(kind, d){
  let totalMass=0, balance=0, rows=[];
@@ -622,33 +622,41 @@ function phaseFinalMath(kind, r, d){
  const f=r.final;
  const m=latexNum(r.totalMass);
  const absQ=latexNum(Math.abs(r.Qbalance));
+ const almostZero = Math.abs(r.Qbalance) < 1e-9;
  if(kind==='melt'){
-   if(r.Qbalance>=0){
-     const dt=(r.Qbalance)/(r.totalMass*d.cWater);
-     return `<p>Toto teplo se „vrátí“ do výsledné vody od teploty tání.</p>\\[\\Delta Q=m_\\text{celk}c_v\\Delta t\\]\\[\\Delta t=\\frac{\\Delta Q}{m_\\text{celk}c_v}=\\frac{${latexNum(r.Qbalance)}}{${m}\\cdot ${latexNum(d.cWater,0)}}=${latexNum(dt)}\\,^\\circ\\mathrm{C}\\]\\[t=t_t+\\Delta t=${latexNum(d.tM)}+${latexNum(dt)}=${latexNum(f.t)}\\,^\\circ\\mathrm{C}\\]`;
+   if(almostZero){
+     return `<p>Bilance vyšla nulová. Led právě roztaje na vodu o teplotě tání, takže teplotu už není potřeba dopočítávat.</p>\\[t=t_t=${latexNum(d.tM)}\\,^\\circ\\mathrm{C}\\]`;
+   }
+   if(r.Qbalance>0){
+     const dt=r.Qbalance/(r.totalMass*d.cWater);
+     return `<p>Vyjde jediné skupenství: <b>voda</b>. Teprve proto dopočítáme, o kolik se voda ohřeje nad teplotu tání.</p>\\[\\Delta Q=m_\\text{celk}c_v\\Delta t\\]\\[\\Delta t=\\frac{\\Delta Q}{m_\\text{celk}c_v}=\\frac{${latexNum(r.Qbalance)}}{${m}\\cdot ${latexNum(d.cWater,0)}}=${latexNum(dt)}\\,^\\circ\\mathrm{C}\\]\\[t=t_t+\\Delta t=${latexNum(d.tM)}+${latexNum(dt)}=${latexNum(f.t)}\\,^\\circ\\mathrm{C}\\]`;
    }
    const miss=-r.Qbalance;
    const freezeAll=r.totalMass*d.lT;
    if(miss<=freezeAll+1e-9){
-     return `<p>Vyhrál led, takže \\(\\Delta Q\\) vyšlo záporně. Ne všechno roztaje; část zůstane ledem.</p>\\[m_\\text{ledu}=\\frac{|\\Delta Q|}{l_t}=\\frac{${absQ}}{${latexNum(d.lT,0)}}=${latexNum(f.iceMass)}\\,\\mathrm{kg}\\]\\[m_\\text{vody}=m_\\text{celk}-m_\\text{ledu}=${m}-${latexNum(f.iceMass)}=${latexNum(f.waterMass)}\\,\\mathrm{kg}\\]\\[t=t_t=${latexNum(f.t)}\\,^\\circ\\mathrm{C}\\]`;
+     return `<p>\\(\\Delta Q\\) je záporné, ale nestačí na ztuhnutí všeho. Vyjde tedy <b>směs ledu a vody</b>. U směsi se teplota nedopočítává, protože při tání/tuhnutí zůstává na teplotě tání.</p>\\[m_\\text{ledu}=\\frac{|\\Delta Q|}{l_t}=\\frac{${absQ}}{${latexNum(d.lT,0)}}=${latexNum(f.iceMass)}\\,\\mathrm{kg}\\]\\[m_\\text{vody}=m_\\text{celk}-m_\\text{ledu}=${m}-${latexNum(f.iceMass)}=${latexNum(f.waterMass)}\\,\\mathrm{kg}\\]\\[t=t_t=${latexNum(d.tM)}\\,^\\circ\\mathrm{C}\\]`;
    }
    const extra=miss-freezeAll;
-   const dt=extra/(r.totalMass*d.cIce);
-   return `<p>Led vyhrál tak moc, že by ztuhla všechna voda. Zbytek chybějícího tepla ochladí výsledný led pod teplotu tání.</p>\\[Q_\\text{na ztuhnutí všeho}=m_\\text{celk}l_t=${m}\\cdot ${latexNum(d.lT,0)}=${latexNum(freezeAll)}\\,\\mathrm{J}\\]\\[Q_\\text{navíc}=|\\Delta Q|-m_\\text{celk}l_t=${absQ}-${latexNum(freezeAll)}=${latexNum(extra)}\\,\\mathrm{J}\\]\\[\\Delta t=\\frac{Q_\\text{navíc}}{m_\\text{celk}c_l}=\\frac{${latexNum(extra)}}{${m}\\cdot ${latexNum(d.cIce,0)}}=${latexNum(dt)}\\,^\\circ\\mathrm{C}\\]\\[t=t_t-\\Delta t=${latexNum(d.tM)}-${latexNum(dt)}=${latexNum(f.t)}\\,^\\circ\\mathrm{C}\\]`;
+   const signedIceDt=-extra/(r.totalMass*d.cIce);
+   return `<p>\\(\\Delta Q\\) je záporné tak výrazně, že ztuhne všechna voda. Vyjde jediné skupenství: <b>led</b>. Teď už teplotu dopočítáme, protože výsledný led se ochladí pod teplotu tání.</p>\\[Q_\\text{na ztuhnutí všeho}=m_\\text{celk}l_t=${m}\\cdot ${latexNum(d.lT,0)}=${latexNum(freezeAll)}\\,\\mathrm{J}\\]\\[Q_\\text{navíc}=|\\Delta Q|-m_\\text{celk}l_t=${absQ}-${latexNum(freezeAll)}=${latexNum(extra)}\\,\\mathrm{J}\\]\\[\\Delta t_\\text{ledu}=-\\frac{Q_\\text{navíc}}{m_\\text{celk}c_l}=-\\frac{${latexNum(extra)}}{${m}\\cdot ${latexNum(d.cIce,0)}}=${latexNum(signedIceDt)}\\,^\\circ\\mathrm{C}\\]\\[t=t_t+\\Delta t_\\text{ledu}=${latexNum(d.tM)}${signedIceDt<0?'':'+'}${latexNum(signedIceDt)}=${latexNum(f.t)}\\,^\\circ\\mathrm{C}\\]`;
  }
- if(r.Qbalance>=0){
+ if(almostZero){
+   return `<p>Bilance vyšla nulová. Pára právě zkondenzuje na vodu o teplotě varu, takže teplotu už není potřeba dopočítávat.</p>\\[t=t_v=${latexNum(d.tB)}\\,^\\circ\\mathrm{C}\\]`;
+ }
+ if(r.Qbalance>0){
    const vaporizeAll=r.totalMass*d.lV;
    if(r.Qbalance<=vaporizeAll+1e-9){
-     return `<p>Vyhrála pára, takže zbylé teplo vypaří část vody. Teplota zůstane na teplotě varu.</p>\\[m_\\text{páry}=\\frac{\\Delta Q}{l_v}=\\frac{${latexNum(r.Qbalance)}}{${latexNum(d.lV,0)}}=${latexNum(f.steamMass)}\\,\\mathrm{kg}\\]\\[m_\\text{vody}=m_\\text{celk}-m_\\text{páry}=${m}-${latexNum(f.steamMass)}=${latexNum(f.waterMass)}\\,\\mathrm{kg}\\]\\[t=t_v=${latexNum(f.t)}\\,^\\circ\\mathrm{C}\\]`;
+     return `<p>\\(\\Delta Q\\) je kladné, ale nestačí na vypaření všeho. Vyjde tedy <b>směs vody a páry</b>. U směsi se teplota nedopočítává, protože při vypařování/kondenzaci zůstává na teplotě varu.</p>\\[m_\\text{páry}=\\frac{\\Delta Q}{l_v}=\\frac{${latexNum(r.Qbalance)}}{${latexNum(d.lV,0)}}=${latexNum(f.steamMass)}\\,\\mathrm{kg}\\]\\[m_\\text{vody}=m_\\text{celk}-m_\\text{páry}=${m}-${latexNum(f.steamMass)}=${latexNum(f.waterMass)}\\,\\mathrm{kg}\\]\\[t=t_v=${latexNum(d.tB)}\\,^\\circ\\mathrm{C}\\]`;
    }
    const extra=r.Qbalance-vaporizeAll;
-   const dt=extra/(r.totalMass*d.cSteam);
-   return `<p>Pára vyhrála tak moc, že se vypaří všechna voda. Zbytek tepla ohřeje výslednou páru nad teplotu varu.</p>\\[Q_\\text{na vypaření všeho}=m_\\text{celk}l_v=${m}\\cdot ${latexNum(d.lV,0)}=${latexNum(vaporizeAll)}\\,\\mathrm{J}\\]\\[Q_\\text{navíc}=\\Delta Q-m_\\text{celk}l_v=${latexNum(r.Qbalance)}-${latexNum(vaporizeAll)}=${latexNum(extra)}\\,\\mathrm{J}\\]\\[\\Delta t=\\frac{Q_\\text{navíc}}{m_\\text{celk}c_p}=\\frac{${latexNum(extra)}}{${m}\\cdot ${latexNum(d.cSteam,0)}}=${latexNum(dt)}\\,^\\circ\\mathrm{C}\\]\\[t=t_v+\\Delta t=${latexNum(d.tB)}+${latexNum(dt)}=${latexNum(f.t)}\\,^\\circ\\mathrm{C}\\]`;
+   const signedSteamDt=extra/(r.totalMass*d.cSteam);
+   return `<p>\\(\\Delta Q\\) je kladné tak výrazně, že se vypaří všechna voda. Vyjde jediné skupenství: <b>pára</b>. Teď už teplotu dopočítáme, protože výsledná pára se ohřeje nad teplotu varu.</p>\\[Q_\\text{na vypaření všeho}=m_\\text{celk}l_v=${m}\\cdot ${latexNum(d.lV,0)}=${latexNum(vaporizeAll)}\\,\\mathrm{J}\\]\\[Q_\\text{navíc}=\\Delta Q-m_\\text{celk}l_v=${latexNum(r.Qbalance)}-${latexNum(vaporizeAll)}=${latexNum(extra)}\\,\\mathrm{J}\\]\\[\\Delta t_\\text{páry}=\\frac{Q_\\text{navíc}}{m_\\text{celk}c_p}=\\frac{${latexNum(extra)}}{${m}\\cdot ${latexNum(d.cSteam,0)}}=${latexNum(signedSteamDt)}\\,^\\circ\\mathrm{C}\\]\\[t=t_v+\\Delta t_\\text{páry}=${latexNum(d.tB)}+${latexNum(signedSteamDt)}=${latexNum(f.t)}\\,^\\circ\\mathrm{C}\\]`;
  }
- const miss=-r.Qbalance;
- const dt=miss/(r.totalMass*d.cWater);
- return `<p>Vyhrála voda, takže \\(\\Delta Q\\) vyšlo záporně. Pára zkondenzuje a výsledná voda bude pod teplotou varu.</p>\\[\\Delta t=\\frac{|\\Delta Q|}{m_\\text{celk}c_v}=\\frac{${absQ}}{${m}\\cdot ${latexNum(d.cWater,0)}}=${latexNum(dt)}\\,^\\circ\\mathrm{C}\\]\\[t=t_v-\\Delta t=${latexNum(d.tB)}-${latexNum(dt)}=${latexNum(f.t)}\\,^\\circ\\mathrm{C}\\]`;
+ const signedDt=r.Qbalance/(r.totalMass*d.cWater);
+ const finalT=d.tB+signedDt;
+ return `<p>\\(\\Delta Q\\) je záporné. Pára zkondenzuje a vyjde jediné skupenství: <b>voda</b>. Teď už teplotu dopočítáme, protože výsledná voda se ochladí pod teplotu varu.</p>\\[\\Delta Q=m_\\text{celk}c_v\\Delta t\\]\\[\\Delta t=\\frac{\\Delta Q}{m_\\text{celk}c_v}=\\frac{${latexNum(r.Qbalance)}}{${m}\\cdot ${latexNum(d.cWater,0)}}=${latexNum(signedDt)}\\,^\\circ\\mathrm{C}\\]\\[t=t_v+\\Delta t=${latexNum(d.tB)}${signedDt<0?'':'+'}${latexNum(signedDt)}=${latexNum(finalT)}\\,^\\circ\\mathrm{C}\\]`;
 }
+
 function solvePhase(kind){
  const steps=[];
  const x=currentUnknown();
