@@ -43,7 +43,66 @@ h1{font-size:25px;margin:0 0 12px} h2{font-size:22px;margin:0 0 12px} h3{font-si
 .unit{font-size:13px;color:var(--muted)}
 .btnrow{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:white;border-radius:12px;padding:9px 11px;cursor:pointer;font-weight:700}.btn:hover{background:#fff8e8}
 .resultBox{background:#f8fffc;border:1px solid #aee1d1;border-radius:22px;padding:18px;margin-bottom:16px}.steps{display:grid;gap:12px}.step{background:white;border:1px solid var(--line);border-left:7px solid var(--accent);border-radius:17px;padding:14px;overflow-x:auto}.step b{display:block;margin-bottom:8px}.deriveRows{display:grid;gap:10px;margin-top:8px}.deriveRow{display:grid;grid-template-columns:34px minmax(150px,1fr) 2fr;gap:12px;align-items:center;background:#fffdf9;border:1px solid var(--line);border-radius:14px;padding:10px}.deriveNo{width:26px;height:26px;border-radius:999px;background:#e8f6ef;border:1px solid #aee1d1;display:flex;align-items:center;justify-content:center;font-weight:800;color:#126b42}.deriveText{font-size:14px;color:var(--muted);line-height:1.25}.deriveMath{overflow-x:auto;text-align:center}.warn{background:var(--bad);border:1px solid #f2a29a;border-radius:14px;padding:10px;margin-top:10px}.muted{color:var(--muted)}
-@media(max-width:850px){.app{grid-template-columns:1fr}aside{height:auto;position:relative;border-right:0;border-bottom:1px solid var(--line)}}
+@media(max-width:850px){
+  .app{grid-template-columns:1fr}
+  aside{height:auto;position:relative;border-right:0;border-bottom:1px solid var(--line)}
+}
+@media(max-width:650px){
+  body{font-size:16px}
+  aside{padding:14px}
+  main{padding:14px}
+  h1{font-size:23px}
+  h2{font-size:21px;line-height:1.2}
+  .resultBox{padding:14px;border-radius:18px}
+  .step{padding:12px;border-left-width:6px;border-radius:16px;overflow:hidden}
+  .step>b{font-size:19px;line-height:1.25;margin-bottom:10px}
+  .step>mjx-container[display="true"]{overflow-x:auto;overflow-y:hidden;max-width:100%;padding:4px 0;-webkit-overflow-scrolling:touch}
+  .deriveRows{gap:12px}
+  .deriveRow{
+    display:grid;
+    grid-template-columns:34px 1fr;
+    grid-template-areas:"no text" "math math";
+    align-items:center;
+    gap:8px 10px;
+    padding:12px;
+  }
+  .deriveNo{grid-area:no;width:31px;height:31px;font-size:18px}
+  .deriveText{grid-area:text;font-size:16px;line-height:1.28;color:#5d5851}
+  .deriveMath{
+    grid-area:math;
+    width:100%;
+    max-width:100%;
+    overflow-x:auto;
+    overflow-y:hidden;
+    text-align:left;
+    padding-top:9px;
+    border-top:1px dashed var(--line);
+    -webkit-overflow-scrolling:touch;
+  }
+  .deriveMath mjx-container[display="true"]{
+    margin:0!important;
+    text-align:left!important;
+    min-width:max-content;
+    max-width:none;
+    padding:2px 0 4px;
+  }
+}
+@media(max-width:430px){
+  aside{padding:12px}
+  main{padding:10px}
+  .card{padding:12px;border-radius:16px}
+  .field{grid-template-columns:minmax(98px,1fr) minmax(78px,112px) 42px;gap:6px;padding:7px}
+  .field label{font-size:13px}
+  .small{font-size:12px}
+  .field input{font-size:15px;padding:8px 7px}
+  .unknownPick{font-size:12px;padding:3px 7px}
+  .unit{font-size:12px}
+  .btn{padding:9px 10px}
+  .step{padding:11px;border-radius:15px}
+  .step>b{font-size:18px}
+  .deriveRow{padding:11px;border-radius:13px}
+  .deriveText{font-size:15px}
+}
 </style>
 </head>
 <body>
