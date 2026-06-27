@@ -133,7 +133,8 @@ const modes = [
  {id:'mix', name:'1) Bez kalorimetru, bez skupenské přeměny'},
  {id:'mixCal', name:'2) V kalorimetru, bez skupenské přeměny'},
  {id:'melt', name:'3) Tání / tuhnutí'},
- {id:'boil', name:'4) Vypařování / kondenzace'}
+ {id:'boil', name:'4) Vypařování / kondenzace'},
+ {id:'fullPhase', name:'5) Led + voda + pára'}
 ];
 const labels = {
  m1:['m₁','kg','hmotnost teplejší látky'], c1:['c₁','J·kg⁻¹·K⁻¹','měrná tepelná kapacita teplejší látky'], t1:['t₁','°C','počáteční teplota teplejší látky'],
@@ -157,10 +158,15 @@ const phaseFieldLabels = {
  boil: {
    m1:['mᵥ','kg','hmotnost vody'], t1:['tᵥ₀','°C','počáteční teplota vody'],
    m2:['mₚ','kg','hmotnost páry'], t2:['tₚ','°C','počáteční teplota páry']
+ },
+ fullPhase: {
+   m1:['mₗ','kg','hmotnost ledu'], t1:['tₗ','°C','počáteční teplota ledu'],
+   m2:['mᵥ','kg','hmotnost vody'], t2:['tᵥ₀','°C','počáteční teplota vody'],
+   m3:['mₚ','kg','hmotnost páry'], t3:['tₚ','°C','počáteční teplota páry']
  }
 };
 function labelFor(k){
-  if((mode==='melt' || mode==='boil') && phaseFieldLabels[mode] && phaseFieldLabels[mode][k]) return phaseFieldLabels[mode][k];
+  if((mode==='melt' || mode==='boil' || mode==='fullPhase') && phaseFieldLabels[mode] && phaseFieldLabels[mode][k]) return phaseFieldLabels[mode][k];
   return labels[k];
 }
 
@@ -177,11 +183,12 @@ const visible = {
  mix:['m1','c1','t1','m2','c2','t2','t'],
  mixCal:['m1','c1','t1','m2','c2','t2','Ck','tk','t'],
  melt:['m1','t1','m2','t2','cIce','cWater','tM','lT','tFinal'],
- boil:['m1','t1','m2','t2','cWater','cSteam','tB','lV','tFinal']
+ boil:['m1','t1','m2','t2','cWater','cSteam','tB','lV','tFinal'],
+ fullPhase:['m1','t1','m2','t2','m3','t3','cIce','cWater','cSteam','tM','tB','lT','lV','tFinal']
 };
 let mode='mix';
 const values = {}; const computed = {}; let typingTimer=null;
-const unknownByMode = {mix:'t', mixCal:'t', melt:'tFinal', boil:'tFinal'};
+const unknownByMode = {mix:'t', mixCal:'t', melt:'tFinal', boil:'tFinal', fullPhase:'tFinal'};
 function currentUnknown(){
   const keys = visible[mode] || [];
   if(!keys.includes(unknownByMode[mode])) unknownByMode[mode] = keys.includes('t') ? 't' : keys[keys.length-1];
@@ -236,7 +243,7 @@ function renderFields(){
    box.addEventListener('change',e=>{ if(e.target.checked || k!==currentUnknown()) selectUnknown(k); else e.target.checked=true; });
    if(k===u) return;
    input.addEventListener('input',e=>{values[k]=e.target.value; computed[k]=false; clearSelectedComputed(); clearTimeout(typingTimer); typingTimer=setTimeout(calculate,80);});
-   if(k==='c1'||k==='c2'){
+   if(k==='c1'||k==='c2'||k==='cIce'||k==='cWater'||k==='cSteam'){
      const openList=()=>{ try{ if(input.showPicker) input.showPicker(); }catch(e){} };
      input.addEventListener('focus',()=>setTimeout(openList,40));
      input.addEventListener('click',()=>setTimeout(openList,40));
@@ -408,6 +415,14 @@ function solveLinear(includeCal){
 
 
 function phaseConfig(kind){
+  if(kind==='fullPhase'){
+    return {
+      kind:'fullPhase', title:'Led + voda + pára', refTempKey:'tB',
+      baseText:()=>`Převedeme led, vodu i páru na vodu o teplotě ${fmt(val('tB'))} °C.`,
+      components:[['m1','t1'],['m2','t2'],['m3','t3']],
+      required:['cIce','cWater','cSteam','tM','tB','lT','lV']
+    };
+  }
   if(kind==='boil'){
     return {
       kind:'boil', title:'Vypařování / kondenzace', refTempKey:'tB',
@@ -457,6 +472,11 @@ function phaseReferenceText(kind, d){
 }
 function phaseMaterialName(kind, T, d, mk){
  if(kind==='melt') return mk==='m1' ? 'ledu' : 'vody';
+ if(kind==='fullPhase'){
+   if(mk==='m1') return 'ledu';
+   if(mk==='m2') return 'vody';
+   return 'páry';
+ }
  return mk==='m1' ? 'vody' : 'páry';
 }
 function phaseRowToReference(kind, mk, tk, m, T, d){
@@ -469,6 +489,20 @@ function phaseRowToReference(kind, mk, tk, m, T, d){
    } else {
      segment='water';
      Q = m*d.cWater*(T-d.tM);
+     signed = Q;
+   }
+ } else if(kind==='fullPhase'){
+   if(mk==='m1'){
+     segment='iceToBoilingWater';
+     Q = m*d.cIce*(d.tM-T) + m*d.lT + m*d.cWater*(d.tB-d.tM);
+     signed = -Q;
+   } else if(mk==='m2'){
+     segment='waterToBoilingWater';
+     Q = m*d.cWater*(d.tB-T);
+     signed = -Q;
+   } else {
+     segment='steamToBoilingWater';
+     Q = m*d.cSteam*(T-d.tB) + m*d.lV;
      signed = Q;
    }
  } else {
@@ -507,6 +541,39 @@ function phaseTemperatureFromBalance(kind, balance, totalMass, d){
    return {t:ref-dt, state:'led', waterMass:0, iceMass:totalMass, steamMass:0, deltaT:dt,
      note:'ΔQ vyšlo záporně tak výrazně, že ztuhne všechna voda a výsledný led se ochladí pod teplotu tání.'};
  }
+ if(kind==='fullPhase'){
+   const refHot=d.tB, refCold=d.tM;
+   if(balance>=0){
+     const vaporizeAll=totalMass*d.lV;
+     if(balance<=vaporizeAll+1e-9){
+       const steamMass=Math.min(totalMass, balance/d.lV);
+       return {t:refHot, state: steamMass>1e-9 ? 'voda + pára' : 'voda', waterMass:Math.max(0,totalMass-steamMass), iceMass:0, steamMass, deltaT:0,
+         note: balance>1e-9 ? 'Po převedení na vodu při teplotě varu zbyde teplo, ale nestačí na vypaření všeho. Vyjde směs voda + pára, takže teplota zůstane na teplotě varu.' : 'Bilance vyjde přesně nulová: výsledkem je voda při teplotě varu.'};
+     }
+     const extra=balance-vaporizeAll;
+     const dt=extra/(totalMass*d.cSteam);
+     return {t:refHot+dt, state:'pára', waterMass:0, iceMass:0, steamMass:totalMass, deltaT:dt,
+       note:'Po převedení na vodu při teplotě varu zbyde tolik tepla, že se vypaří všechna voda a výsledná pára se ještě ohřeje nad teplotu varu.'};
+   }
+   const missing=-balance;
+   const coolToMelt=totalMass*d.cWater*(refHot-refCold);
+   if(missing<=coolToMelt+1e-9){
+     const signedDt=balance/(totalMass*d.cWater);
+     return {t:refHot+signedDt, state:'voda', waterMass:totalMass, iceMass:0, steamMass:0, deltaT:signedDt,
+       note:'ΔQ vyšlo záporně. Výsledkem je pořád jediné skupenství: voda. Teplotu tedy dopočítáme jako ochlazení vody od teploty varu.'};
+   }
+   const afterCooling=missing-coolToMelt;
+   const freezeAll=totalMass*d.lT;
+   if(afterCooling<=freezeAll+1e-9){
+     const iceMass=Math.min(totalMass, afterCooling/d.lT);
+     return {t:refCold, state:'led + voda', waterMass:Math.max(0,totalMass-iceMass), iceMass, steamMass:0, deltaT:0,
+       note:'Voda se ochladí až na teplotu tání a část z ní ztuhne. Vyjde směs led + voda, takže teplota zůstane na teplotě tání.'};
+   }
+   const extra=afterCooling-freezeAll;
+   const signedIceDt=-extra/(totalMass*d.cIce);
+   return {t:refCold+signedIceDt, state:'led', waterMass:0, iceMass:totalMass, steamMass:0, deltaT:signedIceDt,
+     note:'Voda se ochladí na teplotu tání, všechna ztuhne a výsledný led se ještě ochladí pod teplotu tání.'};
+ }
  const ref=d.tB;
  if(balance>=0){
    const vaporizeAll=totalMass*d.lV;
@@ -525,6 +592,7 @@ function phaseTemperatureFromBalance(kind, balance, totalMass, d){
  return {t:ref-dt, state:'voda', waterMass:totalMass, iceMass:0, steamMass:0, deltaT:dt,
    note:'ΔQ vyšlo záporně. Pára zkondenzuje a výsledná voda se ochladí pod teplotu varu.'};
 }
+
 function computePhase(kind, d){
  let totalMass=0, balance=0, rows=[];
  for(const [mk,tk] of d.parts){
@@ -550,19 +618,32 @@ function phaseQFormula(row, kind, d){
    }
    return `Q_${i}=m_${i}c_v(t_${i}-t_t)=${m}\\cdot ${cW}\\cdot(${T}-${TM})=${latexNum(row.Q)}\\,\\mathrm{J}`;
  }
+ if(kind==='fullPhase'){
+   const TM=latexTerm(d.tM), TB=latexTerm(d.tB), cI=latexNum(d.cIce,0), cS=latexNum(d.cSteam,0);
+   if(row.segment==='iceToBoilingWater'){
+     return `Q_${i}=m_${i}c_l(t_t-t_${i})+m_${i}l_t+m_${i}c_v(t_v-t_t)=${m}\\cdot ${cI}\\cdot(${TM}-${T})+${m}\\cdot ${latexNum(d.lT,0)}+${m}\\cdot ${cW}\\cdot(${TB}-${TM})=${latexNum(row.Q)}\\,\\mathrm{J}`;
+   }
+   if(row.segment==='waterToBoilingWater'){
+     const raw=row.m*d.cWater*(d.tB-row.T);
+     if(raw>=0) return `Q_${i}=m_${i}c_v(t_v-t_${i})=${m}\\cdot ${cW}\\cdot(${TB}-${T})=${latexNum(Math.abs(raw))}\\,\\mathrm{J}`;
+     return `Q_${i}=m_${i}c_v(t_${i}-t_v)=${m}\\cdot ${cW}\\cdot(${T}-${TB})=${latexNum(Math.abs(raw))}\\,\\mathrm{J}`;
+   }
+   return `Q_${i}=m_${i}c_p(t_${i}-t_v)+m_${i}l_v=${m}\\cdot ${cS}\\cdot(${T}-${TB})+${m}\\cdot ${latexNum(d.lV,0)}=${latexNum(row.Q)}\\,\\mathrm{J}`;
+ }
  const TB=latexTerm(d.tB), cS=latexNum(d.cSteam,0);
  if(row.segment==='water'){
    return `Q_${i}=m_${i}c_v(t_v-t_${i})=${m}\\cdot ${cW}\\cdot(${TB}-${T})=${latexNum(row.Q)}\\,\\mathrm{J}`;
  }
  return `Q_${i}=m_${i}c_p(t_${i}-t_v)+m_${i}l_v=${m}\\cdot ${cS}\\cdot(${T}-${TB})+${m}\\cdot ${latexNum(d.lV,0)}=${latexNum(row.Q)}\\,\\mathrm{J}`;
 }
+
 function phaseMainEquation(kind){
  return `\\[\\Delta Q=Q_\\text{odevzdané}-Q_\\text{přijaté}\\]`;
 }
 function phaseDomain(k){
  const ranges={
-   m1:[0.001,20], m2:[0.001,20],
-   t1:[-80,250], t2:[-80,250], tFinal:[-80,250],
+   m1:[0.001,20], m2:[0.001,20], m3:[0.001,20],
+   t1:[-80,250], t2:[-80,250], t3:[-80,250], tFinal:[-80,250],
    cIce:[100,5000], cWater:[500,8000], cSteam:[500,5000],
    tM:[-50,50], tB:[30,200], lT:[1000,800000], lV:[10000,3500000]
  };
@@ -640,6 +721,34 @@ function phaseFinalMath(kind, r, d){
    const signedIceDt=-extra/(r.totalMass*d.cIce);
    return `<p>\\(\\Delta Q\\) je záporné tak výrazně, že ztuhne všechna voda. Vyjde jediné skupenství: <b>led</b>. Teď už teplotu dopočítáme, protože výsledný led se ochladí pod teplotu tání.</p>\\[Q_\\text{na ztuhnutí všeho}=m_\\text{celk}l_t=${m}\\cdot ${latexNum(d.lT,0)}=${latexNum(freezeAll)}\\,\\mathrm{J}\\]\\[Q_\\text{navíc}=|\\Delta Q|-m_\\text{celk}l_t=${absQ}-${latexNum(freezeAll)}=${latexNum(extra)}\\,\\mathrm{J}\\]\\[\\Delta t_\\text{ledu}=-\\frac{Q_\\text{navíc}}{m_\\text{celk}c_l}=-\\frac{${latexNum(extra)}}{${m}\\cdot ${latexNum(d.cIce,0)}}=${latexNum(signedIceDt)}\\,^\\circ\\mathrm{C}\\]\\[t=t_t+\\Delta t_\\text{ledu}=${latexNum(d.tM)}${signedIceDt<0?'':'+'}${latexNum(signedIceDt)}=${latexNum(f.t)}\\,^\\circ\\mathrm{C}\\]`;
  }
+ if(kind==='fullPhase'){
+   if(almostZero){
+     return `<p>Bilance vyšla nulová. Výsledkem je voda při teplotě varu, takže teplotu už není potřeba dopočítávat.</p>\\[t=t_v=${latexNum(d.tB)}\\,^\\circ\\mathrm{C}\\]`;
+   }
+   if(r.Qbalance>0){
+     const vaporizeAll=r.totalMass*d.lV;
+     if(r.Qbalance<=vaporizeAll+1e-9){
+       return `<p>\\(\\Delta Q\\) je kladné, ale nestačí na vypaření všeho. Vyjde tedy <b>směs vody a páry</b>. U směsi se teplota nedopočítává, protože při vypařování/kondenzaci zůstává na teplotě varu.</p>\\[m_\\text{páry}=\\frac{\\Delta Q}{l_v}=\\frac{${latexNum(r.Qbalance)}}{${latexNum(d.lV,0)}}=${latexNum(f.steamMass)}\\,\\mathrm{kg}\\]\\[m_\\text{vody}=m_\\text{celk}-m_\\text{páry}=${m}-${latexNum(f.steamMass)}=${latexNum(f.waterMass)}\\,\\mathrm{kg}\\]\\[t=t_v=${latexNum(d.tB)}\\,^\\circ\\mathrm{C}\\]`;
+     }
+     const extra=r.Qbalance-vaporizeAll;
+     const signedSteamDt=extra/(r.totalMass*d.cSteam);
+     return `<p>\\(\\Delta Q\\) je kladné tak výrazně, že se vypaří všechna voda. Vyjde jediné skupenství: <b>pára</b>. Teď už teplotu dopočítáme, protože výsledná pára se ohřeje nad teplotu varu.</p>\\[Q_\\text{na vypaření všeho}=m_\\text{celk}l_v=${m}\\cdot ${latexNum(d.lV,0)}=${latexNum(vaporizeAll)}\\,\\mathrm{J}\\]\\[Q_\\text{navíc}=\\Delta Q-m_\\text{celk}l_v=${latexNum(r.Qbalance)}-${latexNum(vaporizeAll)}=${latexNum(extra)}\\,\\mathrm{J}\\]\\[\\Delta t_\\text{páry}=\\frac{Q_\\text{navíc}}{m_\\text{celk}c_p}=\\frac{${latexNum(extra)}}{${m}\\cdot ${latexNum(d.cSteam,0)}}=${latexNum(signedSteamDt)}\\,^\\circ\\mathrm{C}\\]\\[t=t_v+\\Delta t_\\text{páry}=${latexNum(d.tB)}+${latexNum(signedSteamDt)}=${latexNum(f.t)}\\,^\\circ\\mathrm{C}\\]`;
+   }
+   const deficit=-r.Qbalance;
+   const coolToMelt=r.totalMass*d.cWater*(d.tB-d.tM);
+   if(deficit<=coolToMelt+1e-9){
+     const signedDt=r.Qbalance/(r.totalMass*d.cWater);
+     return `<p>\\(\\Delta Q\\) je záporné, ale voda se neochladí až na teplotu tání. Vyjde jediné skupenství: <b>voda</b>. Teplotu dopočítáme od teploty varu.</p>\\[\\Delta Q=m_\\text{celk}c_v\\Delta t\\]\\[\\Delta t=\\frac{\\Delta Q}{m_\\text{celk}c_v}=\\frac{${latexNum(r.Qbalance)}}{${m}\\cdot ${latexNum(d.cWater,0)}}=${latexNum(signedDt)}\\,^\\circ\\mathrm{C}\\]\\[t=t_v+\\Delta t=${latexNum(d.tB)}${signedDt<0?'':'+'}${latexNum(signedDt)}=${latexNum(f.t)}\\,^\\circ\\mathrm{C}\\]`;
+   }
+   const afterCooling=deficit-coolToMelt;
+   const freezeAll=r.totalMass*d.lT;
+   if(afterCooling<=freezeAll+1e-9){
+     return `<p>\\(\\Delta Q\\) je záporné tak, že se voda ochladí až na teplotu tání a část vody ztuhne. Vyjde <b>směs ledu a vody</b>. U směsi se teplota nedopočítává.</p>\\[Q_\\text{ochlazení vody na }t_t=m_\\text{celk}c_v(t_v-t_t)=${m}\\cdot ${latexNum(d.cWater,0)}\\cdot(${latexNum(d.tB)}-${latexNum(d.tM)})=${latexNum(coolToMelt)}\\,\\mathrm{J}\\]\\[Q_\\text{na tuhnutí}=|\\Delta Q|-Q_\\text{ochlazení}=${latexNum(deficit)}-${latexNum(coolToMelt)}=${latexNum(afterCooling)}\\,\\mathrm{J}\\]\\[m_\\text{ledu}=\\frac{Q_\\text{na tuhnutí}}{l_t}=\\frac{${latexNum(afterCooling)}}{${latexNum(d.lT,0)}}=${latexNum(f.iceMass)}\\,\\mathrm{kg}\\]\\[m_\\text{vody}=m_\\text{celk}-m_\\text{ledu}=${m}-${latexNum(f.iceMass)}=${latexNum(f.waterMass)}\\,\\mathrm{kg}\\]\\[t=t_t=${latexNum(d.tM)}\\,^\\circ\\mathrm{C}\\]`;
+   }
+   const extra=afterCooling-freezeAll;
+   const signedIceDt=-extra/(r.totalMass*d.cIce);
+   return `<p>\\(\\Delta Q\\) je záporné tak výrazně, že voda vychladne na teplotu tání, všechna ztuhne a výsledný led se ještě ochladí. Vyjde jediné skupenství: <b>led</b>.</p>\\[Q_\\text{ochlazení vody na }t_t=m_\\text{celk}c_v(t_v-t_t)=${m}\\cdot ${latexNum(d.cWater,0)}\\cdot(${latexNum(d.tB)}-${latexNum(d.tM)})=${latexNum(coolToMelt)}\\,\\mathrm{J}\\]\\[Q_\\text{ztuhnutí všeho}=m_\\text{celk}l_t=${m}\\cdot ${latexNum(d.lT,0)}=${latexNum(freezeAll)}\\,\\mathrm{J}\\]\\[Q_\\text{navíc}=|\\Delta Q|-Q_\\text{ochlazení}-Q_\\text{ztuhnutí}=${latexNum(deficit)}-${latexNum(coolToMelt)}-${latexNum(freezeAll)}=${latexNum(extra)}\\,\\mathrm{J}\\]\\[\\Delta t_\\text{ledu}=-\\frac{Q_\\text{navíc}}{m_\\text{celk}c_l}=-\\frac{${latexNum(extra)}}{${m}\\cdot ${latexNum(d.cIce,0)}}=${latexNum(signedIceDt)}\\,^\\circ\\mathrm{C}\\]\\[t=t_t+\\Delta t_\\text{ledu}=${latexNum(d.tM)}${signedIceDt<0?'':'+'}${latexNum(signedIceDt)}=${latexNum(f.t)}\\,^\\circ\\mathrm{C}\\]`;
+ }
  if(almostZero){
    return `<p>Bilance vyšla nulová. Pára právě zkondenzuje na vodu o teplotě varu, takže teplotu už není potřeba dopočítávat.</p>\\[t=t_v=${latexNum(d.tB)}\\,^\\circ\\mathrm{C}\\]`;
  }
@@ -655,6 +764,16 @@ function phaseFinalMath(kind, r, d){
  const signedDt=r.Qbalance/(r.totalMass*d.cWater);
  const finalT=d.tB+signedDt;
  return `<p>\\(\\Delta Q\\) je záporné. Pára zkondenzuje a vyjde jediné skupenství: <b>voda</b>. Teď už teplotu dopočítáme, protože výsledná voda se ochladí pod teplotu varu.</p>\\[\\Delta Q=m_\\text{celk}c_v\\Delta t\\]\\[\\Delta t=\\frac{\\Delta Q}{m_\\text{celk}c_v}=\\frac{${latexNum(r.Qbalance)}}{${m}\\cdot ${latexNum(d.cWater,0)}}=${latexNum(signedDt)}\\,^\\circ\\mathrm{C}\\]\\[t=t_v+\\Delta t=${latexNum(d.tB)}${signedDt<0?'':'+'}${latexNum(signedDt)}=${latexNum(finalT)}\\,^\\circ\\mathrm{C}\\]`;
+}
+
+function phasePrincipleText(kind, d, canShow){
+  if(kind==='fullPhase'){
+    return canShow ? 'Převedeme jeden led, jednu vodu a jednu páru na ' + phaseReferenceText(kind,d) + '.' : 'Převedeme jeden led, jednu vodu a jednu páru na vodu o teplotě varu.';
+  }
+  if(kind==='boil'){
+    return canShow ? 'Převedeme jednu vodu a jednu páru na ' + phaseReferenceText(kind,d) + '.' : 'Převedeme jednu vodu a jednu páru na vodu o teplotě varu.';
+  }
+  return canShow ? 'Převedeme jeden led a jednu vodu na ' + phaseReferenceText(kind,d) + '.' : 'Převedeme jeden led a jednu vodu na vodu o teplotě tání.';
 }
 
 function solvePhase(kind){
@@ -674,7 +793,7 @@ function solvePhase(kind){
  }
  const d=getPhaseData(kind, null);
  const canShow = d && computePhase(kind,d);
- steps.push(`<div class="step"><b>1) Princip výpočtu</b><p>${canShow ? (kind==='boil' ? 'Převedeme jednu vodu a jednu páru na ' + phaseReferenceText(kind,d) + '.' : 'Převedeme jeden led a jednu vodu na ' + phaseReferenceText(kind,d) + '.') : (kind==='boil'?'Převedeme jednu vodu a jednu páru na vodu o teplotě varu.':'Převedeme jeden led a jednu vodu na vodu o teplotě tání.')}</p>${phaseMainEquation(kind)}<p class="small">Tepla počítáme jako kladné částky. V bilanci je pak odečítáme podle toho, jestli je daná část odevzdává, nebo přijímá.</p></div>`);
+ steps.push(`<div class="step"><b>1) Princip výpočtu</b><p>${phasePrincipleText(kind,d,canShow)}</p>${phaseMainEquation(kind)}<p class="small">Tepla počítáme jako kladné částky. V bilanci je pak odečítáme podle toho, jestli je daná část odevzdává, nebo přijímá.</p></div>`);
  if(solvedKey && canShow){
    const r=computePhase(kind,d);
    if(solvedKey!=='tFinal'){
@@ -755,6 +874,25 @@ function generateRandomExample(){
    renderFields(); calculate();
    return;
  }
+ if(mode==='fullPhase'){
+   const obj={
+     m1: randInt(5,60)/100, t1: -randInt(5,20),
+     m2: randInt(20,160)/100, t2: randInt(10,80),
+     m3: randInt(5,70)/100, t3: randInt(100,150),
+     cIce:2100, cWater:4200, cSteam:1840,
+     tM:0, tB:100, lT:334000, lV:2260000
+   };
+   const d={...obj, parts:[['m1','t1'],['m2','t2'],['m3','t3']]};
+   obj.tFinal = computePhase('fullPhase', d).final.t;
+   const unknowns=['m1','t1','m2','t2','m3','t3','cIce','cWater','cSteam','tM','tB','lT','lV','tFinal'];
+   const selected=currentUnknown();
+   const missing=unknowns.includes(selected) ? selected : 'tFinal';
+   fillObject(obj);
+   unknownByMode[mode]=missing;
+   delete values[missing]; delete computed[missing];
+   renderFields(); calculate();
+   return;
+ }
 }
 
 
@@ -768,13 +906,13 @@ function typesetMath(){
 window.typesetMath = typesetMath;
 
 function calculate(){
- const r = (mode==='mix')?solveLinear(false):(mode==='mixCal')?solveLinear(true):(mode==='melt')?solvePhase('melt'):solvePhase('boil');
+ const r = (mode==='mix')?solveLinear(false):(mode==='mixCal')?solveLinear(true):(mode==='melt')?solvePhase('melt'):(mode==='boil')?solvePhase('boil'):solvePhase('fullPhase');
  renderFieldsPreserveFocus();
  const u=currentUnknown();
  $('status').textContent = r.ready ? `Dopočítaná neznámá: ${labelFor(u)[0]}` : `Zatím chybí hodnoty pro ${labelFor(u)[0]}`;
  $('equation').innerHTML = `<span class="pill">${modes.find(m=>m.id===mode).name}</span><span class="pill">neznámá: ${labelFor(u)[0]}</span>`;
  const missing = (r.missingInputs && r.missingInputs.length) ? ` Chybí ještě: ${r.missingInputs.map(k=>labelFor(k)[0]).join(', ')}.` : '';
- const warnBase = (mode==='melt'||mode==='boil') ? 'Doplň hodnoty u obou látek a konstant.' : 'Doplň hodnoty ve všech polích kromě zaškrtnuté neznámé.';
+ const warnBase = (mode==='fullPhase') ? 'Doplň hodnoty u ledu, vody, páry a konstant.' : ((mode==='melt'||mode==='boil') ? 'Doplň hodnoty u obou látek a konstant.' : 'Doplň hodnoty ve všech polích kromě zaškrtnuté neznámé.');
  $('steps').innerHTML = r.steps.join('') + (!r.ready?`<div class="warn">${warnBase}${missing}</div>`:'');
  typesetMath();
 }
