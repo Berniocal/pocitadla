@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rovnoměrně zrychlený a zpomalený pohyb</title>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['\\[','\\]']] },
+    svg: { fontCache: 'global' },
+    startup: {
+      typeset: false,
+      ready: () => {
+        MathJax.startup.defaultReady();
+        window.mathJaxReady = true;
+        if (typeof window.typesetMath === 'function') window.typesetMath();
+      }
+    }
+  };
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+:root{
+  --bg:#fbf6ee; --panel:#ffffff; --ink:#2b2b2b; --muted:#6f6a63;
+  --line:#ead8bf; --accent:#f4bd62; --accent2:#8ccfbd; --ok:#fff2a8;
+  --soft:#f7efe3; --bad:#ffe0dd;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+.app{display:grid;grid-template-columns:360px 1fr;min-height:100vh}
+aside{padding:18px;border-right:1px solid var(--line);background:#fffaf2;position:sticky;top:0;height:100vh;overflow:auto}
+main{padding:22px;overflow:auto}
+h1{font-size:25px;margin:0 0 12px} h2{font-size:22px;margin:0 0 12px} h3{font-size:18px;margin:18px 0 8px}
+.small{font-size:13px;color:var(--muted);line-height:1.35}.pill{display:inline-block;padding:4px 9px;border-radius:999px;background:var(--soft);border:1px solid var(--line);font-size:12px;margin:2px}
+.mode{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:15px;background:var(--panel);padding:11px 12px;margin:7px 0;cursor:pointer;font-weight:700;color:var(--ink)}
+.mode.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(244,189,98,.25);background:#fff8e8}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px;margin:14px 0;box-shadow:0 4px 18px rgba(70,50,20,.05)}
+.field{display:grid;grid-template-columns:minmax(120px,1fr) minmax(86px,116px) 48px;gap:8px;align-items:center;margin:8px 0;padding:8px;border-radius:13px;border:1px solid transparent}
+.field.unknown{background:#eef9f6;border-color:#8ccfbd}.field.unknown.computed{background:var(--ok);border-color:#ecd25a}.field input[readonly]{background:#fffdf5;font-weight:800;color:#7a4e00}.labelBlock{min-width:0;display:flex;flex-direction:column;gap:6px}.unknownPick{display:inline-flex;align-items:center;align-self:flex-start;gap:6px;font-size:12px;color:#286d60;cursor:pointer;user-select:none;white-space:nowrap;background:#f8fffc;border:1px solid #aee1d1;border-radius:999px;padding:3px 8px;line-height:1.1}.unknownPick input{width:auto;min-width:0;flex:0 0 auto;accent-color:var(--accent2);cursor:pointer;margin:0}
+.field.computed{background:var(--ok);border-color:#ecd25a}.field label{font-size:14px;line-height:1.2;min-width:0}.field input{width:100%;min-width:0;padding:9px 8px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:white;color:var(--ink)}
+.field input:focus{outline:2px solid rgba(140,207,189,.7);border-color:var(--accent2)}
+.unit{font-size:13px;color:var(--muted)}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:white;border-radius:12px;padding:9px 11px;cursor:pointer;font-weight:700}.btn:hover{background:#fff8e8}
+.resultBox{background:#f8fffc;border:1px solid #aee1d1;border-radius:22px;padding:18px;margin-bottom:16px}.steps{display:grid;gap:12px}.step{background:white;border:1px solid var(--line);border-left:7px solid var(--accent);border-radius:17px;padding:14px;overflow-x:auto}.step b{display:block;margin-bottom:8px}.deriveRows{display:grid;gap:10px;margin-top:8px}.deriveRow{display:grid;grid-template-columns:34px minmax(150px,1fr) 2fr;gap:12px;align-items:center;background:#fffdf9;border:1px solid var(--line);border-radius:14px;padding:10px}.deriveNo{width:26px;height:26px;border-radius:999px;background:#e8f6ef;border:1px solid #aee1d1;display:flex;align-items:center;justify-content:center;font-weight:800;color:#126b42}.deriveText{font-size:14px;color:var(--muted);line-height:1.25}.deriveMath{overflow-x:auto;text-align:center}.warn{background:var(--bad);border:1px solid #f2a29a;border-radius:14px;padding:10px;margin-top:10px}.muted{color:var(--muted)}
+@media(max-width:850px){
+  .app{grid-template-columns:1fr}
+  aside{height:auto;position:relative;border-right:0;border-bottom:1px solid var(--line)}
+}
+@media(max-width:650px){
+  body{font-size:16px}
+  aside{padding:14px}
+  main{padding:14px}
+  h1{font-size:23px}
+  h2{font-size:21px;line-height:1.2}
+  .resultBox{padding:14px;border-radius:18px}
+  .step{padding:12px;border-left-width:6px;border-radius:16px;overflow:hidden}
+  .step>b{font-size:19px;line-height:1.25;margin-bottom:10px}
+  .step>mjx-container[display="true"]{overflow-x:auto;overflow-y:hidden;max-width:100%;padding:4px 0;-webkit-overflow-scrolling:touch}
+  .deriveRows{gap:12px}
+  .deriveRow{
+    display:grid;
+    grid-template-columns:34px 1fr;
+    grid-template-areas:"no text" "math math";
+    align-items:center;
+    gap:8px 10px;
+    padding:12px;
+  }
+  .deriveNo{grid-area:no;width:31px;height:31px;font-size:18px}
+  .deriveText{grid-area:text;font-size:16px;line-height:1.28;color:#5d5851}
+  .deriveMath{
+    grid-area:math;
+    width:100%;
+    max-width:100%;
+    overflow-x:auto;
+    overflow-y:hidden;
+    text-align:left;
+    padding-top:9px;
+    border-top:1px dashed var(--line);
+    -webkit-overflow-scrolling:touch;
+  }
+  .deriveMath mjx-container[display="true"]{
+    margin:0!important;
+    text-align:left!important;
+    min-width:max-content;
+    max-width:none;
+    padding:2px 0 4px;
+  }
+}
+@media(max-width:430px){
+  aside{padding:12px}
+  main{padding:10px}
+  .card{padding:12px;border-radius:16px}
+  .field{grid-template-columns:minmax(98px,1fr) minmax(78px,112px) 42px;gap:6px;padding:7px}
+  .field label{font-size:13px}
+  .small{font-size:12px}
+  .field input{font-size:15px;padding:8px 7px}
+  .unknownPick{font-size:12px;padding:3px 7px}
+  .unit{font-size:12px}
+  .btn{padding:9px 10px}
+  .step{padding:11px;border-radius:15px}
+  .step>b{font-size:18px}
+  .deriveRow{padding:11px;border-radius:13px}
+  .deriveText{font-size:15px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <h1>Rovnoměrně zrychlený a zpomalený pohyb</h1>
+  <p class="small">Vyber typ úlohy. Můžeš zaškrtnout jednu nebo dvě neznámé. Na začátku jsou vždy jen dvě rovnice: \(v=v_0+a\Delta t\) a \(s=v_0\Delta t+\frac{1}{2}a(\Delta t)^2\). Podle podmínky \(v_0=0\) nebo \(v=0\) se jen zjednoduší. U zrychleného pohybu zadávej \(a\) kladně, u zpomaleného záporně.</p>
+  <div id="modes"></div>
+  <div class="card">
+    <h3>Vstupní veličiny</h3>
+    <div id="fields"></div>
+    <div class="btnrow">
+      <button class="btn" id="randomExample">Generovat náhodný příklad</button>
+      <button class="btn" id="clearAll">Smazat vše</button>
+    </div>
+  </div>
+</aside>
+<main>
+  <div class="resultBox">
+    <h2 id="status">Zadej hodnoty</h2>
+    <div id="equation" class="muted"></div>
+  </div>
+  <div class="steps" id="steps"></div>
+</main>
+</div>
+<script>
+const modes = [
+ {id:'accelZero', name:'1) Zrychlený pohyb, v₀ = 0', sign:1, fixedV0:0, fixedV:null},
+ {id:'decelStop', name:'2) Zpomalený pohyb, v = 0', sign:-1, fixedV0:null, fixedV:0},
+ {id:'accelV0', name:'3) Zrychlený pohyb, v₀ ≠ 0', sign:1, fixedV0:null, fixedV:null},
+ {id:'decelV0', name:'4) Zpomalený pohyb, v ≠ 0', sign:-1, fixedV0:null, fixedV:null}
+];
+
+const labels = {
+  v0:['v₀','m·s⁻¹','počáteční rychlost'],
+  a:['a','m·s⁻²','zrychlení'],
+  v:['v','m·s⁻¹','okamžitá rychlost po čase Δt'],
+  dt:['Δt','s','čas pohybu'],
+  s:['s','m','dráha / posunutí']
+};
+const visible = {
+  accelZero:['a','dt','v','s'],
+  decelStop:['v0','a','dt','s'],
+  accelV0:['v0','a','dt','v','s'],
+  decelV0:['v0','a','dt','v','s']
+};
+let mode='accelZero';
+const values = {};
+const computed = {};
+let typingTimer=null;
+const unknownsByMode = {
+  accelZero:['v'],
+  decelStop:['s'],
+  accelV0:['v'],
+  decelV0:['v']
+};
+const $ = id => document.getElementById(id);
+
+function cfg(){ return modes.find(m=>m.id===mode); }
+function visibleKeys(){ return visible[mode] || []; }
+function currentUnknowns(){
+  const keys=visibleKeys();
+  let arr=(unknownsByMode[mode]||[]).filter(k=>keys.includes(k));
+  if(arr.length===0) arr=[keys.includes('v')?'v':keys[0]];
+  if(arr.length>2) arr=arr.slice(-2);
+  unknownsByMode[mode]=arr;
+  return arr;
+}
+function selectUnknown(k, checked){
+  const keys=visibleKeys();
+  let arr=currentUnknowns().slice();
+  if(checked){
+    arr=arr.filter(x=>x!==k);
+    arr.push(k);
+    if(arr.length>2) arr.shift();
+  }else{
+    arr=arr.filter(x=>x!==k);
+    if(arr.length===0) arr=[k];
+  }
+  unknownsByMode[mode]=arr.filter(x=>keys.includes(x));
+  for(const key of keys){
+    if(!unknownsByMode[mode].includes(key) && computed[key]){
+      delete computed[key];
+    }
+    if(unknownsByMode[mode].includes(key)){
+      delete values[key];
+      delete computed[key];
+    }
+  }
+  renderFields();
+  calculate();
+}
+function fmt(x,d=2){
+  if(!isFinite(x)) return '';
+  return Number(x).toLocaleString('cs-CZ',{maximumFractionDigits:d,minimumFractionDigits:0}).replace(/\s/g,'\u202f');
+}
+function latexNum(x,d=2){ return fmt(x,d).replace(',', '{,}'); }
+function latexTerm(x,d=2){ const s=latexNum(x,d); return Number(x)<0 ? `\\left(${s}\\right)` : s; }
+function nice(v,d=2){ return String(Math.round(v*Math.pow(10,d))/Math.pow(10,d)).replace('.',','); }
+function val(k){
+  const v = parseFloat(String(values[k]??'').replace(',','.'));
+  return Number.isFinite(v)?v:null;
+}
+function signedNumber(x,d=2){
+  if(x==null || !Number.isFinite(x)) return 'a';
+  return x>0 ? `+${latexNum(x,d)}` : latexTerm(x,d);
+}
+function signedA(){
+  const a=val('a');
+  if(a==null || !Number.isFinite(a)) return '+a';
+  return `+${latexTerm(a,2)}`;
+}
+function aSignProblem(a){
+  if(a==null || currentUnknowns().includes('a')) return '';
+  if(cfg().sign>0 && a<=0) return 'U zrychleného pohybu má být zrychlení kladné.';
+  if(cfg().sign<0 && a>=0) return 'U zpomaleného pohybu má být zrychlení záporné.';
+  return '';
+}
+function motionState(){
+  const a=val('a');
+  const fixed=cfg().fixedV0;
+  const fixedV=cfg().fixedV;
+  return {
+    a,
+    fixedV0: fixed,
+    fixedV,
+    v0: fixed===null ? val('v0') : fixed,
+    dt: val('dt'),
+    v: fixedV===null ? val('v') : fixedV,
+    s: val('s')
+  };
+}
+function setComputed(k,v){
+  if(!currentUnknowns().includes(k)) return false;
+  if(isFinite(v)){
+    values[k]=nice(v,2);
+    computed[k]=true;
+    return true;
+  }
+  return false;
+}
+function clearSelectedComputed(){
+  for(const k of currentUnknowns()){
+    if(computed[k]){ delete values[k]; delete computed[k]; }
+  }
+}
+function clearAll(){
+  for(const k in values) delete values[k];
+  for(const k in computed) delete computed[k];
+  renderFields();
+  calculate();
+}
+function renderModes(){
+  $('modes').innerHTML=modes.map(m=>`<button class="mode ${m.id===mode?'active':''}" data-mode="${m.id}">${m.name}</button>`).join('');
+  document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>{
+    mode=b.dataset.mode;
+    currentUnknowns();
+    for(const k in computed){ delete values[k]; delete computed[k]; }
+    renderModes();
+    renderFields();
+    calculate();
+  });
+}
+function renderFields(){
+ const keys=visibleKeys();
+ const u=currentUnknowns();
+ $('fields').innerHTML=keys.map(k=>{
+   const l=labels[k];
+   const checked = u.includes(k) ? ' checked' : '';
+   const readOnly = u.includes(k) ? ' readonly' : '';
+   const placeholder = u.includes(k) ? 'neznámá' : '?';
+   return `<div class="field ${u.includes(k)?'unknown':''} ${computed[k]?'computed':''}" id="row_${k}"><div class="labelBlock"><label for="${k}"><b>${l[0]}</b><br><span class="small">${l[2]}</span></label><label class="unknownPick" title="Označit ${l[0]} jako neznámou"><input type="checkbox" data-unknown="${k}"${checked}><span>neznámá</span></label></div><input inputmode="decimal" id="${k}" value="${values[k]??''}" placeholder="${placeholder}" autocomplete="off"${readOnly}><span class="unit">${l[1]}</span></div>`;
+ }).join('');
+ keys.forEach(k=>{
+   const input=$(k);
+   const box=document.querySelector(`input[data-unknown="${k}"]`);
+   box.addEventListener('change',e=>selectUnknown(k,e.target.checked));
+   if(u.includes(k)) return;
+   input.addEventListener('input',e=>{
+     values[k]=e.target.value;
+     computed[k]=false;
+     clearSelectedComputed();
+     clearTimeout(typingTimer);
+     typingTimer=setTimeout(calculate,80);
+   });
+ });
+}
+function variableLatex(k){
+ const map={v0:'v_0',a:'a',v:'v',dt:'\\Delta t',s:'s'};
+ return map[k] || k;
+}
+function unitLatex(k){
+ const unit=labels[k]?.[1] || '';
+ if(!unit) return '';
+ const map={'m·s⁻¹':'m\\cdot s^{-1}', 'm·s⁻²':'m\\cdot s^{-2}', 's':'s', 'm':'m'};
+ return `\\,\\mathrm{${map[unit] || unit}}`;
+}
+function hasZeroV0(){ return cfg().fixedV0===0; }
+function hasZeroV(){ return cfg().fixedV===0; }
+function baseEquationHtml(){
+  return `\\[v=v_0+a\\Delta t\\]\\[s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2\\]`;
+}
+function simplificationHtml(){
+  if(hasZeroV0()){
+    return `<div class="step"><b>2) Zjednodušení pro \\(v_0=0\\)</b><p class="small">Do obou hlavních rovnic dosadíme pouze počáteční podmínku. Žádný nový vzorec nepřidáváme.</p>\\[v=a\\Delta t\\]\\[s=\\frac{1}{2}a(\\Delta t)^2\\]</div>`;
+  }
+  if(hasZeroV()){
+    return `<div class="step"><b>2) Zjednodušení pro \\(v=0\\)</b><p class="small">Do rovnice pro rychlost dosadíme pouze podmínku zastavení. Rovnice pro dráhu zůstává stejná.</p>\\[0=v_0+a\\Delta t\\]\\[s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2\\]</div>`;
+  }
+  return '';
+}
+function derivationHtml(rows){
+ return `<div class="deriveRows">` + rows.map((row,i)=>`<div class="deriveRow"><div class="deriveNo">${i+1}</div><div class="deriveText">${row.txt}</div><div class="deriveMath">\\[${row.eq}\\]</div></div>`).join('') + `</div>`;
+}
+function oneUnknownRows(x){
+  const a=signedA();
+  const aPlain = val('a')==null ? 'a' : latexTerm(val('a'),2);
+  if(x==='a'){
+    if(hasZeroV0()){
+      return [
+        {txt:'Vyjdeme ze zjednodušené rovnice pro rychlost', eq:'v=a\\Delta t'},
+        {txt:'Vydělíme časem \\(\\Delta t\\)', eq:'a=\\frac{v}{\\Delta t}'}
+      ];
+    }
+    if(hasZeroV()){
+      return [
+        {txt:'Vyjdeme z rovnice pro rychlost při zastavení', eq:'0=v_0+a\\Delta t'},
+        {txt:'Odečteme \\(v_0\\) od obou stran', eq:'-v_0=a\\Delta t'},
+        {txt:'Vydělíme časem \\(\\Delta t\\)', eq:'a=-\\frac{v_0}{\\Delta t}'}
+      ];
+    }
+    return [
+      {txt:'Vezmeme rovnici pro rychlost, protože je v ní jediná neznámá \\(a\\)', eq:'v=v_0+a\\Delta t'},
+      {txt:'Odečteme \\(v_0\\) od obou stran', eq:'v-v_0=a\\Delta t'},
+      {txt:'Vydělíme časem \\(\\Delta t\\) a pak dosadíme hodnoty', eq:'a=\\frac{v-v_0}{\\Delta t}'}
+    ];
+  }
+  if(x==='v'){
+    if(hasZeroV0()){
+      return [
+        {txt:'Vyjdeme ze zjednodušené rovnice pro rychlost', eq:'v=a\\Delta t'},
+        {txt:'Dosadíme zadané zrychlení', eq:`v=${aPlain}\\cdot \\Delta t`}
+      ];
+    }
+    return [
+      {txt:'Vezmeme rovnici pro rychlost, protože je v ní jediná neznámá \\(v\\)', eq:'v=v_0+a\\Delta t'},
+      {txt:'Dosadíme známé hodnoty a dopočítáme \\(v\\)', eq:`v=v_0${a}\\cdot \\Delta t`}
+    ];
+  }
+  if(x==='s'){
+    if(hasZeroV0()){
+      return [
+        {txt:'Vyjdeme ze zjednodušené rovnice pro dráhu', eq:'s=\\frac{1}{2}a(\\Delta t)^2'},
+        {txt:'Dosadíme zadané zrychlení', eq:`s=\\frac{1}{2}\\cdot ${aPlain}\\cdot (\\Delta t)^2`}
+      ];
+    }
+    return [
+      {txt:'Vezmeme rovnici pro dráhu, protože je v ní jediná neznámá \\(s\\)', eq:'s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+      {txt:'Dosadíme známé hodnoty a dopočítáme \\(s\\)', eq:`s=v_0\\Delta t+\\frac{1}{2}\\cdot ${aPlain}\\cdot (\\Delta t)^2`}
+    ];
+  }
+  if(x==='dt'){
+    if(hasZeroV0()){
+      return [
+        {txt:'Vyjdeme ze zjednodušené rovnice pro dráhu', eq:'s=\\frac{1}{2}a(\\Delta t)^2'},
+        {txt:'Vynásobíme rovnici dvěma', eq:'2s=a(\\Delta t)^2'},
+        {txt:'Vydělíme zrychlením \\(a\\)', eq:'\\frac{2s}{a}=(\\Delta t)^2'},
+        {txt:'Odmocníme a vezmeme kladný čas', eq:'\\Delta t=\\sqrt{\\frac{2s}{a}}'}
+      ];
+    }
+    if(hasZeroV()){
+      return [
+        {txt:'Vyjdeme z rovnice pro rychlost při zastavení', eq:'0=v_0+a\\Delta t'},
+        {txt:'Odečteme \\(v_0\\) od obou stran', eq:'-v_0=a\\Delta t'},
+        {txt:'Vydělíme zrychlením \\(a\\)', eq:'\\Delta t=-\\frac{v_0}{a}'}
+      ];
+    }
+    return [
+      {txt:'Vezmeme rovnici pro rychlost, protože je v ní jediná neznámá \\(\\Delta t\\)', eq:'v=v_0+a\\Delta t'},
+      {txt:'Odečteme \\(v_0\\) od obou stran', eq:'v-v_0=a\\Delta t'},
+      {txt:'Vydělíme zrychlením \\(a\\)', eq:'\\Delta t=\\frac{v-v_0}{a}'},
+      {txt:'Dosadíme známé hodnoty a dopočítáme čas', eq:`\\Delta t=\\frac{v-v_0}{${aPlain}}`}
+    ];
+  }
+  if(x==='v0'){
+    if(hasZeroV()){
+      return [
+        {txt:'Vyjdeme z rovnice pro rychlost při zastavení', eq:'0=v_0+a\\Delta t'},
+        {txt:'Odečteme \\(a\\Delta t\\) od obou stran', eq:'v_0=-a\\Delta t'}
+      ];
+    }
+    return [
+      {txt:'Vezmeme rovnici pro rychlost, protože je v ní jediná neznámá \\(v_0\\)', eq:'v=v_0+a\\Delta t'},
+      {txt:'Odečteme \\(a\\Delta t\\) od obou stran', eq:'v-a\\Delta t=v_0'},
+      {txt:'Zapíšeme \\(v_0\\) vlevo', eq:'v_0=v-a\\Delta t'},
+      {txt:'Dosadíme známé hodnoty a dopočítáme počáteční rychlost', eq:`v_0=v-${aPlain}\\cdot \\Delta t`}
+    ];
+  }
+  return [];
+}
+function twoUnknownRows(pair){
+  const p=pair.slice().sort((a,b)=>visibleKeys().indexOf(a)-visibleKeys().indexOf(b)).join(',');
+  const aPlain = val('a')==null ? 'a' : latexTerm(val('a'),2);
+  if(p==='a,v'){
+    if(hasZeroV0()){
+      return [
+        {txt:'Nejdřív vezmeme rovnici pro dráhu, protože je v ní jediná neznámá \\(a\\)', eq:'s=\\frac{1}{2}a(\\Delta t)^2'},
+        {txt:'Vyjádříme zrychlení', eq:'a=\\frac{2s}{(\\Delta t)^2}'},
+        {txt:'Dosadíme a spočítáme \\(a\\). Pak vezmeme druhou rovnici', eq:'v=a\\Delta t'},
+        {txt:'Do druhé rovnice dosadíme vypočítané \\(a\\) a dopočítáme \\(v\\)', eq:'v=a\\Delta t'}
+      ];
+    }
+    return [
+      {txt:'Nejdřív vezmeme rovnici pro dráhu, protože je v ní jediná neznámá \\(a\\)', eq:'s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+      {txt:'Odečteme \\(v_0\\Delta t\\) od obou stran', eq:'s-v_0\\Delta t=\\frac{1}{2}a(\\Delta t)^2'},
+      {txt:'Vyjádříme zrychlení', eq:'a=\\frac{2(s-v_0\\Delta t)}{(\\Delta t)^2}'},
+      {txt:'Dosadíme a spočítáme \\(a\\). Pak vezmeme rovnici pro rychlost', eq:'v=v_0+a\\Delta t'},
+      {txt:'Do ní dosadíme vypočítané \\(a\\) a dopočítáme \\(v\\)', eq:'v=v_0+a\\Delta t'}
+    ];
+  }
+  if(p==='a,s'){
+    if(hasZeroV()){
+      return [
+        {txt:'Nejdřív vezmeme rovnici pro rychlost, protože je v ní jediná neznámá \\(a\\)', eq:'0=v_0+a\\Delta t'},
+        {txt:'Vyjádříme zrychlení', eq:'a=-\\frac{v_0}{\\Delta t}'},
+        {txt:'Dosadíme a spočítáme \\(a\\). Pak vezmeme rovnici pro dráhu', eq:'s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+        {txt:'Do ní dosadíme vypočítané \\(a\\) a dopočítáme \\(s\\)', eq:'s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'}
+      ];
+    }
+    if(hasZeroV0()){
+      return [
+        {txt:'Nejdřív vezmeme rovnici pro rychlost, protože je v ní jediná neznámá \\(a\\)', eq:'v=a\\Delta t'},
+        {txt:'Vyjádříme zrychlení', eq:'a=\\frac{v}{\\Delta t}'},
+        {txt:'Dosadíme a spočítáme \\(a\\). Pak vezmeme rovnici pro dráhu', eq:'s=\\frac{1}{2}a(\\Delta t)^2'},
+        {txt:'Do ní dosadíme vypočítané \\(a\\) a dopočítáme \\(s\\)', eq:'s=\\frac{1}{2}a(\\Delta t)^2'}
+      ];
+    }
+    return [
+      {txt:'Nejdřív vezmeme rovnici pro rychlost, protože je v ní jediná neznámá \\(a\\)', eq:'v=v_0+a\\Delta t'},
+      {txt:'Odečteme \\(v_0\\) a vydělíme časem', eq:'a=\\frac{v-v_0}{\\Delta t}'},
+      {txt:'Dosadíme a spočítáme \\(a\\). Pak vezmeme rovnici pro dráhu', eq:'s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+      {txt:'Do ní dosadíme vypočítané \\(a\\) a dopočítáme \\(s\\)', eq:'s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'}
+    ];
+  }
+  if(p==='a,dt'){
+    if(hasZeroV0()){
+      return [
+        {txt:'Tady není žádná rovnice jen s jednou neznámou, proto musíme dosadit jednu rovnici do druhé', eq:'v=a\\Delta t,\\quad s=\\frac{1}{2}a(\\Delta t)^2'},
+        {txt:'Z rovnice pro rychlost vyjádříme \\(a\\)', eq:'a=\\frac{v}{\\Delta t}'},
+        {txt:'Dosadíme do rovnice pro dráhu', eq:'s=\\frac{1}{2}\\cdot\\frac{v}{\\Delta t}\\cdot(\\Delta t)^2'},
+        {txt:'Upravíme a vyjádříme čas', eq:'\\Delta t=\\frac{2s}{v}'},
+        {txt:'Nakonec dopočítáme zrychlení z první rovnice', eq:'a=\\frac{v}{\\Delta t}'}
+      ];
+    }
+    if(hasZeroV()){
+      return [
+        {txt:'Tady není žádná rovnice jen s jednou neznámou, proto musíme dosadit jednu rovnici do druhé', eq:'0=v_0+a\\Delta t,\\quad s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+        {txt:'Z rovnice pro rychlost vyjádříme zrychlení', eq:'a=-\\frac{v_0}{\\Delta t}'},
+        {txt:'Dosadíme do rovnice pro dráhu', eq:'s=v_0\\Delta t+\\frac{1}{2}\\left(-\\frac{v_0}{\\Delta t}\\right)(\\Delta t)^2'},
+        {txt:'Upravíme pravou stranu', eq:'s=\\frac{1}{2}v_0\\Delta t'},
+        {txt:'Vyjádříme čas', eq:'\\Delta t=\\frac{2s}{v_0}'},
+        {txt:'Potom dopočítáme zrychlení z první rovnice', eq:'a=-\\frac{v_0}{\\Delta t}'}
+      ];
+    }
+    return [
+      {txt:'Tady není žádná rovnice jen s jednou neznámou, proto musíme dosadit jednu rovnici do druhé', eq:'v=v_0+a\\Delta t,\\quad s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+      {txt:'Z rovnice pro rychlost vyjádříme zrychlení', eq:'a=\\frac{v-v_0}{\\Delta t}'},
+      {txt:'Dosadíme do rovnice pro dráhu', eq:'s=v_0\\Delta t+\\frac{1}{2}\\cdot\\frac{v-v_0}{\\Delta t}\\cdot(\\Delta t)^2'},
+      {txt:'Upravíme výraz', eq:'s=v_0\\Delta t+\\frac{1}{2}(v-v_0)\\Delta t'},
+      {txt:'Vyjádříme čas', eq:'\\Delta t=\\frac{2s}{v_0+v}'},
+      {txt:'Nakonec dopočítáme zrychlení z první rovnice', eq:'a=\\frac{v-v_0}{\\Delta t}'}
+    ];
+  }
+  if(p==='v0,a'){
+    if(hasZeroV()){
+      return [
+        {txt:'Tady není žádná rovnice jen s jednou neznámou, proto musíme dosadit jednu rovnici do druhé', eq:'0=v_0+a\\Delta t,\\quad s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+        {txt:'Z rovnice pro rychlost vyjádříme \\(v_0\\)', eq:'v_0=-a\\Delta t'},
+        {txt:'Dosadíme do rovnice pro dráhu a vyjádříme \\(a\\)', eq:'a=-\\frac{2s}{(\\Delta t)^2}'},
+        {txt:'Potom dopočítáme počáteční rychlost', eq:'v_0=-a\\Delta t'}
+      ];
+    }
+    return [
+      {txt:'Tady není žádná rovnice jen s jednou neznámou, proto musíme dosadit jednu rovnici do druhé', eq:'v=v_0+a\\Delta t,\\quad s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+      {txt:'Z rovnice pro rychlost vyjádříme \\(v_0\\)', eq:'v_0=v-a\\Delta t'},
+      {txt:'Dosadíme do rovnice pro dráhu', eq:'s=(v-a\\Delta t)\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+      {txt:'Upravíme členy se zrychlením \\(a\\)', eq:'s=v\\Delta t-\\frac{1}{2}a(\\Delta t)^2'},
+      {txt:'Vyjádříme zrychlení', eq:'a=\\frac{2(v\\Delta t-s)}{(\\Delta t)^2}'},
+      {txt:'Nakonec dopočítáme počáteční rychlost z první rovnice', eq:'v_0=v-a\\Delta t'}
+    ];
+  }
+  if(p==='v,s'){
+    if(hasZeroV0()){
+      return [
+        {txt:'Nejdřív vezmeme rovnici pro rychlost, protože je v ní jediná neznámá \\(v\\)', eq:'v=a\\Delta t'},
+        {txt:'Dosadíme a spočítáme \\(v\\)', eq:`v=${aPlain}\\cdot \\Delta t`},
+        {txt:'Pak vezmeme druhou rovnici, kde je jediná neznámá \\(s\\)', eq:'s=\\frac{1}{2}a(\\Delta t)^2'},
+        {txt:'Dosadíme a spočítáme \\(s\\)', eq:`s=\\frac{1}{2}\\cdot ${aPlain}\\cdot (\\Delta t)^2`}
+      ];
+    }
+    return [
+      {txt:'Nejdřív vezmeme rovnici pro rychlost, protože je v ní jediná neznámá \\(v\\)', eq:'v=v_0+a\\Delta t'},
+      {txt:'Dosadíme známé hodnoty a spočítáme \\(v\\)', eq:`v=v_0${signedA()}\\Delta t`},
+      {txt:'Pak vezmeme rovnici pro dráhu, protože je v ní jediná neznámá \\(s\\)', eq:'s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+      {txt:'Dosadíme známé hodnoty a spočítáme \\(s\\)', eq:`s=v_0\\Delta t+\\frac{1}{2}\\cdot ${aPlain}(\\Delta t)^2`}
+    ];
+  }
+  if(p==='dt,v'){
+    if(hasZeroV0()){
+      return [
+        {txt:'Nejdřív vezmeme rovnici pro dráhu, protože je v ní jediná neznámá \\(\\Delta t\\)', eq:'s=\\frac{1}{2}a(\\Delta t)^2'},
+        {txt:'Vynásobíme rovnici dvěma', eq:'2s=a(\\Delta t)^2'},
+        {txt:'Vydělíme zrychlením \\(a\\)', eq:'\\frac{2s}{a}=(\\Delta t)^2'},
+        {txt:'Odmocníme, vezmeme kladný čas a dosadíme hodnoty', eq:'\\Delta t=\\sqrt{\\frac{2s}{a}}'},
+        {txt:'Pak vezmeme rovnici pro rychlost a dosadíme vypočítaný čas', eq:'v=a\\Delta t'}
+      ];
+    }
+    return [
+      {txt:'Nejdřív vezmeme rovnici pro dráhu, protože je v ní jediná neznámá \\(\\Delta t\\)', eq:'s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+      {txt:'Protože čas je i ve druhé mocnině, vznikne kvadratická rovnice', eq:'\\frac{1}{2}a(\\Delta t)^2+v_0\\Delta t-s=0'},
+      {txt:'Porovnáme s obecným tvarem kvadratické rovnice', eq:'a(\\Delta t)^2+b\\Delta t+c=0'},
+      {txt:'Dosadíme do vzorce pro kořeny', eq:'\\Delta t_{1,2}=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}'},
+      {txt:'Vybereme kladný čas. Pak vezmeme rovnici pro rychlost', eq:'v=v_0+a\\Delta t'},
+      {txt:'Do ní dosadíme vypočítaný čas a dopočítáme \\(v\\)', eq:'v=v_0+a\\Delta t'}
+    ];
+  }
+  if(p==='dt,s'){
+    if(hasZeroV0()){
+      return [
+        {txt:'Nejdřív vezmeme rovnici pro rychlost, protože je v ní jediná neznámá \\(\\Delta t\\)', eq:'v=a\\Delta t'},
+        {txt:'Vyjádříme čas', eq:'\\Delta t=\\frac{v}{a}'},
+        {txt:'Dosadíme a spočítáme \\(\\Delta t\\). Pak vezmeme rovnici pro dráhu', eq:'s=\\frac{1}{2}a(\\Delta t)^2'},
+        {txt:'Do ní dosadíme vypočítaný čas a dopočítáme \\(s\\)', eq:'s=\\frac{1}{2}a(\\Delta t)^2'}
+      ];
+    }
+    if(hasZeroV()){
+      return [
+        {txt:'Nejdřív vezmeme rovnici pro rychlost při zastavení, protože je v ní jediná neznámá \\(\\Delta t\\)', eq:'0=v_0+a\\Delta t'},
+        {txt:'Vyjádříme čas', eq:'\\Delta t=-\\frac{v_0}{a}'},
+        {txt:'Dosadíme a spočítáme \\(\\Delta t\\). Pak vezmeme rovnici pro dráhu', eq:'s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+        {txt:'Do ní dosadíme vypočítaný čas a dopočítáme \\(s\\)', eq:'s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'}
+      ];
+    }
+    return [
+      {txt:'Nejdřív vezmeme rovnici pro rychlost, protože je v ní jediná neznámá \\(\\Delta t\\)', eq:'v=v_0+a\\Delta t'},
+      {txt:'Odečteme \\(v_0\\) a vydělíme zrychlením', eq:'\\Delta t=\\frac{v-v_0}{a}'},
+      {txt:'Dosadíme a spočítáme \\(\\Delta t\\). Pak vezmeme rovnici pro dráhu', eq:'s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+      {txt:'Do ní dosadíme vypočítaný čas a dopočítáme \\(s\\)', eq:'s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'}
+    ];
+  }
+  if(p==='v0,v'){
+    return [
+      {txt:'Nejdřív vezmeme rovnici pro dráhu, protože je v ní jediná neznámá \\(v_0\\)', eq:'s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+      {txt:'Odečteme člen s druhou mocninou času', eq:'s-\\frac{1}{2}a(\\Delta t)^2=v_0\\Delta t'},
+      {txt:'Vydělíme časem', eq:'v_0=\\frac{s-\\frac{1}{2}a(\\Delta t)^2}{\\Delta t}'},
+      {txt:'Dosadíme a spočítáme \\(v_0\\). Pak vezmeme rovnici pro rychlost', eq:'v=v_0+a\\Delta t'},
+      {txt:'Do ní dosadíme vypočítané \\(v_0\\) a dopočítáme \\(v\\)', eq:'v=v_0+a\\Delta t'}
+    ];
+  }
+  if(p==='v0,s'){
+    if(hasZeroV()){
+      return [
+        {txt:'Nejdřív vezmeme rovnici pro rychlost při zastavení, protože je v ní jediná neznámá \\(v_0\\)', eq:'0=v_0+a\\Delta t'},
+        {txt:'Odečteme \\(a\\Delta t\\) od obou stran', eq:'v_0=-a\\Delta t'},
+        {txt:'Dosadíme a spočítáme \\(v_0\\). Pak vezmeme rovnici pro dráhu', eq:'s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+        {txt:'Do ní dosadíme vypočítané \\(v_0\\) a dopočítáme \\(s\\)', eq:'s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'}
+      ];
+    }
+    return [
+      {txt:'Nejdřív vezmeme rovnici pro rychlost, protože je v ní jediná neznámá \\(v_0\\)', eq:'v=v_0+a\\Delta t'},
+      {txt:'Odečteme \\(a\\Delta t\\) od obou stran', eq:'v_0=v-a\\Delta t'},
+      {txt:'Dosadíme a spočítáme \\(v_0\\). Pak vezmeme rovnici pro dráhu', eq:'s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+      {txt:'Do ní dosadíme vypočítané \\(v_0\\) a dopočítáme \\(s\\)', eq:'s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'}
+    ];
+  }
+  if(p==='v0,dt'){
+    if(hasZeroV()){
+      return [
+        {txt:'Tady není žádná rovnice jen s jednou neznámou, proto musíme dosadit jednu rovnici do druhé', eq:'0=v_0+a\\Delta t,\\quad s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+        {txt:'Z rovnice pro rychlost vyjádříme \\(v_0\\)', eq:'v_0=-a\\Delta t'},
+        {txt:'Dosadíme do rovnice pro dráhu', eq:'s=-\\frac{1}{2}a(\\Delta t)^2'},
+        {txt:'Vyjádříme čas', eq:'\\Delta t=\\sqrt{-\\frac{2s}{a}}'},
+        {txt:'Potom dopočítáme počáteční rychlost', eq:'v_0=-a\\Delta t'}
+      ];
+    }
+    return [
+      {txt:'Tady není žádná rovnice jen s jednou neznámou, proto musíme dosadit jednu rovnici do druhé', eq:'v=v_0+a\\Delta t,\\quad s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+      {txt:'Z rovnice pro rychlost vyjádříme \\(v_0\\)', eq:'v_0=v-a\\Delta t'},
+      {txt:'Dosadíme do rovnice pro dráhu', eq:'s=(v-a\\Delta t)\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+      {txt:'Upravíme na kvadratickou rovnici pro čas', eq:'\\frac{1}{2}a(\\Delta t)^2-v\\Delta t+s=0'},
+      {txt:'Porovnáme s obecným tvarem kvadratické rovnice', eq:'a(\\Delta t)^2+b\\Delta t+c=0'},
+      {txt:'Dosadíme do vzorce pro kořeny', eq:'\\Delta t_{1,2}=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}'},
+      {txt:'Vybereme kladný čas a nakonec dopočítáme \\(v_0\\)', eq:'v_0=v-a\\Delta t'}
+    ];
+  }
+  return [];
+}
+function sortedPairKey(pair){
+  return pair.slice().sort((x,y)=>visibleKeys().indexOf(x)-visibleKeys().indexOf(y)).join(',');
+}
+function calculationOrder(pair){
+  const p=sortedPairKey(pair);
+  if(p==='a,dt') return ['dt','a'];
+  if(p==='v0,a') return ['a','v0'];
+  if(p==='v0,dt') return ['dt','v0'];
+  return p.split(',');
+}
+function formulaStartsWithVar(formula, variable){
+  const f=formula.replace(/\s/g,'');
+  if(variable==='dt') return f.startsWith('\\Deltat=');
+  if(variable==='v0') return f.startsWith('v_0=');
+  if(variable==='a') return f.startsWith('a=');
+  if(variable==='v') return f.startsWith('v=');
+  if(variable==='s') return f.startsWith('s=');
+  return false;
+}
+function rowExpressesVar(row, variable){
+  return formulaStartsWithVar(row.eq || '', variable);
+}
+function displayFormulaList(html){
+  return [...html.matchAll(/\\\[([\s\S]*?)\\\]/g)].map(m=>m[1]);
+}
+function isCalculationPlaceholder(row){
+  const txt=row.txt || '';
+  return txt.includes('Dosadíme a spočítáme') ||
+         txt.includes('Dosadíme známé hodnoty a spočítáme') ||
+         txt.includes('Do ní dosadíme vypočítané') ||
+         txt.includes('Do ní dosadíme vypočítaný') ||
+         txt.includes('Do druhé rovnice dosadíme vypočítané');
+}
+function nextFormulaForVar(formulas, variable, startIndex){
+  for(let i=startIndex;i<formulas.length;i++){
+    if(formulaStartsWithVar(formulas[i], variable)) return {formula:formulas[i], next:i+1};
+  }
+  return {formula:null, next:startIndex};
+}
+function twoUnknownWorkedRows(unknowns, r){
+  const p=sortedPairKey(unknowns);
+  if(!hasZeroV0() && !hasZeroV() && (p==='dt,v' || p==='v0,dt')){
+    return quadraticWorkedRows(p, r);
+  }
+  const symbolicRows=twoUnknownRows(unknowns);
+  const formulas=displayFormulaList(substitutionHtml(unknowns, r));
+  const order=calculationOrder(unknowns);
+  const rows=[];
+  let formulaIndex=0;
+  let orderIndex=0;
+
+  for(const row of symbolicRows){
+    const variable=order[orderIndex];
+    const placeholder=isCalculationPlaceholder(row);
+    if(placeholder && (!variable || !rowExpressesVar(row, variable))) continue;
+    const visibleRow=placeholder && variable
+      ? {txt:`Teď vezmeme rovnici pro \\(${labels[variable][0]}\\)`, eq:row.eq}
+      : row;
+    rows.push(visibleRow);
+    if(variable && rowExpressesVar(row, variable)){
+      const found=nextFormulaForVar(formulas, variable, formulaIndex);
+      if(found.formula){
+        rows.push({
+          txt:`Dosadíme hodnoty a spočítáme \\(${labels[variable][0]}\\)`,
+          eq:found.formula
+        });
+        formulaIndex=found.next;
+        orderIndex++;
+      }
+    }
+  }
+  return rows;
+}
+function signedQuadTerm(x, body=''){
+  if(Math.abs(x)<1e-12) return '';
+  const sign=x<0 ? '-' : '+';
+  return `${sign}${latexNum(Math.abs(x))}${body}`;
+}
+function quadraticPolynomial(A,B,C){
+  return `${latexTerm(A)}(\\Delta t)^2${signedQuadTerm(B,'\\Delta t')}${signedQuadTerm(C)}=0`;
+}
+function quadraticFormulaRows(A,B,C, chosen){
+  const roots=solveQuadratic(A,B,C);
+  const r1=roots[0], r2=roots[1] ?? roots[0];
+  return [
+    {txt:'Tady si zapíšeme koeficienty \\(a\\), \\(b\\), \\(c\\) kvadratické rovnice', eq:`a=${latexNum(A)},\\quad b=${latexNum(B)},\\quad c=${latexNum(C)}`},
+    {txt:'Dosadíme je do vzorce pro kvadratickou rovnici', eq:`\\Delta t_{1,2}=\\frac{-${latexTerm(B)}\\pm\\sqrt{${latexTerm(B)}^2-4\\cdot ${latexTerm(A)}\\cdot ${latexTerm(C)}}}{2\\cdot ${latexTerm(A)}}`},
+    {txt:'Spočítáme oba kořeny', eq:`\\Delta t_1=${latexNum(r1)}\\,\\mathrm{s},\\quad \\Delta t_2=${latexNum(r2)}\\,\\mathrm{s}`},
+    {txt:'Vybereme kladný čas', eq:`\\Delta t=${latexNum(chosen)}\\,\\mathrm{s}`}
+  ];
+}
+function quadraticWorkedRows(pairKey, r){
+  const n=(x,d=2)=>latexNum(x,d);
+  const t=x=>latexTerm(x,2);
+  const v0=t(r.v0), a=t(r.a), dt=t(r.dt), v=t(r.v), s=t(r.s);
+  const speedResult=`v=v_0+a\\Delta t=${v0}+${a}\\cdot ${dt}=${n(r.v)}${unitLatex('v')}`;
+  const v0Result=`v_0=v-a\\Delta t=${v}-${a}\\cdot ${dt}=${n(r.v0)}${unitLatex('v0')}`;
+  if(pairKey==='dt,v'){
+    const A=0.5*r.a, B=r.v0, C=-r.s;
+    return [
+      {txt:'Nejdřív vezmeme rovnici pro dráhu, protože v ní je jen jedna neznámá \\(\\Delta t\\)', eq:'s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+      {txt:'Dosadíme čísla za všechno kromě času', eq:`${s}=${v0}\\Delta t+\\frac{1}{2}\\cdot ${a}(\\Delta t)^2`},
+      {txt:'Převedeme ji na kvadratickou rovnici', eq:quadraticPolynomial(A,B,C)},
+      ...quadraticFormulaRows(A,B,C,r.dt),
+      {txt:'Teď vezmeme rovnici pro rychlost', eq:'v=v_0+a\\Delta t'},
+      {txt:'Dosadíme vypočítaný čas a spočítáme \\(v\\)', eq:speedResult}
+    ];
+  }
+  const A=0.5*r.a, B=-r.v, C=r.s;
+  return [
+    {txt:'Tady není žádná rovnice jen s jednou neznámou, proto musíme dosadit jednu rovnici do druhé', eq:'v=v_0+a\\Delta t,\\quad s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+    {txt:'Z rovnice pro rychlost vyjádříme \\(v_0\\)', eq:'v_0=v-a\\Delta t'},
+    {txt:'Dosadíme do rovnice pro dráhu', eq:'s=(v-a\\Delta t)\\Delta t+\\frac{1}{2}a(\\Delta t)^2'},
+    {txt:'Dosadíme čísla za všechno kromě času', eq:`${s}=(${v}-${a}\\Delta t)\\Delta t+\\frac{1}{2}\\cdot ${a}(\\Delta t)^2`},
+    {txt:'Převedeme ji na kvadratickou rovnici', eq:quadraticPolynomial(A,B,C)},
+    ...quadraticFormulaRows(A,B,C,r.dt),
+    {txt:'Teď vezmeme vyjádřený vztah pro \\(v_0\\)', eq:'v_0=v-a\\Delta t'},
+    {txt:'Dosadíme vypočítaný čas a spočítáme \\(v_0\\)', eq:v0Result}
+  ];
+}
+function positiveRoot(roots){
+  const real=roots.filter(x=>Number.isFinite(x));
+  const positive=real.filter(x=>x>=0);
+  if(positive.length) return Math.min(...positive);
+  return real.length ? real[0] : null;
+}
+function solveQuadratic(A,B,C){
+  if(Math.abs(A)<1e-12){
+    if(Math.abs(B)<1e-12) return [];
+    return [-C/B];
+  }
+  const D=B*B-4*A*C;
+  if(D<-1e-9) return [];
+  if(Math.abs(D)<1e-9) return [-B/(2*A)];
+  const sqrtD=Math.sqrt(Math.max(0,D));
+  return [(-B-sqrtD)/(2*A), (-B+sqrtD)/(2*A)];
+}
+function knownValue(k, state){
+  if(k==='v0') return state.v0;
+  return state[k];
+}
+function missingInputs(unknowns){
+  const state=motionState();
+  return visibleKeys().filter(k=>!unknowns.includes(k) && knownValue(k,state)==null);
+}
+function solveMotion(){
+  const unknowns=currentUnknowns();
+  for(const k of unknowns){ if(computed[k]){ delete values[k]; delete computed[k]; } }
+  const miss=missingInputs(unknowns);
+  const steps=[];
+  const fixedNote = cfg().fixedV0===0 ? ' V dalším kroku použijeme podmínku \\(v_0=0\\).' : (cfg().fixedV===0 ? ' V dalším kroku použijeme podmínku \\(v=0\\).' : '');
+  steps.push(`<div class="step"><b>1) Použité rovnice</b>${baseEquationHtml()}<p class="small">Toto jsou vždy dvě hlavní rovnice pro rovnoměrně zrychlený nebo zpomalený pohyb.${fixedNote}</p></div>`);
+  const simplified = simplificationHtml();
+  if(simplified) steps.push(simplified);
+  if(miss.length) return {ready:false, steps, missingInputs:miss, solved:[]};
+
+  const state=motionState();
+  const signProblem=aSignProblem(state.a);
+  if(signProblem){
+    steps.push(`<div class="warn">${signProblem}</div>`);
+    return {ready:false, steps, missingInputs:[], solved:[]};
+  }
+  let a=state.a;
+  let v0=state.v0, dt=state.dt, v=state.v, s=state.s;
+  let ok=true;
+
+  if(unknowns.length===1){
+    const x=unknowns[0];
+    if(x==='a') a=(v-v0)/dt;
+    if(x==='v') v=v0+a*dt;
+    if(x==='s') s=v0*dt+0.5*a*dt*dt;
+    if(x==='dt') dt=hasZeroV0() ? Math.sqrt((2*s)/a) : (v-v0)/a;
+    if(x==='v0') v0=v-a*dt;
+  }else{
+    const pair=unknowns.slice().sort((x,y)=>visibleKeys().indexOf(x)-visibleKeys().indexOf(y)).join(',');
+    if(pair==='a,v'){
+      if(Math.abs(dt)<1e-12) ok=false;
+      a=2*(s-v0*dt)/(dt*dt);
+      v=v0+a*dt;
+    }else if(pair==='a,s'){
+      if(Math.abs(dt)<1e-12) ok=false;
+      a=(v-v0)/dt;
+      s=v0*dt+0.5*a*dt*dt;
+    }else if(pair==='a,dt'){
+      if(Math.abs(v0+v)<1e-12) ok=false;
+      dt=2*s/(v0+v);
+      a=(v-v0)/dt;
+    }else if(pair==='v0,a'){
+      if(Math.abs(dt)<1e-12) ok=false;
+      a=2*(v*dt-s)/(dt*dt);
+      v0=v-a*dt;
+    }else if(pair==='v,s'){
+      v=v0+a*dt;
+      s=v0*dt+0.5*a*dt*dt;
+    }else if(pair==='dt,v'){
+      dt=positiveRoot(solveQuadratic(0.5*a, v0, -s));
+      if(dt==null) ok=false;
+      v=v0+a*dt;
+    }else if(pair==='dt,s'){
+      dt=(v-v0)/a;
+      s=v0*dt+0.5*a*dt*dt;
+    }else if(pair==='v0,v'){
+      if(Math.abs(dt)<1e-12) ok=false;
+      v0=(s-0.5*a*dt*dt)/dt;
+      v=v0+a*dt;
+    }else if(pair==='v0,s'){
+      v0=v-a*dt;
+      s=v0*dt+0.5*a*dt*dt;
+    }else if(pair==='v0,dt'){
+      dt=positiveRoot(solveQuadratic(0.5*a, -v, s));
+      if(dt==null) ok=false;
+      v0=v-a*dt;
+    }else{
+      ok=false;
+    }
+  }
+  const solvedValues={v0,a,dt,v,s};
+  if(!ok || unknowns.some(k=>!Number.isFinite(solvedValues[k]))){
+    steps.push(`<div class="warn">Tahle kombinace hodnot nedává reálné jednoznačné řešení. Zkus upravit zadané hodnoty nebo vybrat jinou dvojici neznámých.</div>`);
+    return {ready:false, steps, missingInputs:[], solved:[]};
+  }
+  if((cfg().sign>0 && solvedValues.a<=0) || (cfg().sign<0 && solvedValues.a>=0)){
+    steps.push(`<div class="warn">Vyšlo \\(a=${latexNum(solvedValues.a)}\\,\\mathrm{m\\cdot s^{-2}}\\), což neodpovídá zvolenému režimu. Pro zrychlený pohyb má být \\(a>0\\), pro zpomalený \\(a<0\\).</div>`);
+    return {ready:false, steps, missingInputs:[], solved:[]};
+  }
+  const checkV=solvedValues.v0+solvedValues.a*solvedValues.dt;
+  const checkS=solvedValues.v0*solvedValues.dt+0.5*solvedValues.a*solvedValues.dt*solvedValues.dt;
+  if(Math.abs(checkV-solvedValues.v)>0.02 || Math.abs(checkS-solvedValues.s)>0.02){
+    steps.push(`<div class="warn">Zadané hodnoty si odporují. Z rovnice pro rychlost vychází \\(v=${latexNum(checkV)}\\,\\mathrm{m\\cdot s^{-1}}\\) a z rovnice pro dráhu \\(s=${latexNum(checkS)}\\,\\mathrm{m}\\), ale zadané/dopočítané hodnoty jsou jiné.</div>`);
+    return {ready:false, steps, missingInputs:[], solved:[]};
+  }
+  for(const k of unknowns) setComputed(k, solvedValues[k]);
+
+  const solvedText=unknowns.map(k=>labels[k][0]).join(', ');
+  let n = simplified ? 3 : 2;
+  if(unknowns.length===1){
+    const rows=oneUnknownRows(unknowns[0]);
+    steps.push(`<div class="step"><b>${n++}) Vyjádření neznámé ${solvedText} krok za krokem</b>${derivationHtml(rows)}</div>`);
+    steps.push(`<div class="step"><b>${n++}) Dosazení</b>${substitutionHtml(unknowns, solvedValues)}</div>`);
+  }else{
+    const rows=twoUnknownWorkedRows(unknowns, solvedValues);
+    steps.push(`<div class="step"><b>${n++}) Postup výpočtu neznámých ${solvedText}</b>${derivationHtml(rows)}</div>`);
+  }
+  steps.push(`<div class="step"><b>${n}) Kontrola v obou rovnicích</b>${checkHtml(solvedValues)}</div>`);
+  return {ready:true, steps, missingInputs:[], solved:unknowns};
+}
+function substitutionHtml(unknowns, r){
+  const pair=unknowns.slice().sort((x,y)=>visibleKeys().indexOf(x)-visibleKeys().indexOf(y)).join(',');
+  const n=(x,d=2)=>latexNum(x,d);
+  const t=x=>latexTerm(x,2);
+  const v0=t(r.v0), a=t(r.a), dt=t(r.dt), v=t(r.v), s=t(r.s);
+  const lines=[];
+  const speedLine = () => hasZeroV0()
+    ? `\\[v=a\\Delta t=${a}\\cdot ${dt}=${n(r.v)}${unitLatex('v')}\\]`
+    : hasZeroV()
+    ? `\\[0=v_0+a\\Delta t=${v0}+${a}\\cdot ${dt}=0\\,\\mathrm{m\\cdot s^{-1}}\\]`
+    : `\\[v=v_0+a\\Delta t=${v0}+${a}\\cdot ${dt}=${n(r.v)}${unitLatex('v')}\\]`;
+  const distanceLine = () => hasZeroV0()
+    ? `\\[s=\\frac{1}{2}a(\\Delta t)^2=\\frac{1}{2}\\cdot ${a}\\cdot ${dt}^2=${n(r.s)}${unitLatex('s')}\\]`
+    : `\\[s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2=${v0}\\cdot ${dt}+\\frac{1}{2}\\cdot ${a}\\cdot ${dt}^2=${n(r.s)}${unitLatex('s')}\\]`;
+  const accelFromSpeed = () => hasZeroV0()
+    ? `\\[a=\\frac{v}{\\Delta t}=\\frac{${v}}{${dt}}=${n(r.a)}${unitLatex('a')}\\]`
+    : hasZeroV()
+    ? `\\[a=-\\frac{v_0}{\\Delta t}=-\\frac{${v0}}{${dt}}=${n(r.a)}${unitLatex('a')}\\]`
+    : `\\[a=\\frac{v-v_0}{\\Delta t}=\\frac{${v}-${v0}}{${dt}}=${n(r.a)}${unitLatex('a')}\\]`;
+  const accelFromDistance = () => hasZeroV0()
+    ? `\\[a=\\frac{2s}{(\\Delta t)^2}=\\frac{2\\cdot ${s}}{${dt}^2}=${n(r.a)}${unitLatex('a')}\\]`
+    : `\\[a=\\frac{2(s-v_0\\Delta t)}{(\\Delta t)^2}=\\frac{2\\cdot(${s}-${v0}\\cdot ${dt})}{${dt}^2}=${n(r.a)}${unitLatex('a')}\\]`;
+  const v0FromSpeed = () => hasZeroV()
+    ? `\\[v_0=-a\\Delta t=-${a}\\cdot ${dt}=${n(r.v0)}${unitLatex('v0')}\\]`
+    : `\\[v_0=v-a\\Delta t=${v}-${a}\\cdot ${dt}=${n(r.v0)}${unitLatex('v0')}\\]`;
+  const v0FromDistance = () => `\\[v_0=\\frac{s-\\frac{1}{2}a(\\Delta t)^2}{\\Delta t}=\\frac{${s}-\\frac{1}{2}\\cdot ${a}\\cdot ${dt}^2}{${dt}}=${n(r.v0)}${unitLatex('v0')}\\]`;
+  const timeFromSpeed = () => hasZeroV0()
+    ? `\\[\\Delta t=\\frac{v}{a}=\\frac{${v}}{${a}}=${n(r.dt)}${unitLatex('dt')}\\]`
+    : hasZeroV()
+    ? `\\[\\Delta t=-\\frac{v_0}{a}=-\\frac{${v0}}{${a}}=${n(r.dt)}${unitLatex('dt')}\\]`
+    : `\\[\\Delta t=\\frac{v-v_0}{a}=\\frac{${v}-${v0}}{${a}}=${n(r.dt)}${unitLatex('dt')}\\]`;
+  const timeFromAverageSpeed = () => hasZeroV0()
+    ? `\\[\\Delta t=\\frac{2s}{v}=\\frac{2\\cdot ${s}}{${v}}=${n(r.dt)}${unitLatex('dt')}\\]`
+    : `\\[\\Delta t=\\frac{2s}{v_0+v}=\\frac{2\\cdot ${s}}{${v0}+${v}}=${n(r.dt)}${unitLatex('dt')}\\]`;
+  const timeFromStopBySubstitution = () =>
+    `\\[a=-\\frac{v_0}{\\Delta t}\\]`+
+    `\\[s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2=${v0}\\cdot\\Delta t+\\frac{1}{2}\\left(-\\frac{${v0}}{\\Delta t}\\right)(\\Delta t)^2=\\frac{1}{2}\\cdot ${v0}\\cdot\\Delta t\\]`+
+    `\\[\\Delta t=\\frac{2s}{v_0}=\\frac{2\\cdot ${s}}{${v0}}=${n(r.dt)}${unitLatex('dt')}\\]`;
+  const timeFromDistanceZero = () => `\\[\\Delta t=\\sqrt{\\frac{2s}{a}}=\\sqrt{\\frac{2\\cdot ${s}}{${a}}}=${n(r.dt)}${unitLatex('dt')}\\]`;
+  const timeFromStopDistance = () => `\\[\\Delta t=\\sqrt{-\\frac{2s}{a}}=\\sqrt{-\\frac{2\\cdot ${s}}{${a}}}=${n(r.dt)}${unitLatex('dt')}\\]`;
+  const accelFromV0Pair = () => `\\[a=\\frac{2(v\\Delta t-s)}{(\\Delta t)^2}=\\frac{2\\cdot(${v}\\cdot ${dt}-${s})}{${dt}^2}=${n(r.a)}${unitLatex('a')}\\]`;
+  const accelFromStopDistance = () => `\\[a=-\\frac{2s}{(\\Delta t)^2}=-\\frac{2\\cdot ${s}}{${dt}^2}=${n(r.a)}${unitLatex('a')}\\]`;
+
+  if(unknowns.length===1){
+    const x=unknowns[0];
+    if(x==='a') lines.push(accelFromSpeed());
+    if(x==='v') lines.push(speedLine());
+    if(x==='s') lines.push(distanceLine());
+    if(x==='dt') lines.push(hasZeroV0() ? timeFromDistanceZero() : timeFromSpeed());
+    if(x==='v0') lines.push(v0FromSpeed());
+    return lines.join('');
+  }
+
+  if(pair==='a,v'){
+    lines.push(accelFromDistance(), speedLine());
+  }else if(pair==='a,s'){
+    lines.push(accelFromSpeed(), distanceLine());
+  }else if(pair==='a,dt'){
+    lines.push(hasZeroV() ? timeFromStopBySubstitution() : timeFromAverageSpeed(), accelFromSpeed());
+  }else if(pair==='v0,a'){
+    lines.push(hasZeroV() ? accelFromStopDistance() : accelFromV0Pair(), v0FromSpeed());
+  }else if(pair==='v,s'){
+    lines.push(speedLine(), distanceLine());
+  }else if(pair==='dt,v'){
+    lines.push(hasZeroV0() ? timeFromDistanceZero() : quadraticSubstitutionHtml(0.5*r.a, r.v0, -r.s, r.dt));
+    lines.push(speedLine());
+  }else if(pair==='dt,s'){
+    lines.push(timeFromSpeed(), distanceLine());
+  }else if(pair==='v0,v'){
+    lines.push(v0FromDistance(), speedLine());
+  }else if(pair==='v0,s'){
+    lines.push(v0FromSpeed(), distanceLine());
+  }else if(pair==='v0,dt'){
+    lines.push(hasZeroV() ? timeFromStopDistance() : quadraticSubstitutionHtml(0.5*r.a, -r.v, r.s, r.dt));
+    lines.push(v0FromSpeed());
+  }
+  return lines.join('');
+}
+function quadraticSubstitutionHtml(A,B,C, chosen){
+  const D=B*B-4*A*C;
+  const roots=solveQuadratic(A,B,C);
+  const r1=roots[0], r2=roots[1] ?? roots[0];
+  const chosenText=latexNum(chosen);
+  if(Math.abs(A)<1e-12){
+    return `\\[b\\Delta t+c=0\\]`+
+           `\\[${latexTerm(B)}\\Delta t${signedQuadTerm(C)}=0\\]`+
+           `\\[b=${latexNum(B)},\\quad c=${latexNum(C)}\\]`+
+           `\\[\\Delta t=-\\frac{c}{b}=-\\frac{${latexTerm(C)}}{${latexTerm(B)}}=${chosenText}${unitLatex('dt')}\\]`;
+  }
+  return `\\[a(\\Delta t)^2+b\\Delta t+c=0\\]`+
+         `\\[${quadraticPolynomial(A,B,C)}\\]`+
+         `\\[a=${latexNum(A)},\\quad b=${latexNum(B)},\\quad c=${latexNum(C)}\\]`+
+         `\\[\\Delta t_{1,2}=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}=\\frac{-${latexTerm(B)}\\pm\\sqrt{${latexTerm(B)}^2-4\\cdot ${latexTerm(A)}\\cdot ${latexTerm(C)}}}{2\\cdot ${latexTerm(A)}}\\]`+
+         `\\[\\Delta t_1=${latexNum(r1)}\\,\\mathrm{s},\\quad \\Delta t_2=${latexNum(r2)}\\,\\mathrm{s}\\]`+
+         `\\[\\Delta t=${chosenText}\\,\\mathrm{s}\\quad\\text{bereme kladný čas}\\]`;
+}
+function checkHtml(r){
+  const a=latexTerm(r.a,2), t=latexTerm(r.dt), v0=latexTerm(r.v0);
+  if(hasZeroV0()){
+    return `\\[v=a\\Delta t=${a}\\cdot ${t}=${latexNum(r.v)}\\,\\mathrm{m\\cdot s^{-1}}\\]`+
+           `\\[s=\\frac{1}{2}a(\\Delta t)^2=\\frac{1}{2}\\cdot ${a}\\cdot ${t}^2=${latexNum(r.s)}\\,\\mathrm{m}\\]`;
+  }
+  return `\\[v=v_0+a\\Delta t=${v0}+${a}\\cdot ${t}=${latexNum(r.v)}\\,\\mathrm{m\\cdot s^{-1}}\\]`+
+         `\\[s=v_0\\Delta t+\\frac{1}{2}a(\\Delta t)^2=${v0}\\cdot ${t}+\\frac{1}{2}\\cdot ${a}\\cdot ${t}^2=${latexNum(r.s)}\\,\\mathrm{m}\\]`;
+}
+function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function resetValues(){ for(const k in values) delete values[k]; for(const k in computed) delete computed[k]; }
+function fillObject(obj){
+  resetValues();
+  for(const [k,v] of Object.entries(obj)) values[k]=nice(v,2);
+}
+function generateRandomExample(){
+  const c=cfg();
+  const a=c.sign * (randInt(8,45)/10);
+  let v0=0;
+  let dt=randInt(15,70)/10;
+  if(c.fixedV===0){
+    v0=randInt(80,240)/10;
+    dt=Math.abs(v0/a);
+  }else if(c.fixedV0===null){
+    if(a>0){
+      v0=randInt(20,120)/10;
+      dt=randInt(10,65)/10;
+    }else{
+      v0=randInt(100,240)/10;
+      const maxT=Math.max(12, Math.floor((v0/Math.abs(a)-0.3)*10));
+      dt=randInt(8, Math.min(maxT,70))/10;
+    }
+  }
+  const obj={
+    v0,
+    a,
+    dt,
+    v:v0+a*dt,
+    s:v0*dt+0.5*a*dt*dt
+  };
+  const keys=visibleKeys();
+  const selected=currentUnknowns().filter(k=>keys.includes(k));
+  const fallbackPairs = c.fixedV0===0
+    ? [['a'],['v'],['s'],['dt'],['a','v'],['a','s'],['a','dt'],['v','s'],['dt','v'],['dt','s']]
+    : (c.fixedV===0
+      ? [['a'],['s'],['dt'],['v0'],['a','s'],['a','dt'],['v0','a'],['dt','s'],['v0','s'],['v0','dt']]
+      : [['a'],['v'],['s'],['dt'],['v0'],['a','v'],['a','s'],['a','dt'],['v0','a'],['v','s'],['dt','v'],['dt','s'],['v0','v'],['v0','s'],['v0','dt']]);
+  const missing = selected.length ? selected : pick(fallbackPairs);
+  fillObject(obj);
+  unknownsByMode[mode]=missing;
+  for(const k of missing){ delete values[k]; delete computed[k]; }
+  renderFields();
+  calculate();
+}
+function typesetMath(){
+ const nodes = [$('steps'), $('equation')].filter(Boolean);
+ if(window.MathJax && MathJax.typesetPromise){
+   try{ if(MathJax.typesetClear) MathJax.typesetClear(nodes); }catch(e){}
+   MathJax.typesetPromise(nodes).catch(err=>console.warn('MathJax typeset failed:', err));
+ }
+}
+window.typesetMath = typesetMath;
+function renderFieldsPreserveFocus(){
+ const active=document.activeElement;
+ const id=active&&active.id;
+ const pos=active&&active.selectionStart;
+ renderFields();
+ if(id && $(id) && !currentUnknowns().includes(id) && !computed[id]){
+   $(id).focus();
+   try{$(id).setSelectionRange(pos,pos)}catch(e){}
+ }
+}
+function calculate(){
+ const r=solveMotion();
+ renderFieldsPreserveFocus();
+ const u=currentUnknowns();
+ const names=u.map(k=>labels[k][0]).join(', ');
+ $('status').textContent = r.ready ? `Dopočítaná neznámá: ${names}` : `Zatím chybí hodnoty pro ${names}`;
+ const aLabel = currentUnknowns().includes('a') ? 'a je neznámé' : (val('a')==null ? 'a není zadáno' : `a = ${fmt(val('a'))} m·s⁻²`);
+ $('equation').innerHTML = `<span class="pill">${cfg().name}</span><span class="pill">${aLabel}</span><span class="pill">neznámé: ${names}</span>`;
+ const missing = (r.missingInputs && r.missingInputs.length) ? ` Chybí ještě: ${r.missingInputs.map(k=>labels[k][0]).join(', ')}.` : '';
+ $('steps').innerHTML = r.steps.join('') + (!r.ready?`<div class="warn">Zaškrtni jednu nebo dvě neznámé a doplň ostatní hodnoty.${missing}</div>`:'');
+ typesetMath();
+}
+$('randomExample').onclick=generateRandomExample;
+$('clearAll').onclick=clearAll;
+renderModes();
+renderFields();
+calculate();
+window.addEventListener('load', () => setTimeout(typesetMath, 0));
+</script>
+</body>
+</html>
