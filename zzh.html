@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Zákon zachování hybnosti</title>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['\\[','\\]']] },
+    svg: { fontCache: 'global' },
+    startup: {
+      typeset: false,
+      ready: () => {
+        MathJax.startup.defaultReady();
+        window.mathJaxReady = true;
+        if (typeof window.typesetMath === 'function') window.typesetMath();
+      }
+    }
+  };
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+:root{
+  --bg:#f6f3ea; --panel:#ffffff; --ink:#242424; --muted:#67625a;
+  --line:#dfd2bd; --accent:#d99a35; --accent2:#6fb7a8; --soft:#fbf0de;
+  --ok:#fff2a8; --bad:#ffe1dd; --good:#eef9f6;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+.app{display:grid;grid-template-columns:370px 1fr;min-height:100vh}
+aside{padding:18px;border-right:1px solid var(--line);background:#fffaf1;position:sticky;top:0;height:100vh;overflow:auto}
+main{padding:22px;overflow:auto}
+h1{font-size:25px;margin:0 0 12px}
+h2{font-size:22px;margin:0 0 10px}
+h3{font-size:18px;margin:16px 0 8px}
+p{line-height:1.45}
+.small{font-size:13px;color:var(--muted);line-height:1.35}
+.mode{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:11px 12px;margin:7px 0;cursor:pointer;font-weight:750;color:var(--ink)}
+.mode.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(217,154,53,.22);background:#fff8e8}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;margin:14px 0;box-shadow:0 4px 18px rgba(70,50,20,.05)}
+.field{display:grid;grid-template-columns:minmax(118px,1fr) minmax(90px,122px) 58px;gap:8px;align-items:center;margin:8px 0;padding:8px;border-radius:8px;border:1px solid transparent}
+.field.unknown{background:var(--good);border-color:#99d7ca}
+.field.computed{background:var(--ok);border-color:#e8ca55}
+.field.fixed{background:#fffdf5;border-color:#eadfc8}
+.labelBlock{min-width:0;display:flex;flex-direction:column;gap:6px}
+.field label{font-size:14px;line-height:1.2;min-width:0}
+.unknownPick{display:inline-flex;align-items:center;align-self:flex-start;gap:6px;font-size:12px;color:#286d60;cursor:pointer;user-select:none;white-space:nowrap;background:#f8fffc;border:1px solid #aee1d1;border-radius:999px;padding:3px 8px;line-height:1.1}
+.unknownPick input{width:auto;min-width:0;flex:0 0 auto;accent-color:var(--accent2);cursor:pointer;margin:0}
+.fixedPill{display:inline-flex;align-items:center;align-self:flex-start;font-size:12px;color:#735000;white-space:nowrap;background:#fff8e8;border:1px solid #ead199;border-radius:999px;padding:3px 8px;line-height:1.1}
+.field input[type="text"]{width:100%;min-width:0;padding:9px 8px;border:1px solid var(--line);border-radius:8px;font-size:15px;background:white;color:var(--ink)}
+.field input[readonly]{background:#fffdf5;font-weight:800;color:#735000}
+.field input:focus{outline:2px solid rgba(111,183,168,.55);border-color:var(--accent2)}
+.unit{font-size:12px;color:var(--muted)}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:white;border-radius:8px;padding:9px 11px;cursor:pointer;font-weight:700}
+.btn:hover{background:#fff8e8}
+.resultBox{background:#f8fffc;border:1px solid #aee1d1;border-radius:8px;padding:18px;margin-bottom:16px}
+.steps{display:grid;gap:12px}
+.step{background:white;border:1px solid var(--line);border-left:7px solid var(--accent);border-radius:8px;padding:14px;overflow-x:auto}
+.step b{display:block;margin-bottom:8px}
+.deriveRows{display:grid;gap:10px;margin-top:8px}
+.deriveRow{display:grid;grid-template-columns:34px minmax(150px,1fr) 2fr;gap:12px;align-items:center;background:#fffdf9;border:1px solid var(--line);border-radius:8px;padding:10px}
+.deriveNo{width:26px;height:26px;border-radius:999px;background:#e8f6ef;border:1px solid #aee1d1;display:flex;align-items:center;justify-content:center;font-weight:800;color:#126b42}
+.deriveText{font-size:14px;color:var(--muted);line-height:1.25}
+.deriveMath{overflow-x:auto;text-align:center}
+.warn{background:var(--bad);border:1px solid #f2a29a;border-radius:8px;padding:10px;margin-top:10px}
+.muted{color:var(--muted)}
+.direction{background:#fff8e8;border:1px solid #ead199;border-radius:8px;padding:10px;margin-top:8px}
+@media(max-width:850px){
+  .app{grid-template-columns:1fr}
+  aside{height:auto;position:relative;border-right:0;border-bottom:1px solid var(--line)}
+}
+@media(max-width:650px){
+  aside{padding:14px}
+  main{padding:14px}
+  h1{font-size:23px}
+  .deriveRow{
+    display:grid;
+    grid-template-columns:34px 1fr;
+    grid-template-areas:"no text" "math math";
+    align-items:center;
+    gap:8px 10px;
+    padding:12px;
+  }
+  .deriveNo{grid-area:no;width:31px;height:31px;font-size:18px}
+  .deriveText{grid-area:text;font-size:16px;line-height:1.28}
+  .deriveMath{grid-area:math;width:100%;max-width:100%;overflow-x:auto;text-align:left;padding-top:9px;border-top:1px dashed var(--line)}
+  .deriveMath mjx-container[display="true"]{margin:0!important;text-align:left!important;min-width:max-content;max-width:none;padding:2px 0 4px}
+}
+@media(max-width:430px){
+  aside{padding:12px}
+  main{padding:10px}
+  .card{padding:12px}
+  .field{grid-template-columns:minmax(98px,1fr) minmax(78px,112px) 48px;gap:6px;padding:7px}
+  .field label{font-size:13px}
+  .small{font-size:12px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <h1>Zákon zachování hybnosti</h1>
+  <p class="small">Používáme jednu základní rovnici: \(m_1v_1+m_2v_2=m_1w_1+m_2w_2\). Rychlosti proti zvolenému kladnému směru píšeme se záporným znaménkem.</p>
+  <div id="modes"></div>
+  <div class="card">
+    <h3>Vstupní veličiny</h3>
+    <div id="fields"></div>
+    <div class="btnrow">
+      <button class="btn" id="randomExample">Generovat příklad</button>
+      <button class="btn" id="clearAll">Smazat vše</button>
+    </div>
+  </div>
+</aside>
+<main>
+  <div class="resultBox">
+    <h2 id="status">Zadej hodnoty</h2>
+    <div id="equation" class="muted"></div>
+  </div>
+  <div class="steps" id="steps"></div>
+</main>
+</div>
+
+<script>
+const modes = [
+  {
+    id:'against',
+    name:'1) Tělesa se sráží proti sobě',
+    short:'tělesa jedou proti sobě, po srážce se spojí a jedou společnou rychlostí w',
+    fields:['m1','v1','m2','v2','w'],
+    unknowns:['m1','v1','m2','v2','w'],
+    defaultUnknown:'w'
+  },
+  {
+    id:'sameDirection',
+    name:'2) Rychlejší těleso narazí do pomalejšího',
+    short:'obě tělesa jedou stejným směrem, po srážce se spojí a jedou společnou rychlostí w',
+    fields:['m1','v1','m2','v2','w'],
+    unknowns:['m1','v1','m2','v2','w'],
+    defaultUnknown:'w'
+  },
+  {
+    id:'standing',
+    name:'3) Jedno těleso stojí',
+    short:'těleso 2 před nárazem stojí, po srážce se vozíky spojí a jedou společnou rychlostí w',
+    fields:['m1','v1','m2','v2','w'],
+    unknowns:['m1','v1','m2','w'],
+    fixed:{v2:'0'},
+    defaultUnknown:'w'
+  },
+  {
+    id:'throwBack',
+    name:'4) Vyhození proti směru jízdy',
+    short:'před vyhozením jedou obě části spolu, vyhozená část letí dozadu',
+    fields:['m1','m2','v','w1','w2'],
+    unknowns:['m1','m2','v','w1','w2'],
+    defaultUnknown:'w1'
+  },
+  {
+    id:'throwForward',
+    name:'5) Vyhození po směru jízdy',
+    short:'před vyhozením jedou obě části spolu, vyhozená část letí dopředu',
+    fields:['m1','m2','v','w1','w2'],
+    unknowns:['m1','m2','v','w1','w2'],
+    defaultUnknown:'w1'
+  }
+];
+
+const labels = {
+  m1:['m₁','kg','hmotnost tělesa 1'],
+  m2:['m₂','kg','hmotnost tělesa 2'],
+  v1:['v₁','m·s⁻¹','rychlost tělesa 1 před srážkou'],
+  v2:['v₂','m·s⁻¹','rychlost tělesa 2 před srážkou'],
+  v:['v','m·s⁻¹','společná rychlost před vyhozením'],
+  w:['w','m·s⁻¹','společná rychlost po srážce'],
+  w1:['w₁','m·s⁻¹','rychlost tělesa 1 po vyhození'],
+  w2:['w₂','m·s⁻¹','rychlost tělesa 2 po vyhození']
+};
+
+let mode = 'against';
+const values = {};
+const computed = {};
+const unknownByMode = { against:'w', sameDirection:'w', standing:'w', throwBack:'w1', throwForward:'w1' };
+let currentExampleText = '';
+const $ = id => document.getElementById(id);
+
+function currentMode(){ return modes.find(m => m.id === mode); }
+function unknown(){ return unknownByMode[mode] || currentMode().defaultUnknown; }
+function fixedValue(k){ return currentMode().fixed?.[k]; }
+function isFixed(k){ return fixedValue(k) !== undefined; }
+function setUnknown(k){
+  if(isFixed(k)) return;
+  unknownByMode[mode] = k;
+  delete values[k];
+  delete computed[k];
+  renderFields();
+  calculate();
+}
+function parseNumber(raw){
+  const n = parseFloat(String(raw ?? '').trim().replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+}
+function val(k){
+  if(isFixed(k)) return parseNumber(fixedValue(k));
+  return parseNumber(values[k]);
+}
+function fmt(x,d=3){
+  if(!Number.isFinite(x)) return '';
+  return Number(x).toLocaleString('cs-CZ',{maximumFractionDigits:d,minimumFractionDigits:0}).replace(/\s/g,'\u202f');
+}
+function latexNum(x,d=3){
+  const out = fmt(x,d).replace(',', '{,}');
+  return x < 0 ? `(${out})` : out;
+}
+function latexResultNum(x,d=3){
+  return fmt(x,d).replace(',', '{,}');
+}
+function inputLatex(k){
+  const map = {m1:'m_1', m2:'m_2', v1:'v_1', v2:'v_2', v:'v', w:'w', w1:'w_1', w2:'w_2'};
+  return map[k] || k;
+}
+function termLatex(id){
+  const map = {
+    m1v1:'m_1v_1', m2v2:'m_2v_2', m1w:'m_1w', m2w:'m_2w',
+    m1w1:'m_1w_1', m2w2:'m_2w_2', m1v:'m_1v', m2v:'m_2v'
+  };
+  return map[id] || id;
+}
+function termKeys(id){
+  const map = {
+    m1v1:['m1','v1'], m2v2:['m2','v2'], m1w:['m1','w'], m2w:['m2','w'],
+    m1w1:['m1','w1'], m2w2:['m2','w2'], m1v:['m1','v'], m2v:['m2','v']
+  };
+  return map[id] || [];
+}
+function termZero(id){
+  const u = unknown();
+  return termKeys(id).some(k => k !== u && val(k) !== null && Math.abs(val(k)) < 1e-12);
+}
+function sideLatex(ids){
+  const terms = ids.filter(id => !termZero(id)).map(termLatex);
+  return terms.length ? terms.join(' + ') : '0';
+}
+function isJoinedCollision(){
+  return mode === 'against' || mode === 'sameDirection' || mode === 'standing';
+}
+function equationTerms(){
+  if(mode === 'throwBack' || mode === 'throwForward'){
+    return {left:['m1v','m2v'], right:['m1w1','m2w2']};
+  }
+  return {left:['m1v1','m2v2'], right:['m1w','m2w']};
+}
+function simplifiedEquationSymbolic(){
+  const t = equationTerms();
+  return `\\[${sideLatex(t.left)}=${sideLatex(t.right)}\\]`;
+}
+function numericTerm(id){
+  const keys = termKeys(id);
+  return keys.map(k => {
+    if(k === unknown()) return inputLatex(k);
+    const x = val(k);
+    return x === null ? inputLatex(k) : latexNum(x);
+  }).join('\\cdot ');
+}
+function knownEquation(){
+  const t = equationTerms();
+  const left = t.left.filter(id => !termZero(id)).map(numericTerm).join(' + ') || '0';
+  const right = t.right.filter(id => !termZero(id)).map(numericTerm).join(' + ') || '0';
+  return `\\[${left}=${right}\\]`;
+}
+function renderModes(){
+  $('modes').innerHTML = modes.map(m => `<button class="mode ${m.id===mode?'active':''}" data-mode="${m.id}">${m.name}<br><span class="small">${m.short}</span></button>`).join('');
+  document.querySelectorAll('.mode').forEach(btn => {
+    btn.addEventListener('click', () => {
+      mode = btn.dataset.mode;
+      currentExampleText = '';
+      for(const k in computed) delete computed[k];
+      if(mode === 'standing') values.v2 = '0';
+      if(mode !== 'standing' && values.v2 === '0' && isFixed('v2') === false) delete values.v2;
+      if(!currentMode().unknowns.includes(unknown())) unknownByMode[mode] = currentMode().defaultUnknown;
+      renderModes();
+      renderFields();
+      calculate();
+    });
+  });
+}
+function renderFields(){
+  const cfg = currentMode();
+  const u = unknown();
+  for(const [k,v] of Object.entries(cfg.fixed || {})) values[k] = v;
+  $('fields').innerHTML = cfg.fields.map(k => {
+    const l = labels[k];
+    const canBeUnknown = cfg.unknowns.includes(k) && !isFixed(k);
+    const isUnknown = k === u && canBeUnknown;
+    const fixed = isFixed(k);
+    const readonly = isUnknown || fixed ? ' readonly' : '';
+    const placeholder = isUnknown ? 'neznámá' : '?';
+    const shownValue = fixed ? fixedValue(k) : (values[k] ?? '');
+    const pick = canBeUnknown
+      ? `<label class="unknownPick" title="Označit ${l[0]} jako neznámou"><input type="radio" name="unknown" data-unknown="${k}" ${isUnknown?'checked':''}><span>neznámá</span></label>`
+      : fixed ? `<span class="fixedPill">pevně dáno</span>` : `<span class="small">zadáno</span>`;
+    return `<div class="field ${isUnknown?'unknown':''} ${computed[k]?'computed':''} ${fixed?'fixed':''}" id="row_${k}">
+      <div class="labelBlock"><label for="${k}"><b>${l[0]}</b><br><span class="small">${l[2]}</span></label>${pick}</div>
+      <input type="text" inputmode="decimal" id="${k}" value="${shownValue}" placeholder="${placeholder}" autocomplete="off"${readonly}>
+      <span class="unit">${l[1]}</span>
+    </div>`;
+  }).join('');
+
+  cfg.fields.forEach(k => {
+    const input = $(k);
+    const radio = document.querySelector(`input[data-unknown="${k}"]`);
+    if(radio) radio.addEventListener('change', () => setUnknown(k));
+    if(k === u || isFixed(k)) return;
+    input.addEventListener('input', e => {
+      values[k] = e.target.value;
+      currentExampleText = '';
+      for(const key in computed){
+        delete computed[key];
+        if(key === unknown()) delete values[key];
+      }
+      calculate();
+    });
+  });
+}
+function missingInputs(){
+  const u = unknown();
+  return currentMode().fields.filter(k => k !== u && val(k) === null);
+}
+function setComputed(k, result){
+  if(!Number.isFinite(result)) return;
+  values[k] = fmt(result, 3);
+  computed[k] = true;
+}
+function derivationRows(rows){
+  return `<div class="deriveRows">` + rows.map((row,i) =>
+    `<div class="deriveRow"><div class="deriveNo">${i+1}</div><div class="deriveText">${row.txt}</div><div class="deriveMath">\\[${row.eq}\\]</div></div>`
+  ).join('') + `</div>`;
+}
+function signText(){
+  if(mode === 'against'){
+    return 'Kladný směr zvolíme ve směru pohybu tělesa 1 před srážkou. Těleso 2 jede před srážkou proti němu, proto jeho rychlost zadáváme se záporným znaménkem, například \\(v_2=-3\\,\\mathrm{m\\cdot s^{-1}}\\).';
+  }
+  if(mode === 'sameDirection'){
+    return 'Kladný směr zvolíme ve společném směru pohybu. Obě tělesa před srážkou jedou stejným směrem, proto \\(v_1\\) i \\(v_2\\) zadáváme kladně. Těleso 1 je rychlejší, tedy \\(v_1>v_2\\).';
+  }
+  if(mode === 'standing'){
+    return 'Kladný směr zvolíme ve směru pohybu tělesa 1. Těleso 2 před nárazem stojí, proto \\(v_2=0\\).';
+  }
+  if(mode === 'throwBack'){
+    return 'Kladný směr zvolíme ve směru původní jízdy. Před vyhozením jedou obě části společně, proto \\(v_1=v_2=v\\). Vyhozená část letí proti směru jízdy, proto \\(w_2\\) zadáváme záporně.';
+  }
+  return 'Kladný směr zvolíme ve směru původní jízdy. Před vyhozením jedou obě části společně, proto \\(v_1=v_2=v\\). Vyhozená část letí po směru jízdy, proto \\(w_2\\) zadáváme kladně.';
+}
+
+function zeroExplanations(){
+  const rows = [];
+  const add = (condition, text) => { if(condition) rows.push(text); };
+  add(termZero('m1v1'), 'Některý člen \\(m_1v_1\\) je nulový, proto ho už dál nepíšeme.');
+  add(termZero('m2v2'), 'Některý člen \\(m_2v_2\\) je nulový, proto ho už dál nepíšeme.');
+  add(termZero('m1v'), 'Některý člen \\(m_1v\\) je nulový, proto ho už dál nepíšeme.');
+  add(termZero('m2v'), 'Některý člen \\(m_2v\\) je nulový, proto ho už dál nepíšeme.');
+  add(termZero('m1w1'), 'Některý člen \\(m_1w_1\\) je nulový, proto ho už dál nepíšeme.');
+  add(termZero('m2w2'), 'Některý člen \\(m_2w_2\\) je nulový, proto ho už dál nepíšeme.');
+  if(!rows.length) rows.push('Žádná ze zadaných rychlostí není nulová, proto zatím žádný člen neodpadne.');
+  return rows.map(t => `<p class="small">${t}</p>`).join('');
+}
+function baseSteps(){
+  const steps = [
+    `<div class="step"><b>1) Zapíšeme zákon zachování hybnosti</b><p class="small">Celková hybnost před dějem je stejná jako celková hybnost po ději.</p>\\[p_{\\text{před}}=p_{\\text{po}}\\]\\[m_1v_1+m_2v_2=m_1w_1+m_2w_2\\]</div>`,
+    `<div class="step"><b>2) Zvolíme kladný směr a znaménka rychlostí</b><div class="direction">${signText()}</div></div>`
+  ];
+  if(mode === 'standing'){
+    steps.push(`<div class="step"><b>3) Dosadíme, že druhé těleso před srážkou stojí</b><p class="small">Protože \\(v_2=0\\), platí \\(m_2v_2=0\\).</p>\\[m_1v_1=m_1w_1+m_2w_2\\]</div>`);
+    steps.push(`<div class="step"><b>4) Po srážce se vozíky spojí</b><p class="small">Po srážce už nejedou každý zvlášť. Oba vozíky mají stejnou rychlost, proto \\(w_1=w_2=w\\).</p>\\[m_1v_1=m_1w+m_2w\\]</div>`);
+  }else if(mode === 'against' || mode === 'sameDirection'){
+    steps.push(`<div class="step"><b>3) Po srážce se vozíky spojí</b><p class="small">Po srážce už nejedou každý zvlášť. Oba vozíky mají stejnou rychlost, proto \\(w_1=w_2=w\\).</p>\\[m_1v_1+m_2v_2=m_1w+m_2w\\]</div>`);
+  }
+  if(mode === 'throwBack' || mode === 'throwForward'){
+    steps.push(`<div class="step"><b>3) Upravíme rovnici pro vyhození části tělesa</b><p class="small">Před vyhozením jedou těleso 1 i těleso 2 společně, proto místo \\(v_1\\) a \\(v_2\\) píšeme stejnou rychlost \\(v\\).</p>\\[m_1v+m_2v=m_1w_1+m_2w_2\\]</div>`);
+  }
+  return steps;
+}
+function simplifiedStepNumber(){
+  return 0;
+}
+function derivationCollision(u){
+  const start = mode === 'standing'
+    ? sideLatex(['m1v1']) + '=' + sideLatex(['m1w','m2w'])
+    : sideLatex(['m1v1','m2v2']) + '=' + sideLatex(['m1w','m2w']);
+  if(mode === 'standing'){
+    if(u === 'w') return [
+      {txt:'Začneme rovnicí po dosazení stojícího vozíku a společné rychlosti po srážce.', eq:start},
+      {txt:'Na pravé straně vytkneme společnou rychlost \\(w\\).', eq:'m_1v_1=w(m_1+m_2)'},
+      {txt:'Vydělíme součtem hmotností.', eq:'w=\\frac{m_1v_1}{m_1+m_2}'}
+    ];
+    if(u === 'v1') return [
+      {txt:'Začneme rovnicí po dosazení stojícího vozíku a společné rychlosti po srážce.', eq:start},
+      {txt:'Na pravé straně vytkneme společnou rychlost \\(w\\).', eq:'m_1v_1=w(m_1+m_2)'},
+      {txt:'Vydělíme hmotností \\(m_1\\).', eq:'v_1=\\frac{w(m_1+m_2)}{m_1}'}
+    ];
+    if(u === 'm1') return [
+      {txt:'Začneme rovnicí po dosazení stojícího vozíku a společné rychlosti po srážce.', eq:start},
+      {txt:'Členy s \\(m_1\\) dáme na jednu stranu.', eq:'m_1v_1-m_1w=m_2w'},
+      {txt:'Vytkneme hmotnost \\(m_1\\).', eq:'m_1(v_1-w)=m_2w'},
+      {txt:'Vydělíme výrazem \\(v_1-w\\).', eq:'m_1=\\frac{m_2w}{v_1-w}'}
+    ];
+    if(u === 'm2') return [
+      {txt:'Začneme rovnicí po dosazení stojícího vozíku a společné rychlosti po srážce.', eq:start},
+      {txt:'Osamostatníme člen s \\(m_2\\).', eq:'m_2w=m_1v_1-m_1w'},
+      {txt:'Vytkneme hmotnost \\(m_1\\).', eq:'m_2w=m_1(v_1-w)'},
+      {txt:'Vydělíme rychlostí \\(w\\).', eq:'m_2=\\frac{m_1(v_1-w)}{w}'}
+    ];
+  }
+  if(u === 'w') return [
+    {txt:'Začneme rovnicí po dosazení společné rychlosti po srážce.', eq:start},
+    {txt:'Na pravé straně vytkneme společnou rychlost \\(w\\).', eq:'m_1v_1+m_2v_2=w(m_1+m_2)'},
+    {txt:'Vydělíme součtem hmotností.', eq:'w=\\frac{m_1v_1+m_2v_2}{m_1+m_2}'}
+  ];
+  if(u === 'v1') return [
+    {txt:'Začneme rovnicí po dosazení společné rychlosti po srážce.', eq:start},
+    {txt:'Na pravé straně vytkneme společnou rychlost \\(w\\).', eq:'m_1v_1+m_2v_2=w(m_1+m_2)'},
+    {txt:'Osamostatníme člen s hledanou rychlostí \\(v_1\\).', eq:'m_1v_1=w(m_1+m_2)-m_2v_2'},
+    {txt:'Vydělíme hmotností \\(m_1\\).', eq:'v_1=\\frac{w(m_1+m_2)-m_2v_2}{m_1}'}
+  ];
+  if(u === 'v2') return [
+    {txt:'Začneme rovnicí po dosazení společné rychlosti po srážce.', eq:start},
+    {txt:'Na pravé straně vytkneme společnou rychlost \\(w\\).', eq:'m_1v_1+m_2v_2=w(m_1+m_2)'},
+    {txt:'Osamostatníme člen s hledanou rychlostí \\(v_2\\).', eq:'m_2v_2=w(m_1+m_2)-m_1v_1'},
+    {txt:'Vydělíme hmotností \\(m_2\\).', eq:'v_2=\\frac{w(m_1+m_2)-m_1v_1}{m_2}'}
+  ];
+  if(u === 'm1') return [
+    {txt:'Začneme rovnicí po dosazení společné rychlosti po srážce.', eq:start},
+    {txt:'Členy s \\(m_1\\) dáme na jednu stranu a členy s \\(m_2\\) na druhou.', eq:'m_1v_1-m_1w=m_2w-m_2v_2'},
+    {txt:'Vytkneme hmotnosti.', eq:'m_1(v_1-w)=m_2(w-v_2)'},
+    {txt:'Vydělíme výrazem \\(v_1-w\\).', eq:'m_1=\\frac{m_2(w-v_2)}{v_1-w}'}
+  ];
+  if(u === 'm2') return [
+    {txt:'Začneme rovnicí po dosazení společné rychlosti po srážce.', eq:start},
+    {txt:'Členy s \\(m_2\\) dáme na jednu stranu a členy s \\(m_1\\) na druhou.', eq:'m_2v_2-m_2w=m_1w-m_1v_1'},
+    {txt:'Vytkneme hmotnosti.', eq:'m_2(v_2-w)=m_1(w-v_1)'},
+    {txt:'Vydělíme výrazem \\(v_2-w\\).', eq:'m_2=\\frac{m_1(w-v_1)}{v_2-w}'}
+  ];
+  return [];
+}
+function derivationThrow(u){
+  const start = sideLatex(['m1v','m2v']) + '=' + sideLatex(['m1w1','m2w2']);
+  if(u === 'v') return [
+    {txt:'Začneme už zjednodušenou rovnicí pro vyhození části tělesa.', eq:start},
+    {txt:'Na levé straně vytkneme společnou rychlost \\(v\\).', eq:'v(m_1+m_2)=m_1w_1+m_2w_2'},
+    {txt:'Vydělíme součtem hmotností.', eq:'v=\\frac{m_1w_1+m_2w_2}{m_1+m_2}'}
+  ];
+  if(u === 'w1') return [
+    {txt:'Začneme už zjednodušenou rovnicí pro vyhození části tělesa.', eq:start},
+    {txt:'Osamostatníme člen s hledanou rychlostí \\(w_1\\).', eq:'m_1w_1=m_1v+m_2v-m_2w_2'},
+    {txt:'Vydělíme hmotností \\(m_1\\).', eq:'w_1=\\frac{m_1v+m_2v-m_2w_2}{m_1}'}
+  ];
+  if(u === 'w2') return [
+    {txt:'Začneme už zjednodušenou rovnicí pro vyhození části tělesa.', eq:start},
+    {txt:'Osamostatníme člen s hledanou rychlostí \\(w_2\\).', eq:'m_2w_2=m_1v+m_2v-m_1w_1'},
+    {txt:'Vydělíme hmotností \\(m_2\\).', eq:'w_2=\\frac{m_1v+m_2v-m_1w_1}{m_2}'}
+  ];
+  if(u === 'm1') return [
+    {txt:'Začneme už zjednodušenou rovnicí pro vyhození části tělesa.', eq:start},
+    {txt:'Členy s \\(m_1\\) dáme na jednu stranu a členy s \\(m_2\\) na druhou.', eq:'m_1v-m_1w_1=m_2w_2-m_2v'},
+    {txt:'Vytkneme hmotnosti.', eq:'m_1(v-w_1)=m_2(w_2-v)'},
+    {txt:'Vydělíme výrazem \\((v-w_1)\\).', eq:'m_1=\\frac{m_2(w_2-v)}{v-w_1}'}
+  ];
+  if(u === 'm2') return [
+    {txt:'Začneme už zjednodušenou rovnicí pro vyhození části tělesa.', eq:start},
+    {txt:'Členy s \\(m_2\\) dáme na jednu stranu a členy s \\(m_1\\) na druhou.', eq:'m_2v-m_2w_2=m_1w_1-m_1v'},
+    {txt:'Vytkneme hmotnosti.', eq:'m_2(v-w_2)=m_1(w_1-v)'},
+    {txt:'Vydělíme výrazem \\((v-w_2)\\).', eq:'m_2=\\frac{m_1(w_1-v)}{v-w_2}'}
+  ];
+  return [];
+}
+function derivationFor(u){
+  if(mode === 'throwBack' || mode === 'throwForward') return derivationThrow(u);
+  return derivationCollision(u);
+}
+function replaceKnownSymbols(expr, u){
+  let out = expr;
+  const vars = [['m_1','m1'], ['m_2','m2'], ['v_1','v1'], ['v_2','v2'], ['w','w'], ['w_1','w1'], ['w_2','w2']];
+  for(const [latex, key] of vars){
+    if(key !== u && val(key) !== null) out = out.replaceAll(latex, latexNum(val(key)));
+  }
+  if(u !== 'v' && val('v') !== null){
+    out = out.replace(/(?<![A-Za-z\\])v(?![A-Za-z_])/g, latexNum(val('v')));
+  }
+  return out;
+}
+function substValue(k, u){
+  if(k === u) return inputLatex(k);
+  const x = val(k);
+  return x === null ? inputLatex(k) : latexNum(x);
+}
+function substProduct(keys, u){
+  return keys.map(k => substValue(k, u)).join(' \\cdot ');
+}
+function substDiff(a, b, u){
+  return `${substValue(a, u)} - ${substValue(b, u)}`;
+}
+function substitutionRhs(u){
+  if(mode === 'throwBack' || mode === 'throwForward'){
+    if(u === 'v') return `\\frac{${substProduct(['m1','w1'], u)} + ${substProduct(['m2','w2'], u)}}{${substValue('m1', u)} + ${substValue('m2', u)}}`;
+    if(u === 'w1') return `\\frac{${substProduct(['m1','v'], u)} + ${substProduct(['m2','v'], u)} - ${substProduct(['m2','w2'], u)}}{${substValue('m1', u)}}`;
+    if(u === 'w2') return `\\frac{${substProduct(['m1','v'], u)} + ${substProduct(['m2','v'], u)} - ${substProduct(['m1','w1'], u)}}{${substValue('m2', u)}}`;
+    if(u === 'm1') return `\\frac{${substValue('m2', u)} \\cdot (${substDiff('w2','v', u)})}{${substDiff('v','w1', u)}}`;
+    if(u === 'm2') return `\\frac{${substValue('m1', u)} \\cdot (${substDiff('w1','v', u)})}{${substDiff('v','w2', u)}}`;
+  }
+  if(mode === 'standing'){
+    if(u === 'w') return `\\frac{${substProduct(['m1','v1'], u)}}{${substValue('m1', u)} + ${substValue('m2', u)}}`;
+    if(u === 'v1') return `\\frac{${substValue('w', u)} \\cdot (${substValue('m1', u)} + ${substValue('m2', u)})}{${substValue('m1', u)}}`;
+    if(u === 'm1') return `\\frac{${substProduct(['m2','w'], u)}}{${substDiff('v1','w', u)}}`;
+    if(u === 'm2') return `\\frac{${substValue('m1', u)} \\cdot (${substDiff('v1','w', u)})}{${substValue('w', u)}}`;
+  }
+  if(u === 'w') return `\\frac{${substProduct(['m1','v1'], u)} + ${substProduct(['m2','v2'], u)}}{${substValue('m1', u)} + ${substValue('m2', u)}}`;
+  if(u === 'v1') return `\\frac{${substValue('w', u)} \\cdot (${substValue('m1', u)} + ${substValue('m2', u)}) - ${substProduct(['m2','v2'], u)}}{${substValue('m1', u)}}`;
+  if(u === 'v2') return `\\frac{${substValue('w', u)} \\cdot (${substValue('m1', u)} + ${substValue('m2', u)}) - ${substProduct(['m1','v1'], u)}}{${substValue('m2', u)}}`;
+  if(u === 'm1') return `\\frac{${substValue('m2', u)} \\cdot (${substDiff('w','v2', u)})}{${substDiff('v1','w', u)}}`;
+  if(u === 'm2') return `\\frac{${substValue('m1', u)} \\cdot (${substDiff('w','v1', u)})}{${substDiff('v2','w', u)}}`;
+  return latexNum(NaN);
+}
+function substitutionFor(u, result){
+  return `\\[${inputLatex(u)}=${substitutionRhs(u)}=${latexResultNum(result)}\\]`;
+}
+function solve(){
+  const u = unknown();
+  let result = NaN;
+  let error = '';
+  const m1 = val('m1'), m2 = val('m2'), v1 = val('v1'), v2 = val('v2'), v = val('v'), w = val('w'), w1 = val('w1'), w2 = val('w2');
+  const nearZero = x => Math.abs(x) < 1e-12;
+
+  if(mode === 'against' || mode === 'sameDirection' || mode === 'standing'){
+    if(u === 'w'){
+      if(nearZero(m1 + m2)) error = 'Součet hmotností nesmí být nulový.';
+      result = (m1*v1 + m2*v2) / (m1 + m2);
+    }
+    if(u === 'v1'){
+      if(nearZero(m1)) error = 'Nelze dělit nulovou hmotností m₁.';
+      result = (w*(m1 + m2) - m2*v2) / m1;
+    }
+    if(u === 'v2'){
+      if(nearZero(m2)) error = 'Nelze dělit nulovou hmotností m₂.';
+      result = (w*(m1 + m2) - m1*v1) / m2;
+    }
+    if(u === 'm1'){
+      if(nearZero(v1 - w)) error = 'Výraz v₁ − w je nulový, z těchto hodnot nejde určit m₁.';
+      result = m2 * (w - v2) / (v1 - w);
+    }
+    if(u === 'm2'){
+      if(nearZero(v2 - w)) error = 'Výraz v₂ − w je nulový, z těchto hodnot nejde určit m₂.';
+      result = m1 * (w - v1) / (v2 - w);
+    }
+  }else{
+    if(u === 'v'){
+      if(nearZero(m1 + m2)) error = 'Součet hmotností nesmí být nulový.';
+      result = (m1*w1 + m2*w2) / (m1 + m2);
+    }
+    if(u === 'w1'){
+      if(nearZero(m1)) error = 'Nelze dělit nulovou hmotností m₁.';
+      result = (m1*v + m2*v - m2*w2) / m1;
+    }
+    if(u === 'w2'){
+      if(nearZero(m2)) error = 'Nelze dělit nulovou hmotností m₂.';
+      result = (m1*v + m2*v - m1*w1) / m2;
+    }
+    if(u === 'm1'){
+      if(nearZero(v - w1)) error = 'Výraz v − w₁ je nulový, z těchto hodnot nejde určit m₁.';
+      result = m2 * (w2 - v) / (v - w1);
+    }
+    if(u === 'm2'){
+      if(nearZero(v - w2)) error = 'Výraz v − w₂ je nulový, z těchto hodnot nejde určit m₂.';
+      result = m1 * (w1 - v) / (v - w2);
+    }
+  }
+  if((u === 'm1' || u === 'm2') && Number.isFinite(result) && result < 0){
+    error = 'Vyšla záporná hmotnost. Zadané rychlosti si navzájem odporují.';
+  }
+  return {result, error};
+}
+function resultUnit(k){ return labels[k]?.[1] || ''; }
+function velocityNote(k, result){
+  if(!['v1','v2','v','w','w1','w2'].includes(k)) return '';
+  if(result < -1e-9) return '<p class="small">Záporné znaménko znamená, že rychlost míří proti zvolenému kladnému směru.</p>';
+  if(result > 1e-9) return '<p class="small">Kladné znaménko znamená, že rychlost míří ve zvoleném kladném směru.</p>';
+  return '<p class="small">Nulová rychlost znamená, že těleso v daném okamžiku stojí.</p>';
+}
+function unitLatex(k){
+  return resultUnit(k).replace('·','\\cdot ').replace('⁻¹','^{-1}');
+}
+function calculate(){
+  const steps = baseSteps();
+  const miss = missingInputs();
+  const u = unknown();
+
+  if(miss.length){
+    $('status').textContent = 'Doplň hodnoty';
+    $('equation').innerHTML = `${currentExampleText ? `<p>${currentExampleText}</p>` : ''}Chybí: ${miss.map(k => labels[k][0]).join(', ')}`;
+    $('steps').innerHTML = steps.join('');
+    typesetMath();
+    return;
+  }
+
+  let stepNo = steps.length + 1;
+  const {result, error} = solve();
+  if(mode !== 'standing'){
+    steps.push(`<div class="step"><b>${stepNo}) Zjednodušíme nulové členy</b><p class="small">Nejdřív pouze řekneme, co je rovno nule. Znaménka rychlostí už jsou součástí zadaných hodnot.</p>${zeroExplanations()}${simplifiedEquationSymbolic()}</div>`);
+    stepNo++;
+  }
+  steps.push(`<div class="step"><b>${stepNo}) Vyjádříme neznámou</b><p class="small">Teď pracujeme jen se symboly. Nepoužíváme žádný nový vzorec, jen upravujeme základní rovnici.</p>${derivationRows(derivationFor(u))}</div>`);
+  stepNo++;
+
+  if(error){
+    $('status').textContent = 'Tady něco nesedí';
+    $('equation').innerHTML = `<div class="warn">${error}</div>`;
+    $('steps').innerHTML = steps.join('');
+    typesetMath();
+    return;
+  }
+
+  const substitution = substitutionFor(u, result);
+  setComputed(u, result);
+  renderFields();
+  steps.push(`<div class="step"><b>${stepNo}) Dosadíme a spočítáme</b><p class="small">Až teď dosazujeme konkrétní čísla. Rychlosti proti zvolenému směru dosazujeme se záporným znaménkem.</p>${substitution}</div>`);
+  stepNo++;
+  steps.push(`<div class="step"><b>${stepNo}) Výsledek</b><p class="small">Výsledek zapíšeme s jednotkou.</p>\\[${inputLatex(u)}=${latexResultNum(result)}\\,\\mathrm{${unitLatex(u)}}\\]${velocityNote(u, result)}</div>`);
+  $('status').textContent = `${labels[u][0]} = ${fmt(result)} ${resultUnit(u)}`;
+  $('equation').innerHTML = `${currentMode().short}${currentExampleText ? `<p>${currentExampleText}</p>` : ''}`;
+  $('steps').innerHTML = steps.join('');
+  typesetMath();
+}
+function clearAll(){
+  for(const k in values) delete values[k];
+  for(const k in computed) delete computed[k];
+  currentExampleText = '';
+  if(mode === 'standing') values.v2 = '0';
+  renderFields();
+  calculate();
+}
+function rand(min, max){ return min + Math.random() * (max - min); }
+function randInt(min, max){ return Math.floor(rand(min, max + 1)); }
+function pick(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
+function inputNum(x, d=1){
+  const rounded = Math.round(x * 10 ** d) / 10 ** d;
+  return String(rounded).replace('.', ',');
+}
+function assignKnown(all, u){
+  for(const key of currentMode().fields){
+    if(key !== u && all[key] !== undefined){
+      values[key] = inputNum(all[key], 1);
+    }
+  }
+}
+function generatedKnownsAreNonzero(all, u){
+  return currentMode().fields.every(key => {
+    if(key === u) return true;
+    if(mode === 'standing' && key === 'v2') return true;
+    if(all[key] === undefined) return true;
+    return Math.abs(Math.round(all[key] * 10) / 10) >= 0.1;
+  });
+}
+function generateAgainst(){
+  const selectedUnknown = unknown();
+  for(let attempt = 0; attempt < 160; attempt++){
+    const all = {};
+    all.m1 = rand(0.8, 8);
+    all.m2 = rand(0.8, 8);
+    all.v1 = rand(1.2, 7);
+    all.v2 = -rand(1.2, 7);
+    all.w = (all.m1*all.v1 + all.m2*all.v2) / (all.m1 + all.m2);
+    if(Math.abs(all.w) < 7 && Math.abs(all.w) > 0.15 && generatedKnownsAreNonzero(all, selectedUnknown)){
+      currentExampleText = 'Dva vozíky se pohybují proti sobě, narazí do sebe a spojí se. Kladný směr bereme ve směru tělesa 1, proto rychlost tělesa 2 před srážkou vychází záporně.';
+      assignKnown(all, selectedUnknown);
+      return;
+    }
+  }
+}
+function generateSameDirection(){
+  const selectedUnknown = unknown();
+  for(let attempt = 0; attempt < 160; attempt++){
+    const all = {};
+    all.m1 = rand(0.8, 8);
+    all.m2 = rand(0.8, 10);
+    all.v2 = rand(0.6, 5);
+    all.v1 = all.v2 + rand(0.7, 5);
+    all.w = (all.m1*all.v1 + all.m2*all.v2) / (all.m1 + all.m2);
+    if(all.w > all.v2 + 0.1 && all.w < all.v1 - 0.1 && generatedKnownsAreNonzero(all, selectedUnknown)){
+      currentExampleText = 'Rychlejší vozík dojede pomalejší vozík, narazí do něj a spojí se s ním. Oba jedou stejným směrem, proto jsou rychlosti před srážkou kladné a platí \\(v_1>v_2\\).';
+      assignKnown(all, selectedUnknown);
+      return;
+    }
+  }
+}
+function generateStanding(){
+  const selectedUnknown = unknown();
+  for(let attempt = 0; attempt < 160; attempt++){
+    const all = {};
+    all.m1 = rand(0.5, 6);
+    all.m2 = rand(0.5, 10);
+    all.v1 = rand(1.5, 9);
+    all.v2 = 0;
+    all.w = (all.m1*all.v1) / (all.m1 + all.m2);
+    if(all.w > 0.15 && all.w < all.v1 - 0.1 && generatedKnownsAreNonzero(all, selectedUnknown)){
+      currentExampleText = 'Jedoucí vozík narazí do druhého vozíku, který před nárazem stojí. Po srážce se vozíky spojí a jedou společnou rychlostí \\(w\\).';
+      assignKnown(all, selectedUnknown);
+      values.v2 = '0';
+      return;
+    }
+  }
+}
+function generateThrowBack(){
+  const selectedUnknown = unknown();
+  for(let attempt = 0; attempt < 120; attempt++){
+    const all = {};
+    all.m1 = rand(40, 120);
+    all.m2 = rand(0.5, 8);
+    all.v = rand(1, 10);
+    all.w2 = -rand(1, 14);
+    all.w1 = ((all.m1 + all.m2)*all.v - all.m2*all.w2) / all.m1;
+    if(all.w1 > all.v && all.w1 < 16 && generatedKnownsAreNonzero(all, selectedUnknown)){
+      currentExampleText = 'Těleso jede dopředu a vyhodí menší část dozadu. Vyhozená část má rychlost \\(w_2\\) zápornou, protože míří proti směru jízdy.';
+      assignKnown(all, selectedUnknown);
+      return;
+    }
+  }
+}
+function generateThrowForward(){
+  const selectedUnknown = unknown();
+  for(let attempt = 0; attempt < 120; attempt++){
+    const all = {};
+    all.m1 = rand(40, 120);
+    all.m2 = rand(0.5, 8);
+    all.v = rand(1, 12);
+    all.w2 = all.v + rand(1, 12);
+    all.w1 = ((all.m1 + all.m2)*all.v - all.m2*all.w2) / all.m1;
+    if(all.w1 > 0 && all.w1 < all.v && generatedKnownsAreNonzero(all, selectedUnknown)){
+      currentExampleText = 'Těleso jede dopředu a vyhodí menší část dopředu. Vyhozená část má rychlost \\(w_2\\) kladnou, protože míří po směru jízdy.';
+      assignKnown(all, selectedUnknown);
+      return;
+    }
+  }
+}
+function randomExample(){
+  for(const k in values) delete values[k];
+  for(const k in computed) delete computed[k];
+  if(mode === 'against') generateAgainst();
+  if(mode === 'sameDirection') generateSameDirection();
+  if(mode === 'standing') generateStanding();
+  if(mode === 'throwBack') generateThrowBack();
+  if(mode === 'throwForward') generateThrowForward();
+  renderFields();
+  calculate();
+}
+function typesetMath(){
+  if(window.mathJaxReady && window.MathJax?.typesetPromise){
+    MathJax.typesetPromise();
+  }
+}
+
+$('clearAll').addEventListener('click', clearAll);
+$('randomExample').addEventListener('click', randomExample);
+renderModes();
+renderFields();
+calculate();
+</script>
+</body>
+</html>
