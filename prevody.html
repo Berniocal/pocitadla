@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Generátor převodů jednotek</title>
+<style>
+:root{
+  --bg:#f6f3ea; --panel:#ffffff; --ink:#242424; --muted:#67625a;
+  --line:#dfd2bd; --accent:#d99a35; --accent2:#6fb7a8; --soft:#fbf0de;
+  --ok:#fff2a8; --bad:#ffe1dd; --good:#eef9f6;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+button,input{font:inherit}
+.app{display:grid;grid-template-columns:370px 1fr;min-height:100vh}
+aside{padding:18px;border-right:1px solid var(--line);background:#fffaf1;position:sticky;top:0;height:100vh;overflow:auto}
+main{padding:22px;overflow:auto}
+h1{font-size:25px;margin:0 0 12px}
+h2{font-size:22px;margin:0 0 10px}
+h3{font-size:18px;margin:16px 0 8px}
+p{line-height:1.45}
+.small{font-size:13px;color:var(--muted);line-height:1.35}
+.topline{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.mode{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:11px 12px;margin:7px 0;cursor:pointer;font-weight:750;color:var(--ink)}
+.mode.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(217,154,53,.22);background:#fff8e8}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;margin:14px 0;box-shadow:0 4px 18px rgba(70,50,20,.05)}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btn,.iconBtn{border:1px solid var(--line);background:white;border-radius:8px;padding:9px 11px;cursor:pointer;font-weight:700;color:var(--ink)}
+.btn:hover,.iconBtn:hover{background:#fff8e8}
+.iconBtn{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;font-size:22px;padding:0;flex:0 0 auto}
+.resultBox{background:#f8fffc;border:1px solid #aee1d1;border-radius:8px;padding:18px;margin-bottom:16px}
+.muted{color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;background:var(--soft);border:1px solid var(--line);font-size:12px;margin:2px}
+.pill.good{background:var(--good);border-color:#aee1d1;color:#285f55}
+.examples{display:grid;gap:12px}
+.example{background:white;border:1px solid var(--line);border-left:7px solid var(--accent);border-radius:8px;padding:14px;display:grid;gap:10px}
+.exampleTop{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.task{font-size:22px;font-weight:780;line-height:1.3}
+.unit{white-space:nowrap}
+.answer{display:none;background:#fffdf9;border:1px dashed var(--line);border-radius:8px;padding:10px 12px;font-size:19px}
+.answer.show{display:block}
+.answer .exp{font-weight:800;color:#7a4e00}
+.answer small{display:block;color:var(--muted);font-size:13px;margin-top:5px}
+.empty{background:white;border:1px solid var(--line);border-radius:8px;padding:18px;color:var(--muted)}
+.settingsOverlay{position:fixed;inset:0;background:rgba(36,36,36,.24);display:none;z-index:10}
+.settingsOverlay.open{display:block}
+.settingsPanel{position:absolute;right:0;top:0;bottom:0;width:min(540px,100%);background:#fffaf1;border-left:1px solid var(--line);padding:18px;overflow:auto;box-shadow:-12px 0 28px rgba(70,50,20,.14)}
+.settingsHeader{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.settingsGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.settingField{display:flex;flex-direction:column;gap:5px}
+.settingField label{font-size:13px;color:var(--muted)}
+.settingField input{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px;background:white;color:var(--ink)}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px}
+.check,.prefixCheck{display:flex;align-items:center;gap:8px;background:white;border:1px solid var(--line);border-radius:8px;padding:8px;line-height:1.2}
+.check input,.prefixCheck input{accent-color:var(--accent2);margin:0;flex:0 0 auto}
+.prefixes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.prefixCheck{justify-content:center;font-weight:700}
+.sep{height:1px;background:var(--line);margin:16px 0}
+.rightTools{position:fixed;right:14px;top:14px;z-index:5}
+.copyState{font-size:13px;color:#286d60;min-height:18px;margin-top:8px}
+@media(max-width:850px){
+  .app{grid-template-columns:1fr}
+  aside{height:auto;position:relative;border-right:0;border-bottom:1px solid var(--line)}
+  .rightTools{display:none}
+}
+@media(max-width:650px){
+  aside{padding:14px}
+  main{padding:14px}
+  h1{font-size:23px}
+  .settingsGrid,.checks{grid-template-columns:1fr}
+  .prefixes{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .task{font-size:20px}
+}
+@media(max-width:430px){
+  aside{padding:12px}
+  main{padding:10px}
+  .card{padding:12px}
+  .small{font-size:12px}
+  .task{font-size:18px}
+  .prefixes{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+</style>
+</head>
+<body>
+<button class="iconBtn rightTools" id="settingsTop" title="Nastavení">✎</button>
+<div class="app">
+  <aside>
+    <div class="topline">
+      <div>
+        <h1>Převody jednotek</h1>
+        <p class="small">Generátor vytvoří náhodné příklady. Zadání je vidět hned, výsledky se dají skrýt nebo zobrazit. Výsledek se počítá z čísla, které je opravdu zobrazené v zadání.</p>
+      </div>
+      <button class="iconBtn" id="settingsSide" title="Nastavení">✎</button>
+    </div>
+    <div id="modes"></div>
+    <div class="card">
+      <h3>Ovládání</h3>
+      <div class="btnrow">
+        <button class="btn" id="generateBtn">Generovat příklady</button>
+        <button class="btn" id="toggleAnswersBtn">Zobrazit výsledky</button>
+      </div>
+      <div class="sep"></div>
+      <div class="btnrow">
+        <button class="btn" id="copyTasksBtn">Kopírovat zadání</button>
+        <button class="btn" id="copyAnswersBtn">Kopírovat výsledky</button>
+      </div>
+      <div class="copyState" id="copyState"></div>
+    </div>
+    <div class="card">
+      <h3>Aktuální nastavení</h3>
+      <div id="summary"></div>
+    </div>
+  </aside>
+  <main>
+    <div class="resultBox">
+      <h2 id="status">Převody pro ZŠ</h2>
+      <div id="meta" class="muted"></div>
+    </div>
+    <div id="examples" class="examples"></div>
+  </main>
+</div>
+
+<div class="settingsOverlay" id="settingsOverlay" aria-hidden="true">
+  <div class="settingsPanel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="settingsHeader">
+      <h2 id="settingsTitle">Nastavení generátoru</h2>
+      <button class="iconBtn" id="closeSettings" title="Zavřít">×</button>
+    </div>
+    <p class="small">Tužkou můžeš změnit typy veličin, povolené předpony, počet příkladů i velikost a zaokrouhlení čísel v zadání.</p>
+
+    <div class="card">
+      <h3>Základ</h3>
+      <div class="settingsGrid">
+        <div class="settingField">
+          <label for="countInput">Počet příkladů</label>
+          <input id="countInput" type="number" min="1" max="60" step="1">
+        </div>
+        <div class="settingField">
+          <label for="minNumberInput">Nejmenší číslo v zadání</label>
+          <input id="minNumberInput" type="number" min="0" step="any">
+        </div>
+        <div class="settingField">
+          <label for="maxNumberInput">Největší číslo v zadání</label>
+          <input id="maxNumberInput" type="number" min="0" step="any">
+        </div>
+        <div class="settingField">
+          <label for="smallDecimalsInput">Desetinná místa pro čísla menší než 1</label>
+          <input id="smallDecimalsInput" type="number" min="0" max="8" step="1">
+        </div>
+        <div class="settingField">
+          <label for="mediumDecimalsInput">Desetinná místa pro čísla menší než 10</label>
+          <input id="mediumDecimalsInput" type="number" min="0" max="8" step="1">
+        </div>
+        <div class="settingField">
+          <label for="largeDecimalsInput">Desetinná místa pro čísla od 10 výš</label>
+          <input id="largeDecimalsInput" type="number" min="0" max="8" step="1">
+        </div>
+        <div class="settingField">
+          <label for="jumpInput">Nejmenší skok mezi běžnými jednotkami</label>
+          <input id="jumpInput" type="number" min="1" max="8" step="1">
+        </div>
+      </div>
+      <div class="sep"></div>
+      <label class="check">
+        <input id="niceInputRuleInput" type="checkbox">
+        <span>Podle směru převodu volit hezčí zadání: z menší jednotky číslo větší než 10, z větší jednotky číslo menší než 1.</span>
+      </label>
+    </div>
+
+    <div class="card">
+      <h3>Veličiny</h3>
+      <div id="quantityChecks" class="checks"></div>
+    </div>
+
+    <div class="card">
+      <h3>Předpony</h3>
+      <div id="prefixChecks" class="prefixes"></div>
+    </div>
+
+    <div class="btnrow">
+      <button class="btn" id="applySettings">Použít a vygenerovat</button>
+      <button class="btn" id="defaultsSettings">Vrátit výchozí nastavení</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const NBSP = '\u202f';
+
+const modes = [
+  {id:'zs', name:'1) Převody pro ZŠ', note:'bez exponenciálního tvaru'},
+  {id:'ss', name:'2) Převody pro SŠ', note:'výsledek povinně v exponenciálním tvaru'}
+];
+
+const prefixes = [
+  {id:'f', label:'f', name:'femto', factor:1e-15},
+  {id:'p', label:'p', name:'piko', factor:1e-12},
+  {id:'n', label:'n', name:'nano', factor:1e-9},
+  {id:'µ', label:'µ', name:'mikro', factor:1e-6},
+  {id:'m', label:'m', name:'mili', factor:1e-3},
+  {id:'c', label:'c', name:'centi', factor:1e-2},
+  {id:'d', label:'d', name:'deci', factor:1e-1},
+  {id:'', label:'1', name:'bez předpony', factor:1},
+  {id:'da', label:'da', name:'deka', factor:1e1},
+  {id:'h', label:'h', name:'hekto', factor:1e2},
+  {id:'k', label:'k', name:'kilo', factor:1e3},
+  {id:'M', label:'M', name:'mega', factor:1e6},
+  {id:'G', label:'G', name:'giga', factor:1e9},
+  {id:'T', label:'T', name:'tera', factor:1e12},
+  {id:'P', label:'P', name:'peta', factor:1e15}
+];
+
+const defaultSettings = {
+  mode:'zs',
+  count:10,
+  numberSettingsByMode:{
+    zs:{minNumber:0.1, maxNumber:100, niceInputByUnitSize:true},
+    ss:{minNumber:0.01, maxNumber:9999, niceInputByUnitSize:false}
+  },
+  smallDecimals:2,
+  mediumDecimals:1,
+  largeDecimals:0,
+  minJump:2,
+  prefixes:['n','µ','m','c','d','','da','h','k','M','G'],
+  quantitiesByMode:{
+    zs:['delka','plocha','objem','hmotnost','sila','rychlost','hustota','tlak','energie','napeti'],
+    ss:['delka','plocha','objem','hmotnost','sila','rychlost','hustota','tlak','energie','napeti','cas','vykon','naboj','kapacita','proud','odpor']
+  }
+};
+
+let settings = structuredClone(defaultSettings);
+let examples = [];
+let answersVisible = false;
+
+const quantityMeta = [
+  {id:'delka', title:'Délka', modes:['zs','ss'], build:buildLengthUnits},
+  {id:'plocha', title:'Plocha', modes:['zs','ss'], build:buildAreaUnits},
+  {id:'objem', title:'Objem', modes:['zs','ss'], build:buildVolumeUnits},
+  {id:'hmotnost', title:'Hmotnost', modes:['zs','ss'], build:buildMassUnits},
+  {id:'sila', title:'Síla', modes:['zs','ss'], build:buildForceUnits},
+  {id:'rychlost', title:'Rychlost', modes:['zs','ss'], build:buildSpeedUnits},
+  {id:'hustota', title:'Hustota', modes:['zs','ss'], build:buildDensityUnits},
+  {id:'tlak', title:'Tlak', modes:['zs','ss'], build:buildPressureUnits},
+  {id:'energie', title:'Energie', modes:['zs','ss'], build:buildEnergyUnits},
+  {id:'napeti', title:'Napětí', modes:['zs','ss'], build:buildVoltageUnits},
+  {id:'cas', title:'Čas', modes:['ss'], build:buildTimeUnits},
+  {id:'vykon', title:'Výkon', modes:['ss'], build:buildPowerUnits},
+  {id:'naboj', title:'Náboj', modes:['ss'], build:buildChargeUnits},
+  {id:'kapacita', title:'Kapacita', modes:['ss'], build:buildCapacitanceUnits},
+  {id:'proud', title:'Proud', modes:['ss'], build:buildCurrentUnits},
+  {id:'odpor', title:'Odpor', modes:['ss'], build:buildResistanceUnits}
+];
+
+const $ = id => document.getElementById(id);
+const prefixById = Object.fromEntries(prefixes.map(p => [p.id, p]));
+
+function selectedPrefixes(){
+  const allowed = new Set(settings.prefixes);
+  return prefixes.filter(p => allowed.has(p.id));
+}
+
+function unit(unitName, factor, order, prefixId = null){
+  return {unit:unitName, factor, order, prefixId};
+}
+
+function filterUnits(units){
+  const allowed = new Set(settings.prefixes);
+  return units.filter(u => u.prefixId === null || allowed.has(u.prefixId));
+}
+
+function prefixedUnits(base, allowedPrefixIds, baseFactor = 1, power = 1){
+  const allowed = new Set(settings.prefixes);
+  return allowedPrefixIds
+    .filter(id => allowed.has(id) && prefixById[id])
+    .map(id => {
+      const p = prefixById[id];
+      const factor = baseFactor * Math.pow(p.factor, power);
+      return unit(`${p.id}${base}`, factor, Math.log10(Math.abs(factor || 1)), id);
+    });
+}
+
+function prefixOrder(id){
+  const p = prefixes.find(x => x.id === id);
+  return p ? Math.log10(p.factor) : 0;
+}
+
+function buildLengthUnits(mode){
+  const ids = mode === 'zs'
+    ? ['f','p','n','µ','m','c','d','','k']
+    : ['f','p','n','µ','m','c','d','','k'];
+  return prefixedUnits('m', ids);
+}
+
+function buildAreaUnits(mode){
+  const ids = mode === 'zs'
+    ? ['f','p','n','µ','m','c','d','','k']
+    : ['f','p','n','µ','m','c','d','','k'];
+  const units = prefixedUnits('m²', ids, 1, 2);
+  units.push(unit('a', 100, 2.1, null));
+  units.push(unit('ha', 10000, 4.1, 'h'));
+  return filterUnits(units);
+}
+
+function buildVolumeUnits(mode){
+  const cubicIds = mode === 'zs'
+    ? ['f','p','n','µ','m','c','d','','k']
+    : ['f','p','n','µ','m','c','d','','k'];
+  const literIds = mode === 'zs'
+    ? ['f','p','n','µ','m','c','d','','h']
+    : ['f','p','n','µ','m','c','d','','h'];
+  return [
+    ...prefixedUnits('m³', cubicIds, 1, 3),
+    ...prefixedUnits('l', literIds, 1e-3, 1)
+  ];
+}
+
+function buildMassUnits(mode){
+  const ids = mode === 'zs'
+    ? ['f','p','n','µ','m','','da','k']
+    : ['f','p','n','µ','m','','da','k'];
+  const units = prefixedUnits('g', ids, 1e-3, 1);
+  units.push(unit('t', 1000, 3.1, null));
+  return filterUnits(units);
+}
+
+function buildForceUnits(mode){
+  const ids = mode === 'zs'
+    ? ['f','p','n','µ','m','','k','M','G','T','P']
+    : ['f','p','n','µ','m','','k','M','G','T','P'];
+  return prefixedUnits('N', ids);
+}
+
+function buildSpeedUnits(mode){
+  if(mode === 'zs'){
+    return filterUnits([
+      unit('m/s', 1, 0, ''),
+      unit('km/h', 1 / 3.6, .55, 'k')
+    ]);
+  }
+  return filterUnits([
+    unit('km/s', 1000, 3, 'k'),
+    unit('m/s', 1, 0, ''),
+    unit('dm/s', .1, -1, 'd'),
+    unit('cm/s', .01, -2, 'c'),
+    unit('mm/s', .001, -3, 'm'),
+    unit('µm/s', 1e-6, -6, 'µ'),
+    unit('nm/s', 1e-9, -9, 'n'),
+    unit('km/h', 1 / 3.6, .55, 'k')
+  ]);
+}
+
+function buildDensityUnits(mode){
+  if(mode === 'zs'){
+    return filterUnits([
+      unit('kg/m³', 1, 0, 'k'),
+      unit('g/cm³', 1000, 3, 'c')
+    ]);
+  }
+  return filterUnits([
+    unit('kg/m³', 1, 0, 'k'),
+    unit('g/cm³', 1000, 3, 'c'),
+    unit('mg/mm³', 1000, 3.1, 'm'),
+    unit('kg/dm³', 1000, 3.2, 'd'),
+    unit('g/dm³', 1, .1, 'd'),
+    unit('kg/l', 1000, 3.3, 'k'),
+    unit('g/l', 1, .2, null)
+  ]);
+}
+
+function buildPressureUnits(mode){
+  const ids = mode === 'zs'
+    ? ['f','p','n','µ','m','','h','k','M','G','T','P']
+    : ['f','p','n','µ','m','','h','k','M','G','T','P'];
+  return prefixedUnits('Pa', ids);
+}
+
+function buildEnergyUnits(mode){
+  const ids = mode === 'zs'
+    ? ['f','p','n','µ','m','','k','M','G','T','P']
+    : ['f','p','n','µ','m','','k','M','G','T','P'];
+  return prefixedUnits('J', ids);
+}
+
+function buildVoltageUnits(mode){
+  const ids = mode === 'zs'
+    ? ['f','p','n','µ','m','','k','M','G','T','P']
+    : ['f','p','n','µ','m','','k','M','G','T','P'];
+  return prefixedUnits('V', ids);
+}
+
+function buildTimeUnits(){
+  return filterUnits([
+    unit('den', 86400, 4.9, null),
+    unit('h', 3600, 3.6, null),
+    unit('min', 60, 1.8, null),
+    unit('s', 1, 0, ''),
+    unit('ms', 1e-3, -3, 'm'),
+    unit('µs', 1e-6, -6, 'µ'),
+    unit('ns', 1e-9, -9, 'n'),
+    unit('ps', 1e-12, -12, 'p'),
+    unit('fs', 1e-15, -15, 'f')
+  ]);
+}
+
+function buildPowerUnits(){
+  return prefixedUnits('W', ['f','p','n','µ','m','','k','M','G','T','P']);
+}
+
+function buildChargeUnits(){
+  return prefixedUnits('C', ['f','p','n','µ','m','','k','M','G','T','P']);
+}
+
+function buildCapacitanceUnits(){
+  return prefixedUnits('F', ['f','p','n','µ','m','','k','M','G','T','P']);
+}
+
+function buildCurrentUnits(){
+  return prefixedUnits('A', ['f','p','n','µ','m','','k','M','G','T','P']);
+}
+
+function buildResistanceUnits(){
+  return prefixedUnits('Ω', ['f','p','n','µ','m','','k','M','G','T','P']);
+}
+
+function availableQuantities(){
+  return quantityMeta.filter(q => q.modes.includes(settings.mode));
+}
+
+function selectedQuantities(){
+  const selected = new Set(settings.quantitiesByMode[settings.mode] || []);
+  return availableQuantities().filter(q => selected.has(q.id));
+}
+
+function randomInt(min, max){
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function randomChoice(arr){
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function decimalPlacesFor(x){
+  if(Math.abs(x) < 1) return clampInt(settings.smallDecimals, 0, 8);
+  if(Math.abs(x) < 10) return clampInt(settings.mediumDecimals, 0, 8);
+  return clampInt(settings.largeDecimals, 0, 8);
+}
+
+function numberSettingsForMode(mode = settings.mode){
+  if(!settings.numberSettingsByMode) settings.numberSettingsByMode = structuredClone(defaultSettings.numberSettingsByMode);
+  if(!settings.numberSettingsByMode[mode]){
+    settings.numberSettingsByMode[mode] = structuredClone(defaultSettings.numberSettingsByMode[mode] || defaultSettings.numberSettingsByMode.zs);
+  }
+  return settings.numberSettingsByMode[mode];
+}
+
+function numberRange(pair = null){
+  const numberSettings = numberSettingsForMode();
+  let min = positiveNumber(numberSettings.minNumber, 0.01);
+  let max = positiveNumber(numberSettings.maxNumber, 9999);
+  if(min > max) [min, max] = [max, min];
+
+  if(numberSettings.niceInputByUnitSize && pair){
+    const fromIsSmaller = pair.from.factor < pair.to.factor;
+    const fromIsLarger = pair.from.factor > pair.to.factor;
+    if(fromIsSmaller){
+      const niceMin = Math.max(min, 10.01);
+      if(niceMin <= max) return {min:niceMin, max};
+    }
+    if(fromIsLarger){
+      const niceMax = Math.min(max, 0.99);
+      if(min <= niceMax) return {min, max:niceMax};
+    }
+  }
+
+  return {min, max};
+}
+
+function randomVisibleNumber(useExponential = false, pair = null){
+  const range = numberRange(pair);
+  return useExponential ? randomExponentialNumber(range) : randomPlainNumber(range);
+}
+
+function randomPlainNumber(range){
+  for(let attempt=0; attempt<200; attempt++){
+    const value = randomValueInRange(range.min, range.max);
+    const decimals = decimalPlacesFor(value);
+    const visible = formatCz(value, decimals, decimals);
+    const parsed = parseCzNumber(visible);
+    if(parsed > 0 && parsed >= range.min && parsed <= range.max){
+      return {visible, value:parsed, exponential:false};
+    }
+  }
+
+  const fallback = Math.min(range.max, Math.max(range.min, 1));
+  const decimals = decimalPlacesFor(fallback);
+  const visible = formatCz(fallback, decimals, decimals);
+  return {visible, value:parseCzNumber(visible), exponential:false};
+}
+
+function randomExponentialNumber(range){
+  const minExp = Math.floor(Math.log10(range.min));
+  const maxExp = Math.floor(Math.log10(range.max));
+  for(let attempt=0; attempt<400; attempt++){
+    const exponent = randomInt(minExp, maxExp);
+    const lowMantissa = exponent === minExp ? range.min / Math.pow(10, exponent) : 1;
+    const highMantissa = exponent === maxExp ? range.max / Math.pow(10, exponent) : 9.99;
+    if(lowMantissa > highMantissa) continue;
+    const mantissaRaw = randomFloat(Math.max(1, lowMantissa), Math.min(9.99, highMantissa));
+    const mantissa = Number(trimCz(formatCz(mantissaRaw, 0, 2)).replace(',', '.'));
+    const value = mantissa * Math.pow(10, exponent);
+    if(value >= range.min && value <= range.max){
+      const visible = `${trimCz(formatCz(mantissa, 0, 2))}·10${toSuperscript(exponent)}`;
+      return {visible, value, exponential:true};
+    }
+  }
+  return randomPlainNumber(range);
+}
+
+function randomValueInRange(min, max){
+  if(max / min > 1000){
+    const logMin = Math.log10(min);
+    const logMax = Math.log10(max);
+    return Math.pow(10, randomFloat(logMin, logMax));
+  }
+  return randomFloat(min, max);
+}
+
+function randomFloat(min, max){
+  return min + Math.random() * (max - min);
+}
+
+function chooseUnitPair(units){
+  if(units.length < 2) return null;
+  let best = null;
+  for(let i=0; i<400; i++){
+    const from = randomChoice(units);
+    const to = randomChoice(units);
+    if(from.unit === to.unit) continue;
+    const jump = Math.abs((from.order ?? Math.log10(from.factor)) - (to.order ?? Math.log10(to.factor)));
+    if(jump < settings.minJump && units.length > 2) {
+      best = best || {from, to};
+      continue;
+    }
+    return {from, to};
+  }
+  return best || {from:units[0], to:units[units.length - 1]};
+}
+
+function shuffle(arr){
+  const out = arr.slice();
+  for(let i = out.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+function makeExample(index, preferredQuantity, useExponentialInput = false){
+  const quantities = preferredQuantity ? [preferredQuantity, ...selectedQuantities().filter(q => q.id !== preferredQuantity.id)] : selectedQuantities();
+  if(!quantities.length) return null;
+  for(let guard=0; guard<200; guard++){
+    const q = guard < quantities.length ? quantities[guard] : randomChoice(quantities);
+    const units = q.build(settings.mode).filter(u => Number.isFinite(u.factor) && u.factor !== 0);
+    const pair = chooseUnitPair(units);
+    if(!pair) continue;
+    const x = randomVisibleNumber(useExponentialInput, pair);
+    const result = x.value * pair.from.factor / pair.to.factor;
+    if(!Number.isFinite(result) || result === 0) continue;
+    return {
+      index,
+      quantity:q.title,
+      quantityId:q.id,
+      value:x.visible,
+      exponentialInput:x.exponential,
+      from:pair.from.unit,
+      to:pair.to.unit,
+      result,
+      resultPlain:formatPlainNumber(result),
+      resultExp:formatExpNumber(result)
+    };
+  }
+  return null;
+}
+
+function generateExamples(){
+  const count = clampInt(settings.count, 1, 60);
+  const quantities = selectedQuantities();
+  let cycle = shuffle(quantities);
+  let previousId = null;
+  const expInputSlots = new Set();
+  if(settings.mode === 'ss'){
+    const target = Math.round(count / 2);
+    const slots = shuffle(Array.from({length:count}, (_, i) => i + 1));
+    slots.slice(0, target).forEach(i => expInputSlots.add(i));
+  }
+  examples = [];
+  for(let i=1; i<=count; i++){
+    if(cycle.length === 0) cycle = shuffle(quantities);
+    if(cycle.length > 1 && cycle[0].id === previousId){
+      cycle.push(cycle.shift());
+    }
+    const preferred = cycle.shift();
+    const ex = makeExample(i, preferred, expInputSlots.has(i));
+    if(ex) examples.push(ex);
+    previousId = ex ? ex.quantityId : previousId;
+  }
+  answersVisible = false;
+  renderAll();
+}
+
+function formatCz(value, minDecimals=0, maxDecimals=12){
+  if(!Number.isFinite(value)) return '';
+  return Number(value).toLocaleString('cs-CZ', {
+    minimumFractionDigits:minDecimals,
+    maximumFractionDigits:maxDecimals,
+    useGrouping:true
+  }).replace(/\s/g, NBSP);
+}
+
+function formatPlainNumber(value){
+  const abs = Math.abs(value);
+  if(abs >= 1000) return trimCz(formatCz(value, 0, 6));
+  if(abs >= 1) return trimCz(formatCz(value, 0, 8));
+  const decimals = Math.min(20, Math.max(2, Math.ceil(-Math.log10(abs || 1)) + 4));
+  return trimCz(formatCz(value, 0, decimals));
+}
+
+function formatExpNumber(value){
+  const exponent = value === 0 ? 0 : Math.floor(Math.log10(Math.abs(value)));
+  const mantissa = value === 0 ? 0 : value / Math.pow(10, exponent);
+  return `${trimCz(formatCz(mantissa, 0, 3))}·10${toSuperscript(exponent)}`;
+}
+
+function trimCz(str){
+  if(!str.includes(',')) return str;
+  return str.replace(/0+$/,'').replace(/,$/,'');
+}
+
+function parseCzNumber(str){
+  return Number(String(str).replace(/\u202f/g,'').replace(/\s/g,'').replace(',', '.'));
+}
+
+function toSuperscript(n){
+  return String(n).replace(/-/g,'⁻').replace(/0/g,'⁰').replace(/1/g,'¹')
+    .replace(/2/g,'²').replace(/3/g,'³').replace(/4/g,'⁴').replace(/5/g,'⁵')
+    .replace(/6/g,'⁶').replace(/7/g,'⁷').replace(/8/g,'⁸').replace(/9/g,'⁹');
+}
+
+function clampInt(value, min, max){
+  const n = Math.round(Number(value));
+  if(!Number.isFinite(n)) return min;
+  return Math.min(max, Math.max(min, n));
+}
+
+function positiveNumber(value, fallback){
+  const normalized = String(value ?? '').trim().replace(',', '.');
+  const n = Number(normalized);
+  if(!Number.isFinite(n) || n <= 0) return fallback;
+  return n;
+}
+
+function renderModes(){
+  $('modes').innerHTML = modes.map(m => `
+    <button class="mode ${settings.mode === m.id ? 'active' : ''}" data-mode="${m.id}">
+      ${m.name}<br><span class="small">${m.note}</span>
+    </button>
+  `).join('');
+  document.querySelectorAll('[data-mode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      settings.mode = btn.dataset.mode;
+      answersVisible = false;
+      generateExamples();
+    });
+  });
+}
+
+function renderExamples(){
+  if(!examples.length){
+    $('examples').innerHTML = '<div class="empty">Vyber aspoň jednu veličinu a jednu dvojici jednotek v nastavení.</div>';
+    return;
+  }
+  $('examples').innerHTML = examples.map(ex => {
+    const answer = settings.mode === 'ss'
+      ? `<span class="exp">${ex.resultExp} ${ex.to}</span><small>Běžný zápis: ${ex.resultPlain} ${ex.to}</small>`
+      : `<span>${ex.resultPlain} ${ex.to}</span>`;
+    return `
+      <article class="example">
+        <div class="exampleTop">
+          <span class="pill good">${ex.index}. ${ex.quantity}</span>
+          <span class="pill">${settings.mode === 'ss' ? 'SŠ' : 'ZŠ'}</span>
+        </div>
+        <div class="task">${ex.value} <span class="unit">${ex.from}</span> = <span class="unit">${ex.to}</span></div>
+        <div class="answer ${answersVisible ? 'show' : ''}">${ex.value} <span class="unit">${ex.from}</span> = ${answer}</div>
+      </article>
+    `;
+  }).join('');
+}
+
+function renderSummary(){
+  const qCount = selectedQuantities().length;
+  const prefixText = selectedPrefixes().map(p => p.label).join(', ');
+  const numberSettings = numberSettingsForMode();
+  $('summary').innerHTML = `
+    <span class="pill good">${settings.count} příkladů</span>
+    <span class="pill">${qCount} veličin</span>
+    <span class="pill">${formatPlainNumber(numberSettings.minNumber)} až ${formatPlainNumber(numberSettings.maxNumber)}</span>
+    <span class="pill">${settings.mode === 'ss' ? 'exp. tvar' : 'bez exp. tvaru'}</span>
+    <span class="pill">${numberSettings.niceInputByUnitSize ? 'hezčí zadání zapnuto' : 'hezčí zadání vypnuto'}</span>
+    <p class="small">Předpony: ${prefixText || 'žádné'}</p>
+    <p class="small">Desetinná místa v zadání: pod 1 → ${settings.smallDecimals}, pod 10 → ${settings.mediumDecimals}, jinak → ${settings.largeDecimals}.</p>
+  `;
+}
+
+function renderStatus(){
+  const current = modes.find(m => m.id === settings.mode);
+  $('status').textContent = current ? current.name.replace(/^\d\)\s*/,'') : 'Převody jednotek';
+  $('meta').innerHTML = settings.mode === 'zs'
+    ? 'Výchozí ZŠ režim: běžný zápis bez exponenciálního tvaru.'
+    : 'SŠ režim: po zobrazení výsledků je hlavní výsledek v exponenciálním tvaru.';
+  $('toggleAnswersBtn').textContent = answersVisible ? 'Skrýt výsledky' : 'Zobrazit výsledky';
+}
+
+function renderAll(){
+  renderModes();
+  renderStatus();
+  renderExamples();
+  renderSummary();
+}
+
+function openSettings(){
+  fillSettingsForm();
+  $('settingsOverlay').classList.add('open');
+  $('settingsOverlay').setAttribute('aria-hidden','false');
+}
+
+function closeSettings(){
+  $('settingsOverlay').classList.remove('open');
+  $('settingsOverlay').setAttribute('aria-hidden','true');
+}
+
+function fillSettingsForm(){
+  const numberSettings = numberSettingsForMode();
+  $('countInput').value = settings.count;
+  $('minNumberInput').value = numberSettings.minNumber;
+  $('maxNumberInput').value = numberSettings.maxNumber;
+  $('smallDecimalsInput').value = settings.smallDecimals;
+  $('mediumDecimalsInput').value = settings.mediumDecimals;
+  $('largeDecimalsInput').value = settings.largeDecimals;
+  $('jumpInput').value = settings.minJump;
+  $('niceInputRuleInput').checked = Boolean(numberSettings.niceInputByUnitSize);
+
+  const selectedQ = new Set(settings.quantitiesByMode[settings.mode] || []);
+  $('quantityChecks').innerHTML = availableQuantities().map(q => `
+    <label class="check">
+      <input type="checkbox" value="${q.id}" ${selectedQ.has(q.id) ? 'checked' : ''}>
+      <span>${q.title}</span>
+    </label>
+  `).join('');
+
+  const selectedP = new Set(settings.prefixes);
+  $('prefixChecks').innerHTML = prefixes.map(p => `
+    <label class="prefixCheck" title="${p.name}">
+      <input type="checkbox" value="${p.id}" ${selectedP.has(p.id) ? 'checked' : ''}>
+      <span>${p.label}</span>
+    </label>
+  `).join('');
+}
+
+function applySettingsFromForm(){
+  settings.count = clampInt($('countInput').value, 1, 60);
+  const numberSettings = numberSettingsForMode();
+  numberSettings.minNumber = positiveNumber($('minNumberInput').value, 0.01);
+  numberSettings.maxNumber = positiveNumber($('maxNumberInput').value, 9999);
+  if(numberSettings.minNumber > numberSettings.maxNumber){
+    [numberSettings.minNumber, numberSettings.maxNumber] = [numberSettings.maxNumber, numberSettings.minNumber];
+  }
+  settings.smallDecimals = clampInt($('smallDecimalsInput').value, 0, 8);
+  settings.mediumDecimals = clampInt($('mediumDecimalsInput').value, 0, 8);
+  settings.largeDecimals = clampInt($('largeDecimalsInput').value, 0, 8);
+  settings.minJump = clampInt($('jumpInput').value, 1, 8);
+  numberSettings.niceInputByUnitSize = $('niceInputRuleInput').checked;
+
+  const quantities = [...$('quantityChecks').querySelectorAll('input:checked')].map(i => i.value);
+  settings.quantitiesByMode[settings.mode] = quantities;
+  const chosenPrefixes = [...$('prefixChecks').querySelectorAll('input:checked')].map(i => i.value);
+  settings.prefixes = chosenPrefixes.length ? chosenPrefixes : [''];
+
+  closeSettings();
+  generateExamples();
+}
+
+function copyText(kind){
+  const lines = examples.map(ex => {
+    if(kind === 'tasks') return `${ex.value} ${ex.from} =\t${ex.to}`;
+    if(settings.mode === 'ss') return `${ex.value} ${ex.from} =\t${ex.resultExp} ${ex.to}`;
+    return `${ex.value} ${ex.from} =\t${ex.resultPlain} ${ex.to}`;
+  }).join('\n');
+  navigator.clipboard?.writeText(lines).then(() => {
+    $('copyState').textContent = kind === 'tasks' ? 'Zadání zkopírováno.' : 'Výsledky zkopírovány.';
+  }).catch(() => {
+    fallbackCopy(lines);
+  });
+}
+
+function fallbackCopy(text){
+  const area = document.createElement('textarea');
+  area.value = text;
+  document.body.appendChild(area);
+  area.select();
+  document.execCommand('copy');
+  area.remove();
+  $('copyState').textContent = 'Zkopírováno.';
+}
+
+function wireEvents(){
+  $('generateBtn').addEventListener('click', generateExamples);
+  $('toggleAnswersBtn').addEventListener('click', () => {
+    answersVisible = !answersVisible;
+    renderAll();
+  });
+  $('copyTasksBtn').addEventListener('click', () => copyText('tasks'));
+  $('copyAnswersBtn').addEventListener('click', () => copyText('answers'));
+  $('settingsTop').addEventListener('click', openSettings);
+  $('settingsSide').addEventListener('click', openSettings);
+  $('closeSettings').addEventListener('click', closeSettings);
+  $('settingsOverlay').addEventListener('click', e => {
+    if(e.target === $('settingsOverlay')) closeSettings();
+  });
+  $('applySettings').addEventListener('click', applySettingsFromForm);
+  $('defaultsSettings').addEventListener('click', () => {
+    const mode = settings.mode;
+    settings = structuredClone(defaultSettings);
+    settings.mode = mode;
+    fillSettingsForm();
+  });
+}
+
+wireEvents();
+generateExamples();
+</script>
+</body>
+</html>
