@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rovnoměrný pohyb - průměrná rychlost a setkání</title>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['\\[','\\]']] },
+    svg: { fontCache: 'global' },
+    startup: {
+      typeset: false,
+      ready: () => {
+        MathJax.startup.defaultReady();
+        window.mathJaxReady = true;
+        if (typeof window.typesetMath === 'function') window.typesetMath();
+      }
+    }
+  };
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+:root{
+  --bg:#f6f3ea; --panel:#ffffff; --ink:#242424; --muted:#67625a;
+  --line:#dfd2bd; --accent:#d99a35; --accent2:#6fb7a8; --soft:#fbf0de;
+  --ok:#fff2a8; --bad:#ffe1dd; --good:#eef9f6;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+.app{display:grid;grid-template-columns:385px 1fr;min-height:100vh}
+aside{padding:18px;border-right:1px solid var(--line);background:#fffaf1;position:sticky;top:0;height:100vh;overflow:auto}
+main{padding:22px;overflow:auto}
+h1{font-size:25px;margin:0 0 12px}
+h2{font-size:22px;margin:0 0 10px}
+h3{font-size:18px;margin:16px 0 8px}
+p{line-height:1.45}
+.small{font-size:13px;color:var(--muted);line-height:1.35}
+.mode{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:11px 12px;margin:7px 0;cursor:pointer;font-weight:750;color:var(--ink)}
+.mode.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(217,154,53,.22);background:#fff8e8}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;margin:14px 0;box-shadow:0 4px 18px rgba(70,50,20,.05)}
+.field{display:grid;grid-template-columns:minmax(128px,1fr) minmax(86px,120px) 54px;gap:8px;align-items:center;margin:8px 0;padding:8px;border-radius:8px;border:1px solid transparent}
+.field.unknown{background:var(--good);border-color:#99d7ca}
+.field.computed{background:var(--ok);border-color:#e8ca55}
+.labelBlock{min-width:0;display:flex;flex-direction:column;gap:6px}
+.field label{font-size:14px;line-height:1.2;min-width:0}
+.unknownPick{display:inline-flex;align-items:center;align-self:flex-start;gap:6px;font-size:12px;color:#286d60;cursor:pointer;user-select:none;white-space:nowrap;background:#f8fffc;border:1px solid #aee1d1;border-radius:999px;padding:3px 8px;line-height:1.1}
+.unknownPick input{width:auto;min-width:0;flex:0 0 auto;accent-color:var(--accent2);cursor:pointer;margin:0}
+.field input[type="text"]{width:100%;min-width:0;padding:9px 8px;border:1px solid var(--line);border-radius:8px;font-size:15px;background:white;color:var(--ink)}
+.field input[readonly]{background:#fffdf5;font-weight:800;color:#735000}
+.field input:focus{outline:2px solid rgba(111,183,168,.55);border-color:var(--accent2)}
+.unit{font-size:12px;color:var(--muted)}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:white;border-radius:8px;padding:9px 11px;cursor:pointer;font-weight:700}
+.btn:hover{background:#fff8e8}
+.resultBox{background:#f8fffc;border:1px solid #aee1d1;border-radius:8px;padding:18px;margin-bottom:16px}
+.problem{background:#fffdf9;border:1px solid var(--line);border-radius:8px;padding:12px;margin-top:10px}
+.steps{display:grid;gap:12px}
+.step{background:white;border:1px solid var(--line);border-left:7px solid var(--accent);border-radius:8px;padding:14px;overflow-x:auto}
+.step b{display:block;margin-bottom:8px}
+.warn{background:var(--bad);border:1px solid #f2a29a;border-radius:8px;padding:10px;margin-top:10px}
+.muted{color:var(--muted)}
+@media(max-width:900px){
+  .app{grid-template-columns:1fr}
+  aside{height:auto;position:relative;border-right:0;border-bottom:1px solid var(--line)}
+}
+@media(max-width:520px){
+  aside{padding:12px}
+  main{padding:10px}
+  h1{font-size:23px}
+  .card{padding:12px}
+  .field{grid-template-columns:minmax(102px,1fr) minmax(76px,112px) 44px;gap:6px;padding:7px}
+  .field label{font-size:13px}
+  .small{font-size:12px}
+  .field input[type="text"]{font-size:15px;padding:8px 7px}
+  .step{padding:12px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <h1>Rovnoměrný pohyb</h1>
+  <p class="small">Tři typy úloh: průměrná rychlost ze dvou částí, pohyb proti sobě a dohánění. Dráhy jsou v kilometrech, rychlosti v km/h a časy v minutách. Ve výpočtu proto vždy převádíme minuty na hodiny.</p>
+  <div id="modes"></div>
+  <div class="card">
+    <h3>Vstupní veličiny</h3>
+    <div id="fields"></div>
+    <div class="btnrow">
+      <button class="btn" id="randomExample">Generovat příklad</button>
+      <button class="btn" id="clearAll">Smazat vše</button>
+    </div>
+  </div>
+</aside>
+<main>
+  <div class="resultBox">
+    <h2 id="status">Zadej hodnoty</h2>
+    <div id="equation" class="muted"></div>
+    <div id="problem" class="problem" style="display:none"></div>
+  </div>
+  <div class="steps" id="steps"></div>
+</main>
+</div>
+
+<script>
+const modeList = [
+  {
+    id:'average',
+    name:'1) Průměrná rychlost ze dvou částí',
+    desc:'Dva rovnoměrné pohyby za sebou, pokaždé jiná rychlost, dráha i čas.',
+    fields:['s1','t1','v1','s2','t2','v2','vp'],
+    unknowns:['s1','t1','v1','s2','t2','v2','vp'],
+    defaultUnknown:'vp'
+  },
+  {
+    id:'opposite',
+    name:'2) Rovnoměrné pohyby proti sobě',
+    desc:'Dvě tělesa vyrazí proti sobě. Jedno z nich může začít později.',
+    fields:['D','vA','zA','vB','zB','t','sA','sB'],
+    unknowns:['D','vA','vB','t','sA','sB'],
+    defaultUnknown:'t'
+  },
+  {
+    id:'chase',
+    name:'3) Rovnoměrné pohyby za sebou',
+    desc:'Pomalejší vyjede první, rychlejší vyjede později a dojede ho.',
+    fields:['vR','vP','z','td','tc','s'],
+    unknowns:['vR','vP','z','td','s'],
+    defaultUnknown:'td'
+  }
+];
+
+const labels = {
+  s1:['s₁','km','dráha 1. části'],
+  t1:['t₁','min','čas 1. části'],
+  v1:['v₁','km/h','rychlost 1. části'],
+  s2:['s₂','km','dráha 2. části'],
+  t2:['t₂','min','čas 2. části'],
+  v2:['v₂','km/h','rychlost 2. části'],
+  vp:['vₚ','km/h','průměrná rychlost'],
+  D:['s','km','počáteční vzdálenost'],
+  vA:['v₁','km/h','rychlost 1. tělesa'],
+  zA:['z₁','min','zpoždění 1. tělesa'],
+  vB:['v₂','km/h','rychlost 2. tělesa'],
+  zB:['z₂','min','zpoždění 2. tělesa'],
+  t:['t','min','čas setkání od začátku měření'],
+  sA:['s₁','km','dráha 1. tělesa'],
+  sB:['s₂','km','dráha 2. tělesa'],
+  vP:['v₂','km/h','rychlost pomalejšího'],
+  vR:['v₁','km/h','rychlost rychlejšího'],
+  z:['z','min','časový náskok pomalejšího'],
+  td:['t','min','čas rychlejšího do dojetí'],
+  tc:['tₚₒₘ','min','celkový čas pomalejšího'],
+  s:['s','km','dráha do místa dojetí']
+};
+
+let mode = 'average';
+let unknown = 'vp';
+let values = {};
+let computed = {};
+let problemText = '';
+const $ = id => document.getElementById(id);
+
+function def(){ return modeList.find(m => m.id === mode); }
+function num(k){
+  if(computed[k] !== undefined) return computed[k];
+  const raw = values[k];
+  if(raw === undefined || raw === '') return null;
+  const n = Number(String(raw).replace(/[\s\u202f]/g,'').replace(',','.'));
+  return Number.isFinite(n) ? n : null;
+}
+function knownFromValues(k){
+  const raw = values[k];
+  if(raw === undefined || raw === '') return null;
+  const n = Number(String(raw).replace(/[\s\u202f]/g,'').replace(',','.'));
+  return Number.isFinite(n) ? n : null;
+}
+function fmt(x, digits=1){
+  if(!Number.isFinite(x)) return '';
+  const rounded = Math.round(x * Math.pow(10,digits)) / Math.pow(10,digits);
+  return rounded.toLocaleString('cs-CZ',{maximumFractionDigits:digits, minimumFractionDigits:0}).replace(/\s/g,'\u202f');
+}
+function tex(x, digits=1){ return fmt(x,digits).replace(',', '{,}'); }
+function setComputed(k, v){
+  if(Number.isFinite(v)) computed[k] = v;
+}
+function clearComputed(){
+  computed = {};
+}
+function modeName(){ return def().name.replace(/^\d\)\s*/, ''); }
+
+function renderModes(){
+  $('modes').innerHTML = modeList.map(m => `
+    <button class="mode ${m.id===mode?'active':''}" data-mode="${m.id}">
+      ${m.name}<br><span class="small">${m.desc}</span>
+    </button>
+  `).join('');
+  document.querySelectorAll('.mode').forEach(btn => {
+    btn.onclick = () => {
+      mode = btn.dataset.mode;
+      unknown = def().defaultUnknown;
+      values = {};
+      computed = {};
+      problemText = '';
+      render();
+    };
+  });
+}
+
+function renderFields(){
+  const fields = def().fields;
+  const unknowns = def().unknowns;
+  $('fields').innerHTML = fields.map(k => {
+    const l = labels[k];
+    const isUnknown = k === unknown;
+    const isComputed = computed[k] !== undefined;
+    const value = isComputed ? fmt(computed[k]) : (values[k] ?? '');
+    const unknownControl = unknowns.includes(k)
+      ? `<label class="unknownPick"><input type="radio" name="unknown" value="${k}" ${isUnknown?'checked':''}> neznámá</label>`
+      : '';
+    return `
+      <div class="field ${isUnknown?'unknown':''} ${isComputed?'computed':''}">
+        <div class="labelBlock">
+          <label>${l[2]} <b>${l[0]}</b></label>
+          ${unknownControl}
+        </div>
+        <input type="text" inputmode="decimal" data-key="${k}" value="${value}" ${isUnknown || isComputed ? 'readonly' : ''}>
+        <div class="unit">${l[1]}</div>
+      </div>
+    `;
+  }).join('');
+  document.querySelectorAll('input[name="unknown"]').forEach(radio => {
+    radio.onchange = () => {
+      unknown = radio.value;
+      delete values[unknown];
+      clearComputed();
+      calculate();
+      renderFields();
+    };
+  });
+  document.querySelectorAll('input[data-key]').forEach(input => {
+    input.oninput = () => {
+      const key = input.dataset.key;
+      const pos = input.selectionStart;
+      values[key] = input.value;
+      clearComputed();
+      calculate();
+      const next = document.querySelector(`input[data-key="${key}"]`);
+      if(next && !next.readOnly){
+        next.focus();
+        try{ next.setSelectionRange(pos, pos); }catch(e){}
+      }
+    };
+  });
+}
+
+function step(title, body){ return `<div class="step"><b>${title}</b>${body}</div>`; }
+function math(texCode){ return `\\[${texCode}\\]`; }
+function warn(text){ return `<div class="warn">${text}</div>`; }
+function missing(keys){
+  return keys.filter(k => knownFromValues(k) === null && computed[k] === undefined).map(k => labels[k][0]).join(', ');
+}
+function positiveCheck(keys){
+  const bad = keys.filter(k => num(k) !== null && num(k) < 0);
+  return bad.length ? `Hodnoty ${bad.map(k=>labels[k][0]).join(', ')} nesmí vyjít záporně.` : '';
+}
+function kmUnit(){ return `\\,\\mathrm{km}`; }
+function minUnit(){ return `\\,\\mathrm{min}`; }
+function hourUnit(){ return `\\,\\mathrm{h}`; }
+function speedUnit(){ return `\\,\\mathrm{km\\,h^{-1}}`; }
+function h(k){ return num(k) / 60; }
+function hourConversionStep(keys, title='Převod času na hodiny'){
+  const rows = keys
+    .filter(k => num(k) !== null)
+    .map(k => math(`${labels[k][0]}=${tex(num(k))}${minUnit()}=${tex(h(k),2)}${hourUnit()}`));
+  return rows.length ? step(title, rows.join('')) : '';
+}
+
+function inferSegment(prefix, steps){
+  const s = prefix === '1' ? 's1' : 's2';
+  const t = prefix === '1' ? 't1' : 't2';
+  const v = prefix === '1' ? 'v1' : 'v2';
+  if(num(s) === null && num(v) !== null && num(t) !== null){
+    setComputed(s, num(v) * h(t));
+    steps.push(step(`Dopočítání dráhy ${prefix}. části`, math(`${labels[s][0]}=${labels[v][0]}\\cdot ${labels[t][0]}`)+math(`${labels[s][0]}=${tex(num(v))}\\cdot${tex(h(t),2)}=${tex(num(s))}${kmUnit()}`)));
+  }
+  if(num(t) === null && num(s) !== null && num(v) !== null && num(v) !== 0){
+    const th = num(s) / num(v);
+    setComputed(t, 60 * th);
+    steps.push(step(`Dopočítání času ${prefix}. části`, math(`${labels[t][0]}=\\frac{${labels[s][0]}}{${labels[v][0]}}`)+math(`${labels[t][0]}=\\frac{${tex(num(s))}}{${tex(num(v))}}=${tex(th,2)}${hourUnit()}=${tex(num(t))}${minUnit()}`)));
+  }
+  if(num(v) === null && num(s) !== null && num(t) !== null && num(t) !== 0){
+    setComputed(v, num(s) / h(t));
+    steps.push(step(`Dopočítání rychlosti ${prefix}. části`, math(`${labels[v][0]}=\\frac{${labels[s][0]}}{${labels[t][0]}}`)+math(`${labels[v][0]}=\\frac{${tex(num(s))}}{${tex(h(t),2)}}=${tex(num(v))}${speedUnit()}`)));
+  }
+}
+
+function solveAverage(){
+  const steps = [];
+  steps.push(step('Použité vztahy', math(`v=\\frac{s}{t}\\qquad v_p=\\frac{s_1+s_2}{t_1+t_2}`)));
+  const conversion = hourConversionStep(['t1','t2']);
+  if(conversion) steps.push(conversion);
+  inferSegment('1', steps);
+  inferSegment('2', steps);
+
+  if(unknown === 's1' && num('s1') === null && num('vp') !== null && num('t1') !== null && num('s2') !== null && num('t2') !== null){
+    const tc = h('t1') + h('t2');
+    setComputed('s1', num('vp') * tc - num('s2'));
+    steps.push(step('Vyjádření neznámé dráhy', math(`t_c=t_1+t_2=${tex(h('t1'),2)}+${tex(h('t2'),2)}=${tex(tc,2)}${hourUnit()}`)+math(`v_p=\\frac{s_1+s_2}{t_c}\\quad\\Rightarrow\\quad s_1=v_p t_c-s_2`)+math(`s_1=${tex(num('vp'))}\\cdot${tex(tc,2)}-${tex(num('s2'))}=${tex(num('s1'))}${kmUnit()}`)));
+  }
+  if(unknown === 's2' && num('s2') === null && num('vp') !== null && num('t1') !== null && num('s1') !== null && num('t2') !== null){
+    const tc = h('t1') + h('t2');
+    setComputed('s2', num('vp') * tc - num('s1'));
+    steps.push(step('Vyjádření neznámé dráhy', math(`t_c=t_1+t_2=${tex(h('t1'),2)}+${tex(h('t2'),2)}=${tex(tc,2)}${hourUnit()}`)+math(`v_p=\\frac{s_1+s_2}{t_c}\\quad\\Rightarrow\\quad s_2=v_p t_c-s_1`)+math(`s_2=${tex(num('vp'))}\\cdot${tex(tc,2)}-${tex(num('s1'))}=${tex(num('s2'))}${kmUnit()}`)));
+  }
+  if(unknown === 't1' && num('t1') === null && num('vp') !== null && num('s1') !== null && num('s2') !== null && num('t2') !== null && num('vp') !== 0){
+    const tc = (num('s1') + num('s2')) / num('vp');
+    const t1h = tc - h('t2');
+    setComputed('t1', 60 * t1h);
+    steps.push(step('Vyjádření neznámého času', math(`s_c=s_1+s_2=${tex(num('s1'))}+${tex(num('s2'))}=${tex(num('s1')+num('s2'))}${kmUnit()}`)+math(`t_c=\\frac{s_c}{v_p}=\\frac{${tex(num('s1')+num('s2'))}}{${tex(num('vp'))}}=${tex(tc,2)}${hourUnit()}`)+math(`t_1=t_c-t_2=${tex(tc,2)}-${tex(h('t2'),2)}=${tex(t1h,2)}${hourUnit()}=${tex(num('t1'))}${minUnit()}`)));
+  }
+  if(unknown === 't2' && num('t2') === null && num('vp') !== null && num('s1') !== null && num('s2') !== null && num('t1') !== null && num('vp') !== 0){
+    const tc = (num('s1') + num('s2')) / num('vp');
+    const t2h = tc - h('t1');
+    setComputed('t2', 60 * t2h);
+    steps.push(step('Vyjádření neznámého času', math(`s_c=s_1+s_2=${tex(num('s1'))}+${tex(num('s2'))}=${tex(num('s1')+num('s2'))}${kmUnit()}`)+math(`t_c=\\frac{s_c}{v_p}=\\frac{${tex(num('s1')+num('s2'))}}{${tex(num('vp'))}}=${tex(tc,2)}${hourUnit()}`)+math(`t_2=t_c-t_1=${tex(tc,2)}-${tex(h('t1'),2)}=${tex(t2h,2)}${hourUnit()}=${tex(num('t2'))}${minUnit()}`)));
+  }
+  if(unknown === 'v1' && num('v1') === null && num('s1') === null && num('vp') !== null && num('t1') !== null && num('s2') !== null && num('t2') !== null){
+    const tc = h('t1') + h('t2');
+    setComputed('s1', num('vp') * tc - num('s2'));
+    steps.push(step('Nejdřív dopočítáme dráhu 1. části', math(`t_c=t_1+t_2=${tex(h('t1'),2)}+${tex(h('t2'),2)}=${tex(tc,2)}${hourUnit()}`)+math(`s_1=v_p t_c-s_2`)+math(`s_1=${tex(num('vp'))}\\cdot${tex(tc,2)}-${tex(num('s2'))}=${tex(num('s1'))}${kmUnit()}`)));
+  }
+  if(unknown === 'v2' && num('v2') === null && num('s2') === null && num('vp') !== null && num('t1') !== null && num('s1') !== null && num('t2') !== null){
+    const tc = h('t1') + h('t2');
+    setComputed('s2', num('vp') * tc - num('s1'));
+    steps.push(step('Nejdřív dopočítáme dráhu 2. části', math(`t_c=t_1+t_2=${tex(h('t1'),2)}+${tex(h('t2'),2)}=${tex(tc,2)}${hourUnit()}`)+math(`s_2=v_p t_c-s_1`)+math(`s_2=${tex(num('vp'))}\\cdot${tex(tc,2)}-${tex(num('s1'))}=${tex(num('s2'))}${kmUnit()}`)));
+  }
+  inferSegment('1', steps);
+  inferSegment('2', steps);
+
+  if(num('vp') === null && num('s1') !== null && num('s2') !== null && num('t1') !== null && num('t2') !== null){
+    const sc = num('s1') + num('s2');
+    const tc = h('t1') + h('t2');
+    setComputed('vp', sc / tc);
+    steps.push(step('Celková dráha a celkový čas', math(`s_c=s_1+s_2=${tex(num('s1'))}+${tex(num('s2'))}=${tex(sc)}${kmUnit()}`)+math(`t_c=t_1+t_2=${tex(h('t1'),2)}+${tex(h('t2'),2)}=${tex(tc,2)}${hourUnit()}`)));
+    steps.push(step('Průměrná rychlost', math(`v_p=\\frac{s_c}{t_c}=\\frac{${tex(sc)}}{${tex(tc,2)}}=${tex(num('vp'))}${speedUnit()}`)));
+  } else if(num('s1') !== null && num('s2') !== null && num('t1') !== null && num('t2') !== null && num('vp') !== null){
+    const sc = num('s1') + num('s2');
+    const tc = h('t1') + h('t2');
+    steps.push(step('Kontrola přes průměrnou rychlost', math(`v_p=\\frac{s_1+s_2}{t_c}=\\frac{${tex(num('s1'))}+${tex(num('s2'))}}{${tex(tc,2)}}=\\frac{${tex(sc)}}{${tex(tc,2)}}=${tex(sc/tc)}${speedUnit()}`)));
+  }
+
+  const need = unknown === 'vp' ? ['s1','s2','t1','t2'] : [];
+  const miss = missing(need);
+  const bad = positiveCheck(['s1','s2','t1','t2','v1','v2','vp']);
+  if(bad) steps.push(warn(bad));
+  if(miss) return {ok:false, message:`Chybí hodnoty: ${miss}.`, steps};
+  if(computed[unknown] === undefined) return {ok:false, message:'Zatím nejde dopočítat zadanou neznámou. Zkus vygenerovat příklad nebo doplnit další hodnoty.', steps};
+  return {ok:true, message:`${labels[unknown][0]} = ${fmt(computed[unknown])} ${labels[unknown][1]}`, steps};
+}
+
+function solveOpposite(){
+  const steps = [];
+  steps.push(step('Myšlenka úlohy', math(`s=s_1+s_2\\qquad s_1=v_1(t-z_1)\\qquad s_2=v_2(t-z_2)`)));
+  const D = num('D'), vA = num('vA'), vB = num('vB'), zA = num('zA') ?? 0, zB = num('zB') ?? 0, t = num('t');
+  if(num('zA') === null) setComputed('zA', 0);
+  if(num('zB') === null) setComputed('zB', 0);
+  const conversion = hourConversionStep(['zA','zB','t'], 'Převod časů na hodiny');
+  if(conversion) steps.push(conversion);
+
+  if(unknown === 't' && D !== null && vA !== null && vB !== null && vA + vB !== 0){
+    const th = (D + vA*h('zA') + vB*h('zB')) / (vA + vB);
+    setComputed('t', 60 * th);
+    steps.push(step('Vyjádření času setkání', math(`s=v_1(t-z_1)+v_2(t-z_2)`)+math(`t=\\frac{s+v_1z_1+v_2z_2}{v_1+v_2}`)+math(`t=\\frac{${tex(D)}+${tex(vA)}\\cdot${tex(h('zA'),2)}+${tex(vB)}\\cdot${tex(h('zB'),2)}}{${tex(vA)}+${tex(vB)}}=${tex(th,2)}${hourUnit()}=${tex(num('t'))}${minUnit()}`)));
+  }
+  if(unknown === 'D' && t !== null && vA !== null && vB !== null){
+    const result = vA*(h('t')-h('zA')) + vB*(h('t')-h('zB'));
+    setComputed('D', result);
+    steps.push(step('Výpočet počáteční vzdálenosti', math(`s=v_1(t-z_1)+v_2(t-z_2)`)+math(`s=${tex(vA)}(${tex(h('t'),2)}-${tex(h('zA'),2)})+${tex(vB)}(${tex(h('t'),2)}-${tex(h('zB'),2)})=${tex(result)}${kmUnit()}`)));
+  }
+  if(unknown === 'vA' && D !== null && t !== null && vB !== null && t-zA !== 0){
+    const result = (D - vB*(h('t')-h('zB'))) / (h('t')-h('zA'));
+    setComputed('vA', result);
+    steps.push(step('Vyjádření rychlosti 1. tělesa', math(`s=v_1(t-z_1)+v_2(t-z_2)`)+math(`v_1=\\frac{s-v_2(t-z_2)}{t-z_1}`)+math(`v_1=\\frac{${tex(D)}-${tex(vB)}(${tex(h('t'),2)}-${tex(h('zB'),2)})}{${tex(h('t'),2)}-${tex(h('zA'),2)}}=${tex(result)}${speedUnit()}`)));
+  }
+  if(unknown === 'vB' && D !== null && t !== null && vA !== null && t-zB !== 0){
+    const result = (D - vA*(h('t')-h('zA'))) / (h('t')-h('zB'));
+    setComputed('vB', result);
+    steps.push(step('Vyjádření rychlosti 2. tělesa', math(`s=v_1(t-z_1)+v_2(t-z_2)`)+math(`v_2=\\frac{s-v_1(t-z_1)}{t-z_2}`)+math(`v_2=\\frac{${tex(D)}-${tex(vA)}(${tex(h('t'),2)}-${tex(h('zA'),2)})}{${tex(h('t'),2)}-${tex(h('zB'),2)}}=${tex(result)}${speedUnit()}`)));
+  }
+
+  const finalT = num('t'), finalVA = num('vA'), finalVB = num('vB');
+  if(finalT !== null && finalVA !== null && finalVB !== null){
+    const tA = h('t') - h('zA');
+    const tB = h('t') - h('zB');
+    setComputed('sA', finalVA * tA);
+    setComputed('sB', finalVB * tB);
+    steps.push(step('Dráhy obou těles', math(`s_1=v_1(t-z_1)=${tex(finalVA)}(${tex(h('t'),2)}-${tex(h('zA'),2)})=${tex(num('sA'))}${kmUnit()}`)+math(`s_2=v_2(t-z_2)=${tex(finalVB)}(${tex(h('t'),2)}-${tex(h('zB'),2)})=${tex(num('sB'))}${kmUnit()}`)));
+    if(tA < 0 || tB < 0) steps.push(warn('Čas setkání vyšel dříve, než jedno z těles vyjelo. Takové zadání nedává v tomto modelu smysl.'));
+  }
+  const bad = positiveCheck(['D','vA','vB','zA','zB','t','sA','sB']);
+  if(bad) steps.push(warn(bad));
+  if(computed[unknown] === undefined) return {ok:false, message:'Zatím nejde dopočítat zadanou neznámou. Zkus vygenerovat příklad nebo doplnit další hodnoty.', steps};
+  return {ok:true, message:`${labels[unknown][0]} = ${fmt(computed[unknown])} ${labels[unknown][1]}`, steps};
+}
+
+function solveChase(){
+  const steps = [];
+  steps.push(step('Myšlenka úlohy', math(`s_1=s_2`)+math(`s_1=v_1t\\qquad s_2=v_2(z+t)`)+math(`v_1t=v_2(z+t)`)));
+  const vP = num('vP'), vR = num('vR'), z = num('z'), td = num('td');
+  const conversion = hourConversionStep(['z','td'], 'Převod času na hodiny');
+  if(conversion) steps.push(conversion);
+
+  if(unknown === 'td' && vP !== null && vR !== null && z !== null && vR !== vP){
+    const th = vP * h('z') / (vR - vP);
+    setComputed('td', 60 * th);
+    steps.push(step('Vyjádření času rychlejšího', math(`v_1t=v_2(z+t)`)+math(`v_1t=v_2z+v_2t`)+math(`t(v_1-v_2)=v_2z`)+math(`t=\\frac{v_2z}{v_1-v_2}`)+math(`t=\\frac{${tex(vP)}\\cdot${tex(h('z'),2)}}{${tex(vR)}-${tex(vP)}}=${tex(th,2)}${hourUnit()}=${tex(num('td'))}${minUnit()}`)));
+  }
+  if(unknown === 'z' && vP !== null && vR !== null && td !== null && vP !== 0){
+    const zh = h('td') * (vR - vP) / vP;
+    setComputed('z', 60 * zh);
+    steps.push(step('Vyjádření časového náskoku', math(`v_1t=v_2(z+t)`)+math(`z=\\frac{v_1t-v_2t}{v_2}`)+math(`z=\\frac{${tex(vR)}\\cdot${tex(h('td'),2)}-${tex(vP)}\\cdot${tex(h('td'),2)}}{${tex(vP)}}=${tex(zh,2)}${hourUnit()}=${tex(num('z'))}${minUnit()}`)));
+  }
+  if(unknown === 'vR' && vP !== null && z !== null && td !== null && td !== 0){
+    const result = vP * (h('z') + h('td')) / h('td');
+    setComputed('vR', result);
+    steps.push(step('Vyjádření rychlosti rychlejšího', math(`v_1t=v_2(z+t)`)+math(`v_1=\\frac{v_2(z+t)}{t}`)+math(`v_1=\\frac{${tex(vP)}(${tex(h('z'),2)}+${tex(h('td'),2)})}{${tex(h('td'),2)}}=${tex(result)}${speedUnit()}`)));
+  }
+  if(unknown === 'vP' && vR !== null && z !== null && td !== null && z + td !== 0){
+    const result = vR * h('td') / (h('z') + h('td'));
+    setComputed('vP', result);
+    steps.push(step('Vyjádření rychlosti pomalejšího', math(`v_1t=v_2(z+t)`)+math(`v_2=\\frac{v_1t}{z+t}`)+math(`v_2=\\frac{${tex(vR)}\\cdot${tex(h('td'),2)}}{${tex(h('z'),2)}+${tex(h('td'),2)}}=${tex(result)}${speedUnit()}`)));
+  }
+  if(unknown === 's' && vR !== null && td !== null){
+    const result = vR * h('td');
+    setComputed('s', result);
+    steps.push(step('Výpočet dráhy do místa dojetí', math(`s_1=v_1t`)+math(`s_1=${tex(vR)}\\cdot${tex(h('td'),2)}=${tex(result)}${kmUnit()}`)));
+  }
+
+  const finalTd = num('td'), finalZ = num('z'), finalVR = num('vR'), finalVP = num('vP');
+  if(finalTd !== null && finalZ !== null){
+    setComputed('tc', finalZ + finalTd);
+    steps.push(step('Celkový čas pomalejšího', math(`t_{pom}=z+t=${tex(h('z'),2)}+${tex(h('td'),2)}=${tex(h('tc'),2)}${hourUnit()}=${tex(num('tc'))}${minUnit()}`)));
+  }
+  if(num('s') === null && finalVR !== null && finalTd !== null){
+    setComputed('s', finalVR * h('td'));
+    steps.push(step('Dráha do místa dojetí', math(`s_1=v_1t=${tex(finalVR)}\\cdot${tex(h('td'),2)}=${tex(num('s'))}${kmUnit()}`)));
+  }
+  if(finalVP !== null && finalVR !== null && finalVR <= finalVP) steps.push(warn('Rychlejší těleso musí mít větší rychlost než pomalejší, jinak ho nedojede.'));
+  const bad = positiveCheck(['vP','vR','z','td','tc','s']);
+  if(bad) steps.push(warn(bad));
+  if(computed[unknown] === undefined) return {ok:false, message:'Zatím nejde dopočítat zadanou neznámou. Zkus vygenerovat příklad nebo doplnit další hodnoty.', steps};
+  return {ok:true, message:`${labels[unknown][0]} = ${fmt(computed[unknown])} ${labels[unknown][1]}`, steps};
+}
+
+function calculate(){
+  clearComputed();
+  let result;
+  if(mode === 'average') result = solveAverage();
+  if(mode === 'opposite') result = solveOpposite();
+  if(mode === 'chase') result = solveChase();
+  $('status').textContent = result.ok ? `Výsledek: ${result.message}` : result.message;
+  $('equation').innerHTML = modeName();
+  $('steps').innerHTML = result.steps.join('');
+  $('problem').style.display = problemText ? 'block' : 'none';
+  $('problem').innerHTML = problemText;
+  renderFields();
+  typesetMath();
+}
+
+function render(){
+  renderModes();
+  renderFields();
+  calculate();
+}
+
+function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function resetForGenerate(){
+  values = {};
+  computed = {};
+  problemText = '';
+}
+function keepSelectedUnknown(){
+  if(!def().unknowns.includes(unknown)) unknown = def().defaultUnknown;
+  return unknown;
+}
+function put(obj){
+  for(const [k,v] of Object.entries(obj)) values[k] = fmt(v);
+}
+function putExcept(obj, hiddenKeys){
+  for(const [k,v] of Object.entries(obj)){
+    if(!hiddenKeys.includes(k)) values[k] = fmt(v);
+  }
+}
+
+function generateAverage(){
+  resetForGenerate();
+  const kind = pick(['auto','kolo']);
+  const v1 = kind === 'auto' ? randInt(45,90) : randInt(14,24);
+  let v2 = kind === 'auto' ? randInt(70,130) : randInt(18,34);
+  if(Math.abs(v2 - v1) < 5) v2 += kind === 'auto' ? 12 : 5;
+  const t1 = kind === 'auto' ? randInt(12,45) : randInt(20,70);
+  const t2 = kind === 'auto' ? randInt(10,40) : randInt(15,60);
+  const s1 = v1*t1/60;
+  const s2 = v2*t2/60;
+  const vp = (s1+s2)/((t1+t2)/60);
+  keepSelectedUnknown();
+  if(unknown === 'vp') {
+    const extraUnknowns = [pick(['s1','t1','v1']), pick(['s2','t2','v2'])];
+    putExcept({s1,t1,v1,s2,t2,v2}, extraUnknowns);
+  }
+  if(unknown === 's1') put({t1,s2,t2,vp});
+  if(unknown === 't1') put({s1,s2,t2,vp});
+  if(unknown === 'v1') put({t1,s2,t2,vp});
+  if(unknown === 's2') put({s1,t1,t2,vp});
+  if(unknown === 't2') put({s1,t1,s2,vp});
+  if(unknown === 'v2') put({s1,t1,t2,vp});
+  const subject = kind === 'auto' ? 'Auto jede trasu ve dvou částech.' : 'Cyklista jede trasu ve dvou částech.';
+  problemText = `${subject} V každé části jede rovnoměrně, ale rychlost, dráha i čas jsou jiné. Dopočítej ${labels[unknown][2]} ${labels[unknown][0]}.`;
+}
+
+function generateOpposite(){
+  resetForGenerate();
+  const kind = pick(['auta','kola']);
+  const vA = kind === 'auta' ? randInt(50,95) : randInt(15,28);
+  const vB = kind === 'auta' ? randInt(55,105) : randInt(16,32);
+  const delayed = pick(['none','A','B']);
+  const zA = delayed === 'A' ? randInt(3,12) : 0;
+  const zB = delayed === 'B' ? randInt(3,12) : 0;
+  const t = Math.max(zA,zB) + (kind === 'auta' ? randInt(8,28) : randInt(18,55));
+  const D = vA*(t-zA)/60 + vB*(t-zB)/60;
+  keepSelectedUnknown();
+  if(unknown === 't') put({D,vA,zA,vB,zB});
+  if(unknown === 'D') put({vA,zA,vB,zB,t});
+  if(unknown === 'vA') put({D,zA,vB,zB,t});
+  if(unknown === 'vB') put({D,vA,zA,zB,t});
+  if(unknown === 'sA') put({D,vA,zA,vB,zB,t});
+  if(unknown === 'sB') put({D,vA,zA,vB,zB,t});
+  const delayText = delayed === 'none' ? 'Obě tělesa vyrazí současně.' : delayed === 'A' ? 'První těleso vyrazí později.' : 'Druhé těleso vyrazí později.';
+  const subject = kind === 'auta' ? 'Dvě auta jedou rovnoměrně proti sobě.' : 'Dva cyklisté jedou rovnoměrně proti sobě.';
+  problemText = `${subject} ${delayText} Dopočítej ${labels[unknown][2]} ${labels[unknown][0]}.`;
+}
+
+function generateChase(){
+  resetForGenerate();
+  const templates = [
+    {vP:18,vR:30,z:20, text:'Pomalejší cyklista vyjede první. Rychlejší cyklista vyjede za ním.'},
+    {vP:20,vR:32,z:30, text:'Cyklista jede napřed. Za ním později vyrazí rychlejší cyklista.'},
+    {vP:45,vR:75,z:12, text:'Pomalejší auto vyjede první. Později za ním vyjede rychlejší auto.'},
+    {vP:60,vR:90,z:15, text:'Pomalejší auto jede po stejné silnici. Rychlejší auto vyjede později za ním.'},
+    {vP:55,vR:80,z:20, text:'Pomalejší vozidlo má náskok. Rychlejší vozidlo ho začne dohánět.'},
+    {vP:24,vR:36,z:25, text:'Pomalejší cyklista má náskok. Rychlejší cyklista ho dohání.'}
+  ];
+  const data = pick(templates);
+  const td = data.vP * data.z / (data.vR - data.vP);
+  const s = data.vR * td / 60;
+  keepSelectedUnknown();
+  if(unknown === 'td') put({vP:data.vP,vR:data.vR,z:data.z});
+  if(unknown === 'z') put({vP:data.vP,vR:data.vR,td});
+  if(unknown === 'vR') put({vP:data.vP,z:data.z,td});
+  if(unknown === 'vP') put({vR:data.vR,z:data.z,td});
+  if(unknown === 's') put({vP:data.vP,vR:data.vR,z:data.z,td});
+  problemText = `${data.text} Dopočítej ${labels[unknown][2]} ${labels[unknown][0]}.`;
+}
+
+function generateRandom(){
+  if(mode === 'average') generateAverage();
+  if(mode === 'opposite') generateOpposite();
+  if(mode === 'chase') generateChase();
+  calculate();
+}
+
+function clearAll(){
+  values = {};
+  computed = {};
+  problemText = '';
+  calculate();
+}
+
+function typesetMath(){
+  const nodes = [$('steps'), $('equation')];
+  if(window.MathJax && MathJax.typesetPromise){
+    try{ if(MathJax.typesetClear) MathJax.typesetClear(nodes); }catch(e){}
+    MathJax.typesetPromise(nodes).catch(err => console.warn('MathJax typeset failed:', err));
+  }
+}
+
+$('randomExample').onclick = generateRandom;
+$('clearAll').onclick = clearAll;
+render();
+</script>
+</body>
+</html>
