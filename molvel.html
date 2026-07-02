@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Molární veličiny</title>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['\\[','\\]']] },
+    svg: { fontCache: 'global' },
+    startup: {
+      typeset: false,
+      ready: () => {
+        MathJax.startup.defaultReady();
+        window.mathJaxReady = true;
+        if (typeof window.typesetMath === 'function') window.typesetMath();
+      }
+    }
+  };
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+:root{
+  --bg:#f6f3ea; --panel:#ffffff; --ink:#242424; --muted:#67625a;
+  --line:#dfd2bd; --accent:#d99a35; --accent2:#6fb7a8; --soft:#fbf0de;
+  --ok:#fff2a8; --bad:#ffe1dd; --good:#eef9f6;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+.app{display:grid;grid-template-columns:370px 1fr;min-height:100vh}
+aside{padding:18px;border-right:1px solid var(--line);background:#fffaf1;position:sticky;top:0;height:100vh;overflow:auto}
+main{padding:22px;overflow:auto}
+h1{font-size:25px;margin:0 0 12px}
+h2{font-size:22px;margin:0 0 10px}
+h3{font-size:18px;margin:16px 0 8px}
+p{line-height:1.45}
+.small{font-size:13px;color:var(--muted);line-height:1.35}
+.mode{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:11px 12px;margin:7px 0;cursor:pointer;font-weight:750;color:var(--ink)}
+.mode.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(217,154,53,.22);background:#fff8e8}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;margin:14px 0;box-shadow:0 4px 18px rgba(70,50,20,.05)}
+.field{display:grid;grid-template-columns:minmax(118px,1fr) minmax(92px,128px) 64px;gap:8px;align-items:center;margin:8px 0;padding:8px;border-radius:8px;border:1px solid transparent}
+.field.unknown{background:var(--good);border-color:#99d7ca}
+.field.computed{background:var(--ok);border-color:#e8ca55}
+.labelBlock{min-width:0;display:flex;flex-direction:column;gap:6px}
+.field label{font-size:14px;line-height:1.2;min-width:0}
+.unknownPick{display:inline-flex;align-items:center;align-self:flex-start;gap:6px;font-size:12px;color:#286d60;cursor:pointer;user-select:none;white-space:nowrap;background:#f8fffc;border:1px solid #aee1d1;border-radius:999px;padding:3px 8px;line-height:1.1}
+.unknownPick input{width:auto;min-width:0;flex:0 0 auto;accent-color:var(--accent2);cursor:pointer;margin:0}
+.field input[type="text"]{width:100%;min-width:0;padding:9px 8px;border:1px solid var(--line);border-radius:8px;font-size:15px;background:white;color:var(--ink)}
+.field input[readonly]{background:#fffdf5;font-weight:800;color:#735000}
+.field input::placeholder{color:#aaa29a}
+.field input:focus{outline:2px solid rgba(111,183,168,.55);border-color:var(--accent2)}
+.unit{font-size:12px;color:var(--muted)}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:white;border-radius:8px;padding:9px 11px;cursor:pointer;font-weight:700}
+.btn:hover{background:#fff8e8}
+.steps{display:grid;gap:12px}
+.step{background:white;border:1px solid var(--line);border-left:7px solid var(--accent);border-radius:8px;padding:14px;overflow-x:auto}
+.step b{display:block;margin-bottom:8px}
+.deriveRows{display:grid;gap:10px;margin-top:8px}
+.deriveRow{display:grid;grid-template-columns:34px minmax(150px,1fr) 2fr;gap:12px;align-items:center;background:#fffdf9;border:1px solid var(--line);border-radius:8px;padding:10px}
+.deriveNo{width:26px;height:26px;border-radius:999px;background:#e8f6ef;border:1px solid #aee1d1;display:flex;align-items:center;justify-content:center;font-weight:800;color:#126b42}
+.deriveText{font-size:14px;color:var(--muted);line-height:1.25}
+.deriveMath{overflow-x:auto;text-align:center}
+.warn{background:var(--bad);border:1px solid #f2a29a;border-radius:8px;padding:10px;margin-top:10px}
+.muted{color:var(--muted)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{display:inline-block;border:1px solid var(--line);background:var(--soft);border-radius:999px;padding:4px 8px;font-size:12px;color:#5f574c}
+@media(max-width:850px){
+  .app{grid-template-columns:1fr}
+  aside{height:auto;position:relative;border-right:0;border-bottom:1px solid var(--line)}
+}
+@media(max-width:650px){
+  aside{padding:14px}
+  main{padding:14px}
+  h1{font-size:23px}
+  .deriveRow{
+    display:grid;
+    grid-template-columns:34px 1fr;
+    grid-template-areas:"no text" "math math";
+    align-items:center;
+    gap:8px 10px;
+    padding:12px;
+  }
+  .deriveNo{grid-area:no;width:31px;height:31px;font-size:18px}
+  .deriveText{grid-area:text;font-size:16px;line-height:1.28}
+  .deriveMath{grid-area:math;width:100%;max-width:100%;overflow-x:auto;text-align:left;padding-top:9px;border-top:1px dashed var(--line)}
+  .deriveMath mjx-container[display="true"]{margin:0!important;text-align:left!important;min-width:max-content;max-width:none;padding:2px 0 4px}
+}
+@media(max-width:430px){
+  aside{padding:12px}
+  main{padding:10px}
+  .card{padding:12px}
+  .field{grid-template-columns:minmax(98px,1fr) minmax(80px,116px) 50px;gap:6px;padding:7px}
+  .field label{font-size:13px}
+  .small{font-size:12px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <h1>Molární veličiny</h1>
+  <p class="small">Vyber typ úlohy a označ jednu hlavní neznámou. Generátor zadá jen nejmenší nutný počet údajů a z nich dopočítá všechny ostatní molární veličiny.</p>
+  <div id="modes"></div>
+  <div class="card">
+    <h3>Vstupní veličiny</h3>
+    <div id="fields"></div>
+    <div class="btnrow">
+      <button class="btn" id="randomExample">Generovat příklad</button>
+      <button class="btn" id="clearAll">Smazat vše</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Konstanta</h3>
+    <p class="small">Avogadrova konstanta je v této aplikaci pevně daná:</p>
+    <div class="chips"><span class="chip">\(N_A = 6{,}022 \cdot 10^{23}\ \mathrm{mol^{-1}}\)</span></div>
+  </div>
+</aside>
+<main>
+  <div class="steps" id="steps"></div>
+</main>
+</div>
+
+<script>
+const NA = 6.022e23;
+
+const modes = [
+  {
+    id:'solid',
+    name:'1) Tuhé látky',
+    fields:['m','M','N','n'],
+    equations:['n=\\frac{m}{M}','N=n\\cdot N_A'],
+    defaultUnknown:'n'
+  },
+  {
+    id:'gas',
+    name:'2) Plyny',
+    fields:['m','M','N','Vm','V','n'],
+    equations:['n=\\frac{m}{M}','N=n\\cdot N_A','V=n\\cdot V_m'],
+    defaultUnknown:'V'
+  }
+];
+
+const labels = {
+  m:['m','g','hmotnost'],
+  M:['M','g·mol⁻¹','molární hmotnost'],
+  N:['N','částic','počet částic'],
+  n:['n','mol','látkové množství'],
+  Vm:['Vₘ','dm³·mol⁻¹','molární objem plynu'],
+  V:['V','dm³','objem plynu']
+};
+
+const unitLatex = {
+  m:'g',
+  M:'g\\cdot mol^{-1}',
+  N:'částic',
+  n:'mol',
+  Vm:'dm^3\\cdot mol^{-1}',
+  V:'dm^3'
+};
+
+const substances = {
+  solid:[
+    {name:'NaCl', M:58.5}, {name:'Fe', M:55.8}, {name:'Cu', M:63.5},
+    {name:'Al', M:27.0}, {name:'C', M:12.0}, {name:'S', M:32.1},
+    {name:'CaCO₃', M:100.1}, {name:'glukóza C₆H₁₂O₆', M:180.2}
+  ],
+  gas:[
+    {name:'O₂', M:32.0}, {name:'N₂', M:28.0}, {name:'CO₂', M:44.0},
+    {name:'H₂', M:2.0}, {name:'He', M:4.0}, {name:'CH₄', M:16.0},
+    {name:'NH₃', M:17.0}
+  ]
+};
+const niceAmounts = [0.05,0.1,0.15,0.2,0.25,0.3,0.5,0.75,1,1.5,2,2.5,3,4];
+const molarVolumes = [22.4,24.0];
+
+let mode = 'solid';
+const values = {};
+const computed = {};
+const unknownByMode = { solid:'n', gas:'V' };
+let currentExampleText = '';
+let typingTimer = null;
+
+const $ = id => document.getElementById(id);
+function currentMode(){ return modes.find(m => m.id === mode); }
+function unknown(){ return unknownByMode[mode] || currentMode().defaultUnknown; }
+function visibleKeys(){ return currentMode().fields; }
+function setUnknown(k){
+  unknownByMode[mode] = k;
+  delete values[k];
+  delete computed[k];
+  renderFields();
+  calculate();
+}
+function parseNumber(raw){
+  let s = String(raw ?? '').trim();
+  if(!s) return null;
+  s = s.replace(/\s/g,'').replace(',', '.').replace(/[×x]/g, '*');
+  const pow = s.match(/^([+-]?\d+(?:\.\d+)?)\*?10\^([+-]?\d+)$/i);
+  if(pow) return Number(pow[1]) * Math.pow(10, Number(pow[2]));
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+function val(k){ return parseNumber(values[k]); }
+function fmt(x,d=3){
+  if(!Number.isFinite(x)) return '';
+  if(Math.abs(x) >= 1e6 || (Math.abs(x) > 0 && Math.abs(x) < 0.001)){
+    return sciText(x);
+  }
+  return Number(x).toLocaleString('cs-CZ',{maximumFractionDigits:d,minimumFractionDigits:0}).replace(/\s/g,'\u202f');
+}
+function inputText(x,d=3){
+  if(Math.abs(x) >= 1e6 || (Math.abs(x) > 0 && Math.abs(x) < 0.001)){
+    return Number(x).toExponential(3).replace('.', ',').replace('e+','e').replace('e','e');
+  }
+  return Number(x).toLocaleString('cs-CZ',{maximumFractionDigits:d,minimumFractionDigits:0}).replace(/\s/g,'');
+}
+function sciParts(x){
+  if(!Number.isFinite(x) || x === 0) return null;
+  const exp = Math.floor(Math.log10(Math.abs(x)));
+  const mant = x / Math.pow(10, exp);
+  return {mant, exp};
+}
+function sciText(x){
+  const p = sciParts(x);
+  if(!p) return '0';
+  return `${Number(p.mant).toLocaleString('cs-CZ',{maximumFractionDigits:3,minimumFractionDigits:0}).replace(/\s/g,'\u202f')}·10^${p.exp}`;
+}
+function latexNum(x,d=3){
+  if(!Number.isFinite(x)) return '';
+  if(Math.abs(x) >= 1e6 || (Math.abs(x) > 0 && Math.abs(x) < 0.001)){
+    const p = sciParts(x);
+    if(!p) return '0';
+    const mant = Number(p.mant).toLocaleString('cs-CZ',{maximumFractionDigits:3,minimumFractionDigits:0}).replace(',', '{,}');
+    return `${mant}\\cdot 10^{${p.exp}}`;
+  }
+  return Number(x).toLocaleString('cs-CZ',{maximumFractionDigits:d,minimumFractionDigits:0}).replace(/\s/g,'\\,').replace(',', '{,}');
+}
+function unit(k){
+  return unitLatex[k] || labels[k][1];
+}
+function variableLatex(k){
+  const map = {m:'m', M:'M', N:'N', n:'n', Vm:'V_m', V:'V'};
+  return map[k] || k;
+}
+function fieldName(k){ return `${labels[k][0]} (${labels[k][2]})`; }
+
+function row(text, math){ return {text, math}; }
+function resultUnit(k){
+  if(k === 'm') return 'g';
+  if(k === 'M') return 'g·mol⁻¹';
+  if(k === 'N') return 'částic';
+  if(k === 'n') return 'mol';
+  if(k === 'Vm') return 'dm³·mol⁻¹';
+  if(k === 'V') return 'dm³';
+  return '';
+}
+function formulaFor(output, state){
+  const v = state;
+  if(output === 'n' && v.m != null && v.M != null){
+    return {
+      text:'Z hmotnosti a molární hmotnosti vypočítáme látkové množství.',
+      math:`n=\\frac{m}{M}=\\frac{${latexNum(v.m)}\\ \\mathrm{g}}{${latexNum(v.M)}\\ \\mathrm{g\\cdot mol^{-1}}}=${latexNum(v.m / v.M)}\\ \\mathrm{mol}`,
+      value:v.m / v.M
+    };
+  }
+  if(output === 'n' && v.N != null){
+    return {
+      text:'Z počtu částic vypočítáme látkové množství.',
+      math:`n=\\frac{N}{N_A}=\\frac{${latexNum(v.N)}}{${latexNum(NA)}}=${latexNum(v.N / NA)}\\ \\mathrm{mol}`,
+      value:v.N / NA
+    };
+  }
+  if(output === 'n' && mode === 'gas' && v.V != null && v.Vm != null){
+    return {
+      text:'Z objemu plynu a molárního objemu vypočítáme látkové množství.',
+      math:`n=\\frac{V}{V_m}=\\frac{${latexNum(v.V)}\\ \\mathrm{dm^3}}{${latexNum(v.Vm)}\\ \\mathrm{dm^3\\cdot mol^{-1}}}=${latexNum(v.V / v.Vm)}\\ \\mathrm{mol}`,
+      value:v.V / v.Vm
+    };
+  }
+  if(output === 'm' && v.n != null && v.M != null){
+    return {
+      text:'Z látkového množství a molární hmotnosti vypočítáme hmotnost.',
+      math:`m=n\\cdot M=${latexNum(v.n)}\\cdot ${latexNum(v.M)}=${latexNum(v.n * v.M)}\\ \\mathrm{g}`,
+      value:v.n * v.M
+    };
+  }
+  if(output === 'M' && v.m != null && v.n != null){
+    return {
+      text:'Z hmotnosti a látkového množství vypočítáme molární hmotnost.',
+      math:`M=\\frac{m}{n}=\\frac{${latexNum(v.m)}}{${latexNum(v.n)}}=${latexNum(v.m / v.n)}\\ \\mathrm{g\\cdot mol^{-1}}`,
+      value:v.m / v.n
+    };
+  }
+  if(output === 'N' && v.n != null){
+    return {
+      text:'Z látkového množství vypočítáme počet částic.',
+      math:`N=n\\cdot N_A=${latexNum(v.n)}\\cdot ${latexNum(NA)}=${latexNum(v.n * NA)}\\ \\mathrm{částic}`,
+      value:v.n * NA
+    };
+  }
+  if(output === 'V' && mode === 'gas' && v.n != null && v.Vm != null){
+    return {
+      text:'Z látkového množství a molárního objemu vypočítáme objem plynu.',
+      math:`V=n\\cdot V_m=${latexNum(v.n)}\\cdot ${latexNum(v.Vm)}=${latexNum(v.n * v.Vm)}\\ \\mathrm{dm^3}`,
+      value:v.n * v.Vm
+    };
+  }
+  if(output === 'Vm' && mode === 'gas' && v.V != null && v.n != null){
+    return {
+      text:'Z objemu plynu a látkového množství vypočítáme molární objem.',
+      math:`V_m=\\frac{V}{n}=\\frac{${latexNum(v.V)}}{${latexNum(v.n)}}=${latexNum(v.V / v.n)}\\ \\mathrm{dm^3\\cdot mol^{-1}}`,
+      value:v.V / v.n
+    };
+  }
+  return null;
+}
+function solveAll(given){
+  const state = {...given};
+  const rows = [];
+  const allKeys = visibleKeys();
+  const priority = [unknown(), ...allKeys.filter(k => k !== unknown())];
+  let changed = true;
+  while(changed){
+    changed = false;
+    for(const k of priority){
+      if(state[k] != null) continue;
+      const formula = formulaFor(k, state);
+      if(!formula || !Number.isFinite(formula.value) || formula.value < 0) continue;
+      state[k] = formula.value;
+      rows.push({target:k, text:formula.text, math:formula.math});
+      changed = true;
+      break;
+    }
+  }
+  return {state, rows};
+}
+function inlineValue(k, value){
+  return `\\(${variableLatex(k)} = ${latexNum(value)}\\ \\mathrm{${unit(k)}}\\)`;
+}
+function renderSteps(given, solution){
+  const known = Object.keys(given).map(k => inlineValue(k, given[k]));
+  const computedList = visibleKeys().filter(k => solution.state[k] != null && given[k] == null);
+  const equations = currentMode().equations.map(e => `\\[${e}\\]`).join('');
+  const intro = `
+    <div class="step">
+      <b>Použité základní vztahy</b>
+      ${equations}
+    </div>
+    <div class="step">
+      <b>Co je zadané a co dopočítáme</b>
+      <p>Zadané hodnoty: ${known.length ? known.join(', ') : 'zatím žádné'}.</p>
+      <p class="muted">Dopočítáme: ${computedList.length ? computedList.map(k => `\\(${variableLatex(k)}\\) (${labels[k][2]})`).join(', ') : 'zatím nic'}.</p>
+    </div>
+  `;
+  const rows = solution.rows.map((r,i) => `
+    <div class="deriveRow">
+      <div class="deriveNo">${i+1}</div>
+      <div class="deriveText">${r.text}</div>
+      <div class="deriveMath">\\[${r.math}\\]</div>
+    </div>
+  `).join('');
+  $('steps').innerHTML = intro + `
+    <div class="step">
+      <b>Výpočet</b>
+      <div class="deriveRows">${rows || '<p class="muted">Zatím není dost údajů pro výpočet.</p>'}</div>
+    </div>
+  `;
+}
+function calculate(){
+  const u = unknown();
+  for(const k of visibleKeys()){
+    if(computed[k]){
+      delete values[k];
+      delete computed[k];
+    }
+  }
+  const given = {};
+  for(const k of visibleKeys()){
+    const n = val(k);
+    if(n !== null) given[k] = n;
+  }
+  const solution = solveAll(given);
+  for(const k of visibleKeys()){
+    if(given[k] == null && solution.state[k] != null){
+      values[k] = inputText(solution.state[k], k === 'N' ? 3 : 4);
+      computed[k] = true;
+    }
+  }
+  if(solution.state[u] != null && given[u] == null){
+    renderFields();
+    renderSteps(given, solution);
+    typesetMath();
+    return;
+  }
+  delete values[u];
+  $('steps').innerHTML = `
+    <div class="step">
+      <b>Použité základní vztahy</b>
+      ${currentMode().equations.map(e => `\\[${e}\\]`).join('')}
+      <p class="muted">Jakmile bude zadaných údajů dost, zobrazí se zde postup výpočtu.</p>
+    </div>
+  `;
+  renderFields();
+  typesetMath();
+}
+
+function renderModes(){
+  $('modes').innerHTML = modes.map(m => `<button class="mode ${m.id===mode?'active':''}" data-mode="${m.id}">${m.name}</button>`).join('');
+  document.querySelectorAll('.mode').forEach(btn => btn.addEventListener('click', () => {
+    mode = btn.dataset.mode;
+    if(!visibleKeys().includes(unknownByMode[mode])) unknownByMode[mode] = currentMode().defaultUnknown;
+    for(const k of Object.keys(values)) delete values[k];
+    for(const k of Object.keys(computed)) delete computed[k];
+    currentExampleText = '';
+    renderModes();
+    renderFields();
+    calculate();
+  }));
+}
+function renderFields(){
+  const u = unknown();
+  $('fields').innerHTML = visibleKeys().map(k => {
+    const lab = labels[k];
+    const isUnknown = k === u;
+    const classes = ['field'];
+    if(isUnknown) classes.push('unknown');
+    if(computed[k]) classes.push('computed');
+    const value = values[k] ?? '';
+    const readonly = isUnknown || computed[k];
+    return `
+      <div class="${classes.join(' ')}">
+        <div class="labelBlock">
+          <label for="field-${k}"><b>${lab[0]}</b> ${lab[2]}</label>
+          <label class="unknownPick">
+            <input type="radio" name="unknown" value="${k}" ${isUnknown?'checked':''}>
+            hlavní neznámá
+          </label>
+        </div>
+        <input id="field-${k}" type="text" inputmode="decimal" value="${value}" ${readonly?'readonly':''} placeholder="${isUnknown || computed[k]?'dopočítá se':'zadat nebo nechat dopočítat'}">
+        <div class="unit">${lab[1]}</div>
+      </div>
+    `;
+  }).join('');
+  document.querySelectorAll('input[name="unknown"]').forEach(r => r.addEventListener('change', e => setUnknown(e.target.value)));
+  visibleKeys().forEach(k => {
+    const input = $(`field-${k}`);
+    if(!input || k === u || computed[k]) return;
+    input.addEventListener('input', () => {
+      values[k] = input.value;
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(calculate, 120);
+    });
+  });
+}
+function clearAll(){
+  for(const k of Object.keys(values)) delete values[k];
+  for(const k of Object.keys(computed)) delete computed[k];
+  currentExampleText = '';
+  renderFields();
+  calculate();
+}
+function pick(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
+function makeScenario(){
+  const sub = pick(substances[mode]);
+  const n = pick(niceAmounts);
+  const Vm = pick(molarVolumes);
+  const scenario = {
+    substance: sub.name,
+    M: sub.M,
+    n,
+    m: n * sub.M,
+    N: n * NA,
+    Vm,
+    V: n * Vm
+  };
+  return scenario;
+}
+function seedOptions(target){
+  if(mode === 'solid'){
+    const options = {
+      n:[['m','M'], ['N','M']],
+      N:[['m','M'], ['n','M']],
+      m:[['N','M'], ['n','M']],
+      M:[['m','N'], ['m','n']]
+    };
+    return options[target] || [['m','M']];
+  }
+  const options = {
+    n:[['m','M','Vm'], ['V','Vm','M']],
+    N:[['m','M','Vm'], ['V','Vm','M']],
+    V:[['m','M','Vm'], ['N','M','Vm'], ['n','M','Vm']],
+    m:[['N','M','Vm'], ['V','Vm','M'], ['n','M','Vm']],
+    M:[['m','N','Vm'], ['m','V','Vm'], ['m','n','Vm']],
+    Vm:[['V','m','M'], ['V','N','M'], ['V','n','M']]
+  };
+  return options[target] || [['m','M','Vm']];
+}
+function generateExample(){
+  const u = unknown();
+  const seed = pick(seedOptions(u));
+  const scenario = makeScenario();
+  for(const k of Object.keys(values)) delete values[k];
+  for(const k of Object.keys(computed)) delete computed[k];
+  for(const k of seed){
+    values[k] = inputText(scenario[k], k === 'N' ? 3 : 4);
+  }
+  currentExampleText = mode === 'gas'
+    ? `Plyn: ${scenario.substance}, použijeme potřebné údaje pro zvolenou cestu.`
+    : `Látka: ${scenario.substance}, použijeme potřebné údaje pro zvolenou cestu.`;
+  renderFields();
+  calculate();
+}
+function typesetMath(){
+  if(window.mathJaxReady && window.MathJax && MathJax.typesetPromise){
+    MathJax.typesetClear();
+    MathJax.typesetPromise();
+  }
+}
+
+$('randomExample').addEventListener('click', generateExample);
+$('clearAll').addEventListener('click', clearAll);
+renderModes();
+renderFields();
+calculate();
+</script>
+</body>
+</html>
