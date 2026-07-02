@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mechanická a vnitřní energie</title>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['\\[','\\]']] },
+    svg: { fontCache: 'global' },
+    startup: {
+      typeset: false,
+      ready: () => {
+        MathJax.startup.defaultReady();
+        window.mathJaxReady = true;
+        if (typeof window.typesetMath === 'function') window.typesetMath();
+      }
+    }
+  };
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+:root{
+  --bg:#fbf6ee; --panel:#ffffff; --ink:#2b2b2b; --muted:#6f6a63;
+  --line:#ead8bf; --accent:#f4bd62; --accent2:#8ccfbd; --ok:#fff2a8;
+  --soft:#f7efe3; --bad:#ffe0dd; --good:#eef9f6;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+.app{display:grid;grid-template-columns:360px 1fr;min-height:100vh}
+aside{padding:18px;border-right:1px solid var(--line);background:#fffaf2;position:sticky;top:0;height:100vh;overflow:auto}
+main{padding:22px;overflow:auto}
+h1{font-size:25px;margin:0 0 12px} h2{font-size:22px;margin:0 0 12px} h3{font-size:18px;margin:18px 0 8px}
+p{margin:0 0 10px;line-height:1.45}
+.small{font-size:13px;color:var(--muted);line-height:1.35}
+.mode{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:15px;background:var(--panel);padding:11px 12px;margin:7px 0;cursor:pointer;font-weight:700;color:var(--ink)}
+.mode.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(244,189,98,.25);background:#fff8e8}
+.sourceBtns{display:grid;gap:7px}
+.sourceBtn{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:15px;background:var(--panel);padding:10px 12px;cursor:pointer;font-weight:700;color:var(--ink)}
+.sourceBtn.active{border-color:var(--accent2);box-shadow:0 0 0 3px rgba(140,207,189,.28);background:#f8fffc}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px;margin:14px 0;box-shadow:0 4px 18px rgba(70,50,20,.05)}
+.field{display:grid;grid-template-columns:minmax(120px,1fr) minmax(86px,116px) 58px;gap:8px;align-items:center;margin:8px 0;padding:8px;border-radius:13px;border:1px solid transparent}
+.field.unknown{background:#eef9f6;border-color:#8ccfbd}.field.unknown.computed{background:var(--ok);border-color:#ecd25a}.field input[readonly]{background:#fffdf5;font-weight:800;color:#7a4e00}
+.field.computed{background:var(--ok);border-color:#ecd25a}
+.labelBlock{min-width:0;display:flex;flex-direction:column;gap:6px}
+.field label{font-size:14px;line-height:1.2;min-width:0}
+label b{font-size:15px}
+.unknownPick{display:inline-flex;align-items:center;align-self:flex-start;gap:6px;font-size:12px;color:#286d60;cursor:pointer;user-select:none;white-space:nowrap;background:#f8fffc;border:1px solid #aee1d1;border-radius:999px;padding:3px 8px;line-height:1.1}
+.unknownPick input{width:auto;min-width:0;flex:0 0 auto;accent-color:var(--accent2);cursor:pointer;margin:0}
+input,select{width:100%;min-width:0;font:inherit;border:1px solid var(--line);border-radius:10px;padding:9px 8px;background:#fff;color:var(--ink)}
+input:focus,select:focus{outline:2px solid rgba(140,207,189,.7);border-color:var(--accent2)}
+.unit{font-size:13px;color:var(--muted)}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:white;border-radius:12px;padding:9px 11px;cursor:pointer;font-weight:700;color:var(--ink)}
+.btn:hover{background:#fff8e8}
+.resultBox{background:#f8fffc;border:1px solid #aee1d1;border-radius:22px;padding:18px;margin-bottom:16px}
+.steps{display:grid;gap:12px}
+.step{background:white;border:1px solid var(--line);border-left:7px solid var(--accent);border-radius:17px;padding:14px;overflow-x:auto}
+.step b{display:block;margin-bottom:8px}
+.deriveRows{display:grid;gap:10px;margin-top:8px}
+.deriveRow{display:grid;grid-template-columns:34px minmax(150px,1fr) 2fr;gap:12px;align-items:center;background:#fffdf9;border:1px solid var(--line);border-radius:14px;padding:10px}
+.deriveNo{width:26px;height:26px;border-radius:999px;background:#e8f6ef;border:1px solid #aee1d1;display:flex;align-items:center;justify-content:center;font-weight:800;color:#126b42}
+.deriveText{font-size:14px;color:var(--muted);line-height:1.25}
+.deriveMath{overflow-x:auto;text-align:center}
+.formulaBar{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.pill{display:inline-block;padding:4px 9px;border-radius:999px;background:var(--soft);border:1px solid var(--line);font-size:12px;margin:2px;color:var(--ink)}
+.result{font-size:18px;font-weight:900;color:#115e50}
+.warn{background:var(--bad);border:1px solid #f2a29a;border-radius:14px;padding:10px;margin-top:10px}
+.formulaGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.formula{background:#fffaf2;border:1px solid var(--line);border-radius:13px;padding:9px 10px;margin:7px 0;overflow-x:auto}
+.task{border:1px solid var(--line);border-radius:8px;background:#fff;padding:10px 12px;margin:8px 0}
+.task strong{color:#173b78}
+.taskBox{background:#fffdf5;border:1px solid #ecd25a;border-radius:14px;padding:12px 14px;margin:0 0 12px;line-height:1.48}
+.taskBox b{display:block;margin-bottom:6px;color:#7a4e00}
+details{margin-top:8px}
+summary{cursor:pointer;font-weight:850;color:#214f9b}
+@media(max-width:850px){
+  .app{grid-template-columns:1fr}
+  aside{height:auto;position:relative;border-right:0;border-bottom:1px solid var(--line)}
+}
+@media(max-width:650px){
+  body{font-size:16px}
+  aside{padding:14px}
+  main{padding:14px}
+  h1{font-size:23px}
+  h2{font-size:21px;line-height:1.2}
+  .resultBox{padding:14px;border-radius:18px}
+  .step{padding:12px;border-left-width:6px;border-radius:16px;overflow:hidden}
+  .deriveRow{grid-template-columns:34px 1fr;grid-template-areas:"no text" "math math";gap:8px 10px;padding:12px}
+  .deriveNo{grid-area:no;width:31px;height:31px;font-size:18px}
+  .deriveText{grid-area:text;font-size:16px;line-height:1.28;color:#5d5851}
+  .deriveMath{grid-area:math;width:100%;max-width:100%;overflow-x:auto;text-align:left;padding-top:9px;border-top:1px dashed var(--line)}
+  .formulaGrid{grid-template-columns:1fr}
+}
+@media(max-width:430px){
+  aside{padding:12px}
+  main{padding:10px}
+  .card{padding:12px;border-radius:16px}
+  .field{grid-template-columns:minmax(98px,1fr) minmax(78px,112px) 48px;gap:6px;padding:7px}
+  .field label{font-size:13px}
+  .small{font-size:12px}
+}
+@media print{
+  body{background:#fff}
+  .app{display:block}
+  aside{height:auto;position:relative;border:0;background:#fff}
+  .btnrow,.mode,.sourceBtn,.unknownPick{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <h1>Mechanická a vnitřní energie</h1>
+  <p class="small">Vyber typ úlohy, zdroj mechanické energie a jednu neznámou. Aplikace ukáže jednoduchý školní postup z rovnice \(E_{m1}=E_{m2}+\Delta U\).</p>
+  <div id="modes"></div>
+  <div class="card">
+    <h3>Zdroj mechanické energie</h3>
+    <div class="sourceBtns" id="sources"></div>
+  </div>
+  <div class="card">
+    <h3>Vstupní veličiny</h3>
+    <div id="fields"></div>
+    <div class="btnrow">
+      <button class="btn" id="randomBtn">Generovat náhodný příklad</button>
+      <button class="btn" id="clearBtn">Smazat vše</button>
+      <button class="btn" onclick="window.print()">Tisk</button>
+    </div>
+  </div>
+</aside>
+<main>
+  <div class="resultBox">
+    <h2 id="status">Zadej hodnoty</h2>
+    <div id="taskBox" class="taskBox"></div>
+    <div class="formulaBar" id="formulaBar"></div>
+  </div>
+  <div class="steps" id="steps"></div>
+
+  <div class="card">
+    <h3>Použité vztahy</h3>
+    <div class="formulaGrid">
+      <div>
+        <p class="small">Mechanická energie</p>
+        <div class="formula">\(E_m = E_k + E_p = \frac{1}{2}mv^2 + mgh\)</div>
+      </div>
+      <div>
+        <p class="small">Přeměna na vnitřní energii</p>
+        <div class="formula">\(E_{m1}=E_{m2}+\Delta U\)</div>
+      </div>
+      <div>
+        <p class="small">Změna teploty</p>
+        <div class="formula">\(Q = mc\Delta t\)</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<script>
+const modes = [
+  { id:'internal', name:'1) Mechanická energie → vnitřní energie', title:'Přeměna na vnitřní energii' },
+  { id:'heat', name:'2) Mechanická energie → Q = mcΔt', title:'Přeměna na ohřev tělesa' }
+];
+
+const sources = [
+  { id:'kinetic', name:'jen Ek', fields:['mMech','v1','v2'], text:'kinetická energie' },
+  { id:'potential', name:'jen Ep', fields:['mMech','h1','h2'], text:'polohová energie' },
+  { id:'both', name:'Ek + Ep', fields:['mMech','v1','h1','v2','h2'], text:'kinetická i polohová energie' }
+];
+
+const heatTargets = [
+  { id:'self', name:'původní těleso', text:'ohřívá se toto těleso samo' },
+  { id:'impact', name:'těleso po nárazu', text:'ohřívá se těleso, do kterého původní těleso narazilo' }
+];
+
+const labels = {
+  mMech:['m','kg','hmotnost tělesa, jehož mechanická energie se mění'],
+  v1:['v₁','m·s⁻¹','počáteční rychlost'],
+  v2:['v₂','m·s⁻¹','konečná rychlost'],
+  h1:['h₁','m','počáteční výška'],
+  h2:['h₂','m','konečná výška'],
+  g:['g','m·s⁻²','tíhové zrychlení'],
+  eta:['η','%','kolik procent rozdílu mechanické energie se přemění'],
+  Q:['ΔU','J','změna vnitřní energie'],
+  mHeat:['mₜ','kg','hmotnost zahřívaného tělesa'],
+  c:['c','J·kg⁻¹·K⁻¹','měrná tepelná kapacita'],
+  dT:['Δt','°C','změna teploty']
+};
+
+let mode = 'internal';
+let source = 'both';
+let heatTarget = 'self';
+let values = { g:'10', eta:'100' };
+let computed = {};
+let lastTaskText = '';
+let unknownByMode = { internal:'Q', heat:'dT' };
+
+const $ = id => document.getElementById(id);
+const cfg = () => modes.find(m => m.id === mode);
+const src = () => sources.find(s => s.id === source);
+const unknown = () => unknownByMode[mode] || (mode === 'internal' ? 'Q' : 'dT');
+
+function visibleFields(){
+  const base = [...src().fields];
+  if(source !== 'kinetic') base.push('g');
+  base.push('eta');
+  if(mode === 'internal') base.push('Q');
+  if(mode === 'heat'){
+    if(heatTarget !== 'self') base.push('mHeat');
+    base.push('c','dT');
+  }
+  return base;
+}
+
+function selectableUnknowns(){
+  return visibleFields().filter(k => k !== 'g' && !(mode === 'heat' && heatTarget === 'self' && k === 'mMech'));
+}
+
+function parseValue(raw){
+  if(raw == null) return null;
+  const n = Number(String(raw).trim().replace(/\s/g,'').replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+}
+
+function val(k){ return parseValue(values[k]); }
+
+function fmt(x,d=2){
+  if(!Number.isFinite(x)) return '';
+  const abs = Math.abs(x);
+  const digits = abs > 0 && abs < 0.1 ? 3 : (abs >= 1000 || Number.isInteger(x) ? 0 : d);
+  return Number(x).toLocaleString('cs-CZ',{maximumFractionDigits:digits,minimumFractionDigits:0}).replace(/\s/g,'\u202f');
+}
+
+function latexNum(x,d=2){
+  const s = fmt(x,d).replace(',', '{,}');
+  return s;
+}
+
+function roundNice(x){
+  if(!Number.isFinite(x)) return '';
+  if(Math.abs(x) >= 1000) return String(Math.round(x)).replace('.', ',');
+  if(Math.abs(x) > 0 && Math.abs(x) < 0.1) return String(Math.round(x * 1000) / 1000).replace('.', ',');
+  return String(Math.round(x * 100) / 100).replace('.', ',');
+}
+
+function setUnknown(k){
+  unknownByMode[mode] = k;
+  delete values[k];
+  delete computed[k];
+  renderFields();
+  calculate();
+}
+
+function clearComputed(){
+  for(const k of Object.keys(computed)){
+    delete computed[k];
+    delete values[k];
+  }
+}
+
+function renderModes(){
+  $('modes').innerHTML = modes.map(m => `<button class="mode ${m.id===mode?'active':''}" data-mode="${m.id}">${m.name}</button>`).join('');
+  document.querySelectorAll('[data-mode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      mode = btn.dataset.mode;
+      const allowed = selectableUnknowns();
+      if(!allowed.includes(unknownByMode[mode])) unknownByMode[mode] = mode === 'internal' ? 'Q' : 'dT';
+      clearComputed();
+      render();
+    });
+  });
+}
+
+function renderSources(){
+  $('sources').innerHTML = sources.map(s => `<button class="sourceBtn ${s.id===source?'active':''}" data-source="${s.id}">${s.name}</button>`).join('');
+  document.querySelectorAll('[data-source]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      source = btn.dataset.source;
+      const allowed = selectableUnknowns();
+      if(!allowed.includes(unknownByMode[mode])) unknownByMode[mode] = mode === 'internal' ? 'Q' : 'dT';
+      clearComputed();
+      render();
+    });
+  });
+}
+
+function labelFor(k){
+  if(k === 'mHeat' && heatTarget === 'impact') return ['m₂','kg','hmotnost tělesa, do kterého původní těleso narazilo'];
+  if(k === 'c' && heatTarget === 'self') return ['c','J·kg⁻¹·K⁻¹','měrná tepelná kapacita tohoto tělesa'];
+  if(k === 'c' && heatTarget === 'impact') return ['c₂','J·kg⁻¹·K⁻¹','měrná tepelná kapacita zasaženého tělesa'];
+  return labels[k];
+}
+
+function renderFields(){
+  const keys = visibleFields();
+  $('fields').innerHTML = keys.map(k => {
+    const [sym,unit,desc] = labelFor(k);
+    const isUnknown = k === unknown();
+    const isComputed = !!computed[k];
+    const readonly = isComputed ? 'readonly' : '';
+    const pick = selectableUnknowns().includes(k)
+      ? `<label class="unknownPick"><input type="radio" name="unknown" ${isUnknown?'checked':''} data-unknown="${k}"> neznámá</label>`
+      : `<span class="small">zadáno</span>`;
+    return `<div class="field ${isUnknown?'unknown':''} ${isComputed?'computed':''}">
+      <div class="labelBlock"><label><b>${sym}</b> <span class="small">${desc}</span></label>${pick}</div>
+      <input id="field_${k}" inputmode="decimal" value="${values[k] ?? ''}" ${readonly}>
+      <div class="unit">${unit}</div>
+    </div>`;
+  }).join('');
+
+  keys.forEach(k => {
+    const input = $(`field_${k}`);
+    if(!input || computed[k]) return;
+    input.addEventListener('input', () => {
+      values[k] = input.value;
+      for(const c of Object.keys(computed)){
+        delete computed[c];
+        if(c !== k) delete values[c];
+      }
+      calculate(false);
+    });
+  });
+
+  document.querySelectorAll('[data-unknown]').forEach(r => {
+    r.addEventListener('change', () => setUnknown(r.dataset.unknown));
+  });
+}
+
+function kineticExpr(vKey, withM=true){
+  const v = val(vKey);
+  const mPart = withM ? 'm' : '';
+  if(v == null) return `\\frac{1}{2}${mPart}${vKey === 'v1' ? 'v_1' : 'v_2'}^2`;
+  if(Math.abs(v) < 1e-12) return '0';
+  return withM ? `\\frac{1}{2}m\\cdot ${latexNum(v)}^2` : `\\frac{1}{2}\\cdot ${latexNum(v)}^2`;
+}
+
+function heightExpr(hKey, withM=true){
+  const h = val(hKey);
+  const g = val('g') ?? 10;
+  const mPart = withM ? 'm' : '';
+  if(h == null) return `${mPart}g${hKey === 'h1' ? 'h_1' : 'h_2'}`;
+  if(Math.abs(h) < 1e-12) return '0';
+  return withM ? `m\\cdot ${latexNum(g)}\\cdot ${latexNum(h)}` : `${latexNum(g)}\\cdot ${latexNum(h)}`;
+}
+
+function joinTerms(terms){
+  const good = terms.filter(t => t !== '0');
+  return good.length ? good.join(' + ') : '0';
+}
+
+function e1Symbolic(){
+  const terms = [];
+  if(source !== 'potential') terms.push('\\frac{1}{2}mv_1^2');
+  if(source !== 'kinetic') terms.push('mgh_1');
+  return joinTerms(terms);
+}
+
+function e2Symbolic(){
+  const terms = [];
+  if(source !== 'potential') terms.push('\\frac{1}{2}mv_2^2');
+  if(source !== 'kinetic') terms.push('mgh_2');
+  return joinTerms(terms);
+}
+
+function e1Inserted(){
+  const terms = [];
+  if(source !== 'potential') terms.push(kineticExpr('v1'));
+  if(source !== 'kinetic') terms.push(heightExpr('h1'));
+  return joinTerms(terms);
+}
+
+function e2Inserted(){
+  const terms = [];
+  if(source !== 'potential') terms.push(kineticExpr('v2'));
+  if(source !== 'kinetic') terms.push(heightExpr('h2'));
+  return joinTerms(terms);
+}
+
+function e1InsertedTerms(){
+  const terms = [];
+  if(source !== 'potential') terms.push(kineticExpr('v1'));
+  if(source !== 'kinetic') terms.push(heightExpr('h1'));
+  return terms.filter(t => t !== '0');
+}
+
+function e2InsertedTerms(){
+  const terms = [];
+  if(source !== 'potential') terms.push(kineticExpr('v2'));
+  if(source !== 'kinetic') terms.push(heightExpr('h2'));
+  return terms.filter(t => t !== '0');
+}
+
+function energyDifferenceInserted(){
+  const positive = e1InsertedTerms();
+  const negative = e2InsertedTerms();
+  const parts = [];
+  positive.forEach((t, i) => parts.push(i === 0 ? t : `+ ${t}`));
+  negative.forEach(t => parts.push(`- ${t}`));
+  return parts.length ? parts.join(' ') : '0';
+}
+
+function perKgKnown(){
+  const g = val('g') ?? 10;
+  const v1 = val('v1') ?? 0;
+  const v2 = val('v2') ?? 0;
+  const h1 = val('h1') ?? 0;
+  const h2 = val('h2') ?? 0;
+  let e = 0;
+  if(source !== 'potential') e += 0.5 * (v1*v1 - v2*v2);
+  if(source !== 'kinetic') e += g * (h1 - h2);
+  return e;
+}
+
+function mechanicalLoss(){
+  const m = val('mMech');
+  if(m == null) return null;
+  return m * perKgKnown();
+}
+
+function enoughForLoss(except=''){
+  const needed = src().fields.filter(k => k !== except);
+  if(source !== 'kinetic' && except !== 'g') needed.push('g');
+  return needed.every(k => val(k) != null);
+}
+
+function heatQ(){
+  const m = heatedMass(), c = val('c'), dT = val('dT');
+  if([m,c,dT].some(v => v == null)) return null;
+  return m * c * dT;
+}
+
+function heatedMass(){
+  return heatTarget === 'self' ? val('mMech') : val('mHeat');
+}
+
+function heatedMassSymbol(){
+  return heatTarget === 'self' ? 'm' : labelFor('mHeat')[0].replace('ᵥz','_{vz}');
+}
+
+function heatUnknowns(){
+  return ['mHeat','c','dT'];
+}
+
+function targetQForUnknown(){
+  const u = unknown();
+  if(mode === 'internal'){
+    if(u === 'Q') return null;
+    return val('Q');
+  }
+  if(heatUnknowns().includes(u)) return null;
+  return heatQ();
+}
+
+function solve(){
+  const u = unknown();
+  const eta = val('eta');
+  const etaPart = eta == null ? null : eta / 100;
+  const g = val('g') ?? 10;
+
+  if(mode === 'internal' && u === 'Q'){
+    if(etaPart == null || !enoughForLoss()) return null;
+    return etaPart * mechanicalLoss();
+  }
+
+  if(mode === 'heat' && u === 'mHeat'){
+    if(heatTarget === 'self') return null;
+    if(etaPart == null || !enoughForLoss() || [val('c'),val('dT')].some(v => v == null)) return null;
+    return etaPart * mechanicalLoss() / (val('c') * val('dT'));
+  }
+  if(mode === 'heat' && u === 'c'){
+    if(etaPart == null || !enoughForLoss() || [heatedMass(),val('dT')].some(v => v == null)) return null;
+    return etaPart * mechanicalLoss() / (heatedMass() * val('dT'));
+  }
+  if(mode === 'heat' && u === 'dT'){
+    if(etaPart == null || !enoughForLoss() || [heatedMass(),val('c')].some(v => v == null)) return null;
+    return etaPart * mechanicalLoss() / (heatedMass() * val('c'));
+  }
+
+  const target = targetQForUnknown();
+  if(u === 'eta'){
+    const loss = mechanicalLoss();
+    if(target == null || loss == null || Math.abs(loss) < 1e-12) return null;
+    return 100 * target / loss;
+  }
+  if(target == null || etaPart == null || etaPart === 0) return null;
+  const lossNeeded = target / etaPart;
+  if(u === 'mMech'){
+    if(!enoughForLoss('mMech')) return null;
+    const per = perKgKnown();
+    if(Math.abs(per) < 1e-12) return null;
+    return lossNeeded / per;
+  }
+  if(u === 'v1'){
+    if(source === 'potential' || !enoughForLoss('v1')) return null;
+    const m = val('mMech'), v2 = val('v2') ?? 0, h1 = val('h1') ?? 0, h2 = val('h2') ?? 0;
+    if(m == null) return null;
+    const rest = source === 'both' ? m * g * (h1 - h2) : 0;
+    const inside = v2*v2 + 2 * (lossNeeded - rest) / m;
+    return inside >= -1e-9 ? Math.sqrt(Math.max(0, inside)) : null;
+  }
+  if(u === 'v2'){
+    if(source === 'potential' || !enoughForLoss('v2')) return null;
+    const m = val('mMech'), v1 = val('v1') ?? 0, h1 = val('h1') ?? 0, h2 = val('h2') ?? 0;
+    if(m == null) return null;
+    const rest = source === 'both' ? m * g * (h1 - h2) : 0;
+    const inside = v1*v1 - 2 * (lossNeeded - rest) / m;
+    return inside >= -1e-9 ? Math.sqrt(Math.max(0, inside)) : null;
+  }
+  if(u === 'h1'){
+    if(source === 'kinetic' || !enoughForLoss('h1')) return null;
+    const m = val('mMech'), h2 = val('h2') ?? 0, v1 = val('v1') ?? 0, v2 = val('v2') ?? 0;
+    if(m == null || g === 0) return null;
+    const kin = source === 'both' ? 0.5 * m * (v1*v1 - v2*v2) : 0;
+    return h2 + (lossNeeded - kin) / (m * g);
+  }
+  if(u === 'h2'){
+    if(source === 'kinetic' || !enoughForLoss('h2')) return null;
+    const m = val('mMech'), h1 = val('h1') ?? 0, v1 = val('v1') ?? 0, v2 = val('v2') ?? 0;
+    if(m == null || g === 0) return null;
+    const kin = source === 'both' ? 0.5 * m * (v1*v1 - v2*v2) : 0;
+    return h1 - (lossNeeded - kin) / (m * g);
+  }
+  return null;
+}
+
+function resultLabel(k){
+  return labels[k][0];
+}
+
+function resultUnit(k){
+  return labels[k][1];
+}
+
+function valueText(k, fallback='...'){
+  const v = values[k];
+  if(v == null || String(v).trim() === '') return fallback;
+  const n = parseValue(v);
+  return `${n == null ? v : fmt(n)} ${labelFor(k)[1]}`;
+}
+
+function askText(k){
+  const [sym, unit, desc] = labelFor(k);
+  return `Vypočítej: ${desc} (${sym}).${unit ? ` Výsledek uveď v jednotkách ${unit}.` : ''}`;
+}
+
+function speedHow(k){
+  return unknown() === k ? 'neznámou rychlostí' : `rychlostí ${valueText(k)}`;
+}
+
+function speedWhat(k){
+  return unknown() === k ? 'neznámou rychlost' : `rychlost ${valueText(k)}`;
+}
+
+function heightText(k){
+  return unknown() === k ? 'v neznámé výšce' : `ve výšce ${valueText(k)}`;
+}
+
+function sourceSituation(chosenSource=source){
+  if(chosenSource === 'kinetic'){
+    return `Těleso se na začátku pohybuje ${speedHow('v1')} a po ději má ${speedWhat('v2')}.`;
+  }
+  if(chosenSource === 'potential'){
+    return `Těleso je na začátku ${heightText('h1')} a po ději je ${heightText('h2')}.`;
+  }
+  return `Těleso se na začátku pohybuje ${speedHow('v1')} a je ${heightText('h1')}. Po ději má ${speedWhat('v2')} a je ${heightText('h2')}.`;
+}
+
+function mechanicMassSentence(){
+  return unknown() === 'mMech'
+    ? 'Hmotnost tohoto tělesa není známa.'
+    : `Hmotnost tohoto tělesa je ${valueText('mMech')}.`;
+}
+
+function heatSentence(){
+  if(mode !== 'heat') return '';
+  const parts = [];
+  if(heatTarget === 'self'){
+    parts.push('Vzniklé teplo ohřívá přímo toto těleso.');
+  } else {
+    parts.push(unknown() === 'mHeat'
+      ? 'Vzniklé teplo ohřívá těleso, do kterého původní těleso narazilo. Hmotnost zasaženého tělesa není známa.'
+      : `Vzniklé teplo ohřívá těleso, do kterého původní těleso narazilo. Hmotnost zasaženého tělesa je ${valueText('mHeat')}.`);
+  }
+  const cDesc = labelFor('c')[2];
+  parts.push(unknown() === 'c'
+    ? `${cDesc.charAt(0).toUpperCase() + cDesc.slice(1)} není známa.`
+    : `${cDesc.charAt(0).toUpperCase() + cDesc.slice(1)} je ${valueText('c')}.`);
+  if(unknown() === 'dT'){
+    parts.push('Změna teploty není známa.');
+  } else {
+    parts.push(`Teplota zahřívané látky se změní o ${valueText('dT')}.`);
+  }
+  return parts.join(' ');
+}
+
+function problemStatement(){
+  const transform = unknown() === 'eta'
+    ? (mode === 'heat'
+      ? 'Část rozdílu mechanické energie se přemění na teplo.'
+      : 'Část rozdílu mechanické energie se přemění na vnitřní energii tělesa.')
+    : mode === 'heat'
+    ? `Při ději se ${valueText('eta','... %')} rozdílu mechanické energie přemění na teplo.`
+    : `Při ději se ${valueText('eta','... %')} rozdílu mechanické energie přemění na vnitřní energii tělesa.`;
+  const qSentence = mode === 'internal' && unknown() !== 'Q'
+    ? `Změna vnitřní energie je ${valueText('Q')}.`
+    : '';
+  return `${mechanicMassSentence()} ${sourceSituation()} ${transform} ${qSentence} ${heatSentence()} ${askText(unknown())}`.replace(/\s+/g,' ').trim();
+}
+
+function renderTaskBox(){
+  const label = lastTaskText ? 'Zadání vygenerovaného příkladu' : 'Obecný tvar zadání';
+  $('taskBox').innerHTML = `<b>${label}</b>${problemStatement()}`;
+}
+
+function renderFormulaBar(){
+  const items = [
+    `E_{m1}=E_{m2}+\\Delta U`,
+    `E_{m1} = ${e1Symbolic()}`,
+    `E_{m2} = ${e2Symbolic()}`
+  ];
+  if(mode === 'heat') items.push(`\\Delta U = Q = mc\\Delta t`);
+  if(unknown() === 'eta' || val('eta') !== 100) items.push(`\\Delta U = \\frac{\\eta}{100}(E_{m1}-E_{m2})`);
+  $('formulaBar').innerHTML = items.map(x => `<span class="pill">\\(${x}\\)</span>`).join('');
+}
+
+function derivationRows(result){
+  const u = unknown();
+  const eta = val('eta');
+  const etaPart = eta == null ? null : eta / 100;
+  const target = mode === 'heat' ? (heatUnknowns().includes(u) ? null : heatQ()) : val('Q');
+  const loss = mechanicalLoss();
+  const rows = [];
+  const heatTerm = mode === 'heat' ? 'mc\\Delta t' : '\\Delta U';
+  const etaCoef = etaPart == null ? null : latexNum(etaPart);
+  rows.push(['Vyjdeme z jedné rovnice pro energii.', `E_{m1}=E_{m2}+\\Delta U`]);
+  if(mode === 'heat') rows.push(['Vnitřní energie se projeví jako ohřev.', `\\Delta U=Q=mc\\Delta t`]);
+  rows.push(['Rozepíšeme mechanickou energii podle zadání.', `${e1Symbolic()} = ${e2Symbolic()} + ${heatTerm}`]);
+
+  if(mode === 'internal'){
+    if(u === 'Q' && result != null){
+      if(enoughForLoss()) rows.push(['Dosadíme do rovnice a dopočítáme vnitřní energii.', `\\Delta U = ${etaCoef}(${energyDifferenceInserted()}) = ${latexNum(result)}\\,\\mathrm{J}`]);
+    } else if(result != null && target != null){
+      if(u === 'eta'){
+        rows.push(['Dosadíme známou vnitřní energii a vyjádříme procenta.', `\\eta = \\frac{\\Delta U}{E_{m1}-E_{m2}}\\cdot 100 = \\frac{${latexNum(target)}}{${latexNum(loss)}}\\cdot 100 = ${latexNum(result)}\\,\\%`]);
+      } else {
+        rows.push(['Nejdřív převedeme zadanou vnitřní energii na levou stranu energetické rovnice.', `E_{m1}-E_{m2}=\\frac{\\Delta U}{\\eta/100}=\\frac{${latexNum(target)}}{${latexNum(eta)}/100}=${latexNum(target/(eta/100))}\\,\\mathrm{J}`]);
+        rows.push(...solveUnknownRows(u, target/(eta/100), result));
+      }
+    }
+  } else {
+    if(heatUnknowns().includes(u)){
+      const q = etaPart * loss;
+      rows.push(['Nejdřív z rovnice určíme teplo, které vznikne.', `Q = ${etaCoef}(${energyDifferenceInserted()}) = ${latexNum(q)}\\,\\mathrm{J}`]);
+      rows.push(...solveHeatRows(u, q, result));
+    } else if(result != null && target != null){
+      rows.push(['Spočítáme vnitřní energii z ohřevu.', `\\Delta U=Q=mc\\Delta t=${latexNum(heatedMass())}\\cdot ${latexNum(val('c'))}\\cdot ${latexNum(val('dT'))}=${latexNum(target)}\\,\\mathrm{J}`]);
+      if(u === 'eta'){
+        rows.push(['Vyjádříme procento přeměněné energie.', `\\eta=\\frac{Q}{E_{m1}-E_{m2}}\\cdot 100=\\frac{${latexNum(target)}}{${latexNum(loss)}}\\cdot 100=${latexNum(result)}\\,\\%`]);
+      } else {
+        rows.push(['Převedeme vzniklé teplo na levou stranu energetické rovnice.', `E_{m1}-E_{m2}=\\frac{Q}{\\eta/100}=\\frac{${latexNum(target)}}{${latexNum(eta)}/100}=${latexNum(target/(eta/100))}\\,\\mathrm{J}`]);
+        rows.push(...solveUnknownRows(u, target/(eta/100), result));
+      }
+    }
+  }
+  return rows;
+}
+
+function solveUnknownRows(u, lossNeeded, result){
+  const rows = [];
+  const m = val('mMech'), g = val('g') ?? 10, v1 = val('v1') ?? 0, v2 = val('v2') ?? 0, h1 = val('h1') ?? 0, h2 = val('h2') ?? 0;
+  if(u === 'eta'){
+    rows.push(['Vyjádříme procento přeměněné energie.', `\\eta = \\frac{\\Delta U}{E_{m1}-E_{m2}}\\cdot 100 = ${latexNum(result)}\\,\\%`]);
+  }
+  if(u === 'mMech'){
+    const per = perKgKnown();
+    rows.push(['Vytkneme hmotnost z levé a pravé mechanické energie.', `E_{m1}-E_{m2} = m\\cdot (${source !== 'potential' ? `\\frac{1}{2}(${latexNum(v1)}^2-${latexNum(v2)}^2)` : ''}${source === 'both' ? ' + ' : ''}${source !== 'kinetic' ? `${latexNum(g)}(${latexNum(h1)}-${latexNum(h2)})` : ''})`]);
+    rows.push(['Vyjádříme hmotnost.', `m = \\frac{E_{m1}-E_{m2}}{${latexNum(per)}} = \\frac{${latexNum(lossNeeded)}}{${latexNum(per)}} = ${latexNum(result)}\\,\\mathrm{kg}`]);
+  }
+  if(u === 'v1'){
+    const rest = source === 'both' ? m*g*(h1-h2) : 0;
+    rows.push(['Necháme na jedné straně člen s počáteční rychlostí.', `\\frac{1}{2}mv_1^2 = (E_{m1}-E_{m2}) - ${latexNum(rest)} + \\frac{1}{2}m v_2^2`]);
+    rows.push(['Vynásobíme dvěma a vydělíme hmotností.', `v_1^2 = v_2^2 + \\frac{2((E_{m1}-E_{m2}) - ${latexNum(rest)})}{m}`]);
+    rows.push(['Odmocníme.', `v_1 = \\sqrt{${latexNum(v2)}^2 + \\frac{2(${latexNum(lossNeeded)}-${latexNum(rest)})}{${latexNum(m)}}} = ${latexNum(result)}\\,\\mathrm{m\\,s^{-1}}`]);
+  }
+  if(u === 'v2'){
+    const rest = source === 'both' ? m*g*(h1-h2) : 0;
+    rows.push(['Necháme na jedné straně člen s konečnou rychlostí.', `\\frac{1}{2}mv_2^2 = \\frac{1}{2}mv_1^2 + ${latexNum(rest)} - (E_{m1}-E_{m2})`]);
+    rows.push(['Vynásobíme dvěma a vydělíme hmotností.', `v_2^2 = v_1^2 - \\frac{2((E_{m1}-E_{m2}) - ${latexNum(rest)})}{m}`]);
+    rows.push(['Odmocníme.', `v_2 = \\sqrt{${latexNum(v1)}^2 - \\frac{2(${latexNum(lossNeeded)}-${latexNum(rest)})}{${latexNum(m)}}} = ${latexNum(result)}\\,\\mathrm{m\\,s^{-1}}`]);
+  }
+  if(u === 'h1'){
+    const kin = source === 'both' ? 0.5*m*(v1*v1-v2*v2) : 0;
+    rows.push(['Oddělíme polohovou část energie.', `mgh_1 = (E_{m1}-E_{m2}) - ${latexNum(kin)} + mgh_2`]);
+    rows.push(['Vydělíme výrazem mg.', `h_1 = h_2 + \\frac{(E_{m1}-E_{m2}) - ${latexNum(kin)}}{mg}`]);
+    rows.push(['Dosadíme.', `h_1 = ${latexNum(h2)} + \\frac{${latexNum(lossNeeded)}-${latexNum(kin)}}{${latexNum(m)}\\cdot ${latexNum(g)}} = ${latexNum(result)}\\,\\mathrm{m}`]);
+  }
+  if(u === 'h2'){
+    const kin = source === 'both' ? 0.5*m*(v1*v1-v2*v2) : 0;
+    rows.push(['Oddělíme konečnou výšku.', `mgh_2 = mgh_1 + ${latexNum(kin)} - (E_{m1}-E_{m2})`]);
+    rows.push(['Vydělíme výrazem mg.', `h_2 = h_1 - \\frac{(E_{m1}-E_{m2}) - ${latexNum(kin)}}{mg}`]);
+    rows.push(['Dosadíme.', `h_2 = ${latexNum(h1)} - \\frac{${latexNum(lossNeeded)}-${latexNum(kin)}}{${latexNum(m)}\\cdot ${latexNum(g)}} = ${latexNum(result)}\\,\\mathrm{m}`]);
+  }
+  return rows;
+}
+
+function solveHeatRows(u, q, result){
+  const rows = [];
+  const mh = heatedMass(), c = val('c'), dT = val('dT');
+  const mSym = heatTarget === 'self' ? 'm' : labelFor('mHeat')[0].replace('₂','_2').replace('ᵥz','_{vz}');
+  rows.push(['Použijeme vztah pro změnu vnitřní energie zahřáté látky.', `Q = mc\\Delta t`]);
+  if(u === 'mHeat'){
+    rows.push(['Vyjádříme hmotnost zahřívané látky.', `${mSym} = \\frac{Q}{c\\Delta t} = \\frac{${latexNum(q)}}{${latexNum(c)}\\cdot ${latexNum(dT)}} = ${latexNum(result)}\\,\\mathrm{kg}`]);
+  }
+  if(u === 'c'){
+    rows.push(['Vyjádříme měrnou tepelnou kapacitu.', `c = \\frac{Q}{m\\Delta t} = \\frac{${latexNum(q)}}{${latexNum(mh)}\\cdot ${latexNum(dT)}} = ${latexNum(result)}\\,\\mathrm{J\\,kg^{-1}\\,K^{-1}}`]);
+  }
+  if(u === 'dT'){
+    rows.push(['Vyjádříme změnu teploty.', `\\Delta t = \\frac{Q}{mc}`]);
+    rows.push(['Dosadíme.', `\\Delta t = \\frac{${latexNum(q)}}{${latexNum(mh)}\\cdot ${latexNum(c)}} = ${latexNum(result)}\\,^{\\circ}\\mathrm{C}`]);
+  }
+  return rows;
+}
+
+function markComputedField(key, isComputed){
+  const input = $(`field_${key}`);
+  if(!input) return;
+  const wrap = input.closest('.field');
+  if(isComputed){
+    input.value = values[key] ?? '';
+    input.readOnly = true;
+    wrap?.classList.add('computed');
+  } else {
+    input.readOnly = false;
+    wrap?.classList.remove('computed');
+  }
+}
+
+function calculate(refreshFields=true){
+  renderTaskBox();
+  renderFormulaBar();
+  const result = solve();
+  const u = unknown();
+  if(result != null && Number.isFinite(result)){
+    values[u] = roundNice(result);
+    computed[u] = true;
+    const [sym,unit] = labelFor(u);
+    $('status').innerHTML = `<span class="result">${sym} = ${fmt(result)} ${unit}</span>`;
+    const rows = derivationRows(result);
+    $('steps').innerHTML = `<div class="deriveRows">${rows.map((r,i) => `<div class="deriveRow"><div class="deriveNo">${i+1}</div><div class="deriveText">${r[0]}</div><div class="deriveMath">\\[${r[1]}\\]</div></div>`).join('')}</div>`;
+    if(!refreshFields) markComputedField(u, true);
+  } else {
+    delete computed[u];
+    if(values[u] && document.activeElement?.id !== `field_${u}`) delete values[u];
+    $('status').innerHTML = 'Zadej hodnoty';
+    $('steps').innerHTML = '<div class="step"><b>Co se bude počítat</b>Vyjdeme z rovnice \\(E_{m1}=E_{m2}+\\Delta U\\). Potom podle zadání rozepíšeme \\(E_k\\) a \\(E_p\\). Ve druhém režimu dosadíme \\(\\Delta U=Q=mc\\Delta t\\).</div>';
+    if(!refreshFields) markComputedField(u, false);
+  }
+  if(refreshFields) renderFields();
+  typesetMath();
+}
+
+function typesetMath(){
+  if(window.MathJax && window.mathJaxReady) MathJax.typesetPromise();
+}
+
+function render(){
+  renderModes();
+  renderSources();
+  renderFields();
+  calculate();
+}
+
+function rand(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function rnd(min,max,step=1){ return Math.round((min + Math.random()*(max-min))/step)*step; }
+
+function generatedHeatTargetFor(chosenUnknown){
+  return chosenUnknown === 'mHeat' ? 'impact' : rand(heatTargets).id;
+}
+
+function scenarioValues(chosenMode=mode, chosenSource=source, chosenUnknown=unknown(), chosenHeatTarget=heatTarget){
+  const data = { g:'10', eta:String(rand([50,60,70,75,80,90,100])) };
+  if(chosenSource === 'kinetic'){
+    data.mMech = String(rand([0.2,0.5,1,2,5,10]));
+    const v1 = rand([8,10,12,15,18,20,25,30]);
+    data.v1 = String(v1);
+    data.v2 = String(rand([0,2,4,5,6,8].filter(v => v < v1)));
+  }
+  if(chosenSource === 'potential'){
+    data.mMech = String(rand([0.1,0.2,0.5,1,2,5,10]));
+    const h1 = rand([2,3,5,8,10,12,15,20]);
+    data.h1 = String(h1);
+    data.h2 = String(rand([0,0.5,1,2].filter(h => h < h1)));
+  }
+  if(chosenSource === 'both'){
+    data.mMech = String(rand([0.2,0.5,1,2,5]));
+    const v1 = rand([0,2,4,6,8,10]);
+    const h1 = rand([10,15,20,30,50]);
+    const h2 = rand([0,1,2,5].filter(h => h < h1));
+    const maxGeneratedV = Math.sqrt(v1*v1 + 0.75 * 2 * 10 * (h1 - h2));
+    const v2Candidates = [v1+1, v1+2, v1+3, v1+4, v1+5, v1+6, v1+8, v1+10, v1+12, v1+15].filter(v => v > v1 && v < maxGeneratedV);
+    data.v1 = String(v1);
+    data.h1 = String(h1);
+    data.v2 = String(rand(v2Candidates.length ? v2Candidates : [v1]));
+    data.h2 = String(h2);
+  }
+  if(chosenMode === 'heat'){
+    if(chosenHeatTarget === 'impact'){
+      data.mHeat = String(rand([0.05,0.1,0.2,0.5,1,2]));
+      data.c = String(rand([130,235,450,900]));
+    } else {
+      data.c = String(rand([130,235,450,900]));
+    }
+  }
+
+  const oldMode = mode, oldSource = source, oldUnknown = unknownByMode[chosenMode], oldHeatTarget = heatTarget;
+  mode = chosenMode; source = chosenSource; heatTarget = chosenHeatTarget; unknownByMode[chosenMode] = 'Q';
+  const backup = values;
+  values = {...data};
+  const loss = mechanicalLoss();
+  const q = (Number(data.eta)/100) * loss;
+  values = backup; mode = oldMode; source = oldSource; heatTarget = oldHeatTarget; unknownByMode[chosenMode] = oldUnknown;
+
+  if(chosenMode === 'internal') data.Q = roundNice(q);
+  if(chosenMode === 'heat'){
+    const heatMass = chosenHeatTarget === 'self' ? Number(data.mMech) : Number(data.mHeat);
+    const dt = q / (heatMass * Number(data.c));
+    data.dT = roundNice(dt);
+  }
+  delete data[chosenUnknown];
+  return data;
+}
+
+function taskText(){
+  return problemStatement();
+}
+
+function generateExample(){
+  clearComputed();
+  if(mode === 'heat') heatTarget = generatedHeatTargetFor(unknown());
+  values = scenarioValues(mode, source, unknown(), heatTarget);
+  if(!values.g) values.g = '10';
+  lastTaskText = taskText();
+  render();
+}
+
+function clearAll(){
+  values = { g:'10', eta:'100' };
+  computed = {};
+  lastTaskText = '';
+  render();
+}
+
+$('randomBtn').addEventListener('click', generateExample);
+$('clearBtn').addEventListener('click', clearAll);
+
+render();
+</script>
+</body>
+</html>
