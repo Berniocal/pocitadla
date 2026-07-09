@@ -23,42 +23,69 @@
 :root{
   --bg:#f6f3ea; --panel:#ffffff; --ink:#242424; --muted:#67625a;
   --line:#dfd2bd; --accent:#d99a35; --accent2:#6fb7a8; --soft:#fbf0de;
-  --ok:#fff2a8; --bad:#ffe1dd; --good:#eef9f6;
+  --ok:#fff2a8; --bad:#ffe1dd; --good:#eef9f6; --aside:#fffaf1;
+  --shadow:0 4px 18px rgba(70,50,20,.05);
+}
+[data-theme="dark"]{
+  --bg:#151515; --panel:#202020; --ink:#f4f0e8; --muted:#b8afa2;
+  --line:#3b352d; --accent:#e6a94c; --accent2:#74c7b8; --soft:#2a241b;
+  --ok:#3a3317; --bad:#3c211f; --good:#18312d; --aside:#1b1a18;
+  --shadow:none;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
 .app{display:grid;grid-template-columns:370px 1fr;min-height:100vh}
-aside{padding:18px;border-right:1px solid var(--line);background:#fffaf1;position:sticky;top:0;height:100vh;overflow:auto}
+aside{padding:18px;border-right:1px solid var(--line);background:var(--aside);position:sticky;top:0;height:100vh;overflow:auto}
 main{padding:22px;overflow:auto}
 h1{font-size:25px;margin:0 0 12px}
 h2{font-size:22px;margin:0 0 10px}
 h3{font-size:18px;margin:16px 0 8px}
 p{line-height:1.45}
 .small{font-size:13px;color:var(--muted);line-height:1.35}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.themeToggle{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:7px 10px;background:var(--panel);font-size:13px;font-weight:750;color:var(--ink);cursor:pointer;white-space:nowrap}
+.themeToggle input{accent-color:var(--accent2)}
 .mode{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:11px 12px;margin:7px 0;cursor:pointer;font-weight:750;color:var(--ink)}
-.mode.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(217,154,53,.22);background:#fff8e8}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;margin:14px 0;box-shadow:0 4px 18px rgba(70,50,20,.05)}
+.mode.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(217,154,53,.22);background:var(--soft)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;margin:14px 0;box-shadow:var(--shadow)}
 .field{display:grid;grid-template-columns:minmax(118px,1fr) minmax(90px,122px) 58px;gap:8px;align-items:center;margin:8px 0;padding:8px;border-radius:8px;border:1px solid transparent}
 .field.unknown{background:var(--good);border-color:#99d7ca}
 .field.computed{background:var(--ok);border-color:#e8ca55}
 .labelBlock{min-width:0;display:flex;flex-direction:column;gap:6px}
 .field label{font-size:14px;line-height:1.2;min-width:0}
 .unknownPick{display:inline-flex;align-items:center;align-self:flex-start;gap:6px;font-size:12px;color:#286d60;cursor:pointer;user-select:none;white-space:nowrap;background:#f8fffc;border:1px solid #aee1d1;border-radius:999px;padding:3px 8px;line-height:1.1}
+[data-theme="dark"] .unknownPick{color:#bff0e7;background:#17302c;border-color:#366a61}
 .unknownPick input{width:auto;min-width:0;flex:0 0 auto;accent-color:var(--accent2);cursor:pointer;margin:0}
 .field input[type="text"]{width:100%;min-width:0;padding:9px 8px;border:1px solid var(--line);border-radius:8px;font-size:15px;background:white;color:var(--ink)}
 .field input[readonly]{background:#fffdf5;font-weight:800;color:#735000}
+[data-theme="dark"] .field input[type="text"]{background:#151515}
+[data-theme="dark"] .field input[readonly]{background:#241f16;color:#f0c46a}
 .field input:focus{outline:2px solid rgba(111,183,168,.55);border-color:var(--accent2)}
 .unit{font-size:12px;color:var(--muted)}
-.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .btn{border:1px solid var(--line);background:white;border-radius:8px;padding:9px 11px;cursor:pointer;font-weight:700}
-.btn:hover{background:#fff8e8}
+.iconBtn{width:40px;height:40px;border:1px solid var(--line);background:white;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:19px}
+.btn:hover,.iconBtn:hover{background:var(--soft)}
+[data-theme="dark"] .btn,[data-theme="dark"] .iconBtn{background:#151515;color:var(--ink)}
+.decimalPanel{display:none;width:100%;margin-top:8px;padding:10px;border:1px dashed var(--line);border-radius:8px;background:var(--soft)}
+.decimalPanel.open{display:block}
+.decimalPanel label{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700}
+.decimalPanel input{width:72px;padding:7px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
 .resultBox{background:#f8fffc;border:1px solid #aee1d1;border-radius:8px;padding:18px;margin-bottom:16px}
+[data-theme="dark"] .resultBox{background:#17302c;border-color:#366a61}
+.assignmentTitle{font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:850;margin:0 0 8px}
+.assignmentText{font-size:18px;line-height:1.5}
+.solutionDetails{border:1px solid var(--line);border-radius:8px;background:var(--panel);overflow:hidden}
+.solutionDetails[open]{box-shadow:var(--shadow)}
+.solutionSummary{cursor:pointer;padding:14px 16px;font-weight:850;background:var(--soft);border-bottom:1px solid var(--line)}
+.solutionDetails:not([open]) .solutionSummary{border-bottom:0}
 .steps{display:grid;gap:12px}
-.step{background:white;border:1px solid var(--line);border-left:7px solid var(--accent);border-radius:8px;padding:14px;overflow-x:auto}
+.step{background:var(--panel);border:1px solid var(--line);border-left:7px solid var(--accent);border-radius:8px;padding:14px;overflow-x:auto}
 .step b{display:block;margin-bottom:8px}
 .deriveRows{display:grid;gap:10px;margin-top:8px}
-.deriveRow{display:grid;grid-template-columns:34px minmax(150px,1fr) 2fr;gap:12px;align-items:center;background:#fffdf9;border:1px solid var(--line);border-radius:8px;padding:10px}
+.deriveRow{display:grid;grid-template-columns:34px minmax(150px,1fr) 2fr;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px}
 .deriveNo{width:26px;height:26px;border-radius:999px;background:#e8f6ef;border:1px solid #aee1d1;display:flex;align-items:center;justify-content:center;font-weight:800;color:#126b42}
+[data-theme="dark"] .deriveNo{background:#17302c;color:#bff0e7;border-color:#366a61}
 .deriveText{font-size:14px;color:var(--muted);line-height:1.25}
 .deriveMath{overflow-x:auto;text-align:center}
 .warn{background:var(--bad);border:1px solid #f2a29a;border-radius:8px;padding:10px;margin-top:10px}
@@ -97,24 +124,35 @@ p{line-height:1.45}
 <body>
 <div class="app">
 <aside>
-  <h1>Zákon zachování energie</h1>
+  <div class="topbar">
+    <h1>Zákon zachování energie</h1>
+    <label class="themeToggle"><input type="checkbox" id="themeSwitch"> tmavý</label>
+  </div>
   <p class="small">Vyber typ úlohy a označ jednu neznámou. U čistého zachování mechanické energie se hmotnost vykrátí. U úloh s prací odporové síly hmotnost zadáváme a počítáme skutečnou sílu \(F\).</p>
   <div id="modes"></div>
   <div class="card">
-    <h3>Vstupní veličiny</h3>
+    <h3>Dostupné veličiny</h3>
     <div id="fields"></div>
     <div class="btnrow">
-      <button class="btn" id="randomExample">Generovat příklad</button>
-      <button class="btn" id="clearAll">Smazat vše</button>
+      <button class="btn" id="randomExample">Generovat</button>
+      <button class="iconBtn" id="decimalToggle" title="Nastavení generátoru" aria-label="Nastavení generátoru">✎</button>
+      <div class="decimalPanel" id="decimalPanel">
+        <label>Desetinná místa <input type="number" id="decimalPlaces" min="0" max="4" step="1" value="1"></label>
+        <p class="small">Platí pro nově generované příklady. Generátor zároveň nedovolí nulovou hmotnost ani nulovou dráhu odporové síly.</p>
+      </div>
     </div>
   </div>
 </aside>
 <main>
   <div class="resultBox">
-    <h2 id="status">Zadej hodnoty</h2>
-    <div id="equation" class="muted"></div>
+    <div class="assignmentTitle">Slovní zadání</div>
+    <div id="assignmentText" class="assignmentText"></div>
+    <div id="status" class="muted"></div>
   </div>
-  <div class="steps" id="steps"></div>
+  <details class="solutionDetails" id="solutionDetails">
+    <summary class="solutionSummary">Zobrazit výpočet a vyjadřování</summary>
+    <div class="steps" id="steps"></div>
+  </details>
 </main>
 </div>
 
@@ -162,16 +200,27 @@ const labels = {
 let mode = 'mechanical';
 const values = { g:'9,81' };
 const computed = {};
-const unknownByMode = { mechanical:'v2', intoWork:'F', throughWood:'F' };
+const selectedUnknownsByMode = { mechanical:['v2'], intoWork:['F'], throughWood:['F'] };
 let currentExampleText = '';
+let generatedDecimals = 1;
 const $ = id => document.getElementById(id);
 
 function currentMode(){ return modes.find(m => m.id === mode); }
-function unknown(){ return unknownByMode[mode] || currentMode().defaultUnknown; }
-function setUnknown(k){
-  unknownByMode[mode] = k;
-  delete values[k];
-  delete computed[k];
+function selectedUnknowns(){ return selectedUnknownsByMode[mode] || [currentMode().defaultUnknown]; }
+function unknown(){ return selectedUnknowns()[0] || currentMode().defaultUnknown; }
+function setUnknown(k, checked){
+  const list = selectedUnknowns();
+  if(checked){
+    if(!list.includes(k)) list.push(k);
+    delete values[k];
+    delete computed[k];
+  }else{
+    const index = list.indexOf(k);
+    if(index >= 0) list.splice(index, 1);
+    delete computed[k];
+  }
+  if(!list.length) list.push(k);
+  selectedUnknownsByMode[mode] = list;
   renderFields();
   calculate();
 }
@@ -186,7 +235,7 @@ function fmt(x,d=3){
 }
 function latexNum(x,d=3){
   const out = fmt(x,d).replace(',', '{,}');
-  return x < 0 ? `\\left(${out}\\right)` : out;
+  return out;
 }
 function inputLatex(k){
   const map = {m:'m', v1:'v_1', h1:'h_1', v2:'v_2', h2:'h_2', v:'v', h:'h', d:'d', F:'F', g:'g'};
@@ -226,6 +275,7 @@ function renderModes(){
       currentExampleText = '';
       for(const k in computed) delete computed[k];
       if(!values.g) values.g = '9,81';
+      if(!selectedUnknownsByMode[mode]?.length) selectedUnknownsByMode[mode] = [currentMode().defaultUnknown];
       renderModes();
       renderFields();
       calculate();
@@ -234,15 +284,15 @@ function renderModes(){
 }
 function renderFields(){
   const cfg = currentMode();
-  const u = unknown();
+  const unknowns = selectedUnknowns();
   $('fields').innerHTML = cfg.fields.map(k => {
     const l = labels[k];
     const canBeUnknown = cfg.unknowns.includes(k);
-    const isUnknown = k === u;
+    const isUnknown = unknowns.includes(k);
     const readonly = isUnknown ? ' readonly' : '';
     const placeholder = isUnknown ? 'neznámá' : '?';
     const pick = canBeUnknown
-      ? `<label class="unknownPick" title="Označit ${l[0]} jako neznámou"><input type="radio" name="unknown" data-unknown="${k}" ${isUnknown?'checked':''}><span>neznámá</span></label>`
+      ? `<label class="unknownPick" title="Označit ${l[0]} jako neznámou"><input type="checkbox" data-unknown="${k}" ${isUnknown?'checked':''}><span>neznámá</span></label>`
       : `<span class="small">konstanta</span>`;
     return `<div class="field ${isUnknown?'unknown':''} ${computed[k]?'computed':''}" id="row_${k}">
       <div class="labelBlock"><label for="${k}"><b>${l[0]}</b><br><span class="small">${l[2]}</span></label>${pick}</div>
@@ -254,22 +304,22 @@ function renderFields(){
   cfg.fields.forEach(k => {
     const input = $(k);
     const radio = document.querySelector(`input[data-unknown="${k}"]`);
-    if(radio) radio.addEventListener('change', () => setUnknown(k));
-    if(k === u) return;
+    if(radio) radio.addEventListener('change', () => setUnknown(k, radio.checked));
+    if(selectedUnknowns().includes(k)) return;
     input.addEventListener('input', e => {
       values[k] = e.target.value;
       currentExampleText = '';
       for(const key in computed){
         delete computed[key];
-        if(key === unknown()) delete values[key];
+        if(selectedUnknowns().includes(key)) delete values[key];
       }
       calculate();
     });
   });
 }
 function missingInputs(){
-  const u = unknown();
-  return currentMode().fields.filter(k => k !== u && val(k) === null);
+  const unknowns = selectedUnknowns();
+  return currentMode().fields.filter(k => !unknowns.includes(k) && val(k) === null);
 }
 function setComputed(k, result){
   if(!Number.isFinite(result)) return;
@@ -493,7 +543,7 @@ function baseSteps(){
     ];
   }
   return [
-    `<div class="step"><b>1) Zapíšeme úbytek kinetické energie</b><p class="small">Kulka měla na začátku větší kinetickou energii. Část energie spotřebovala na práci ve dřevě a zbytek jí zůstal jako kinetická energie na konci.</p>\\[E_{k1}=W+E_{k2}\\]</div>`,
+    `<div class="step"><b>1) Zapíšeme úbytek kinetické energie</b><p class="small">Těleso mělo na začátku větší kinetickou energii. Část energie spotřebovalo na práci odporové síly a zbytek mu zůstal jako kinetická energie na konci.</p>\\[E_{k1}=W+E_{k2}\\]</div>`,
     `<div class="step"><b>2) Dosadíme vzorce</b><p class="small">Za kinetickou energii dosadíme \\(E_k=\\frac{1}{2}mv^2\\). Práci odporové síly zapíšeme jako \\(W=Fd\\).</p>\\[\\frac{1}{2}mv_1^2=F\\cdot d+\\frac{1}{2}mv_2^2\\]</div>`
   ];
 }
@@ -567,7 +617,7 @@ function solve(){
     if(u === 'v1') result = Math.sqrt(Math.max(0, (2*F*d + m*v2*v2) / m));
     if(u === 'v2'){
       const inside = (m*v1*v1 - 2*F*d) / m;
-      if(inside < -1e-9) error = 'Pod odmocninou vyšlo záporné číslo. Kulka by se při takové práci zastavila dřív.';
+      if(inside < -1e-9) error = 'Pod odmocninou vyšlo záporné číslo. Těleso by se při takové práci zastavilo dřív.';
       result = Math.sqrt(Math.max(0, inside));
     }
     if(u === 'd'){
@@ -588,14 +638,40 @@ function solve(){
 function resultUnit(k){
   return labels[k]?.[1] || '';
 }
+function knownValueText(k){
+  const n = val(k);
+  if(n === null) return '';
+  return `${labels[k][0]} = ${fmt(n)} ${labels[k][1]}`;
+}
+function assignmentHtml(extra=''){
+  const cfg = currentMode();
+  const unknowns = selectedUnknowns();
+  const knowns = cfg.fields.filter(k => !unknowns.includes(k) && val(k) !== null).map(knownValueText);
+  const unknownText = unknowns.map(k => `${labels[k][0]}`).join(', ');
+  const intro = currentExampleText || `Řeš úlohu typu ${cfg.short}.`;
+  const knownSentence = knowns.length ? `Známé hodnoty jsou ${knowns.join(', ')}.` : 'Zatím nejsou zadané žádné známé hodnoty.';
+  return `<p>${intro}</p><p>${knownSentence} Urči ${unknownText || 'neznámou veličinu'}.</p>${extra}`;
+}
+function renderAssignment(extra=''){
+  $('assignmentText').innerHTML = assignmentHtml(extra);
+}
 function calculate(){
   const steps = baseSteps();
   const miss = missingInputs();
+  const unknowns = selectedUnknowns();
   const u = unknown();
+
+  if(unknowns.length !== 1){
+    renderAssignment(`<div class="warn">Tahle úloha má jen jednu základní rovnici, takže s více neznámými nejde jednoznačně spočítat. Nech označenou právě jednu neznámou.</div>`);
+    $('status').textContent = 'Vyber právě jednu neznámou.';
+    $('steps').innerHTML = steps.join('');
+    typesetMath();
+    return;
+  }
 
   if(miss.length){
     $('status').textContent = 'Doplň hodnoty';
-    $('equation').innerHTML = `${currentExampleText ? `<p>${currentExampleText}</p>` : ''}Chybí: ${miss.map(k => labels[k][0]).join(', ')}`;
+    renderAssignment(`<div class="warn">Chybí: ${miss.map(k => labels[k][0]).join(', ')}</div>`);
     $('steps').innerHTML = steps.join('');
     typesetMath();
     return;
@@ -608,7 +684,7 @@ function calculate(){
 
   if(error){
     $('status').textContent = 'Tady něco nesedí';
-    $('equation').innerHTML = `<div class="warn">${error}</div>`;
+    renderAssignment(`<div class="warn">${error}</div>`);
     $('steps').innerHTML = steps.join('');
     typesetMath();
     return;
@@ -620,17 +696,9 @@ function calculate(){
   steps.push(`<div class="step"><b>${zeroNo + 2}) Dosadíme a spočítáme</b><p class="small">Až teď dosazujeme konkrétní čísla do vyjádřeného vztahu.</p>${substitution}</div>`);
   steps.push(`<div class="step"><b>${zeroNo + 3}) Výsledek</b><p class="small">Výsledek zapíšeme s jednotkou.</p>\\[${inputLatex(u)}=${latexNum(result)}\\,\\mathrm{${resultUnit(u).replace('·','\\cdot ').replace('⁻¹','^{-1}')}}\\]</div>`);
   $('status').textContent = `${labels[u][0]} = ${fmt(result)} ${resultUnit(u)}`;
-  $('equation').innerHTML = `${currentMode().short}${currentExampleText ? `<p>${currentExampleText}</p>` : ''}`;
+  renderAssignment();
   $('steps').innerHTML = steps.join('');
   typesetMath();
-}
-function clearAll(){
-  for(const k in values) delete values[k];
-  for(const k in computed) delete computed[k];
-  values.g = '9,81';
-  currentExampleText = '';
-  renderFields();
-  calculate();
 }
 function rand(min, max){
   return min + Math.random() * (max - min);
@@ -641,14 +709,60 @@ function randInt(min, max){
 function pick(arr){
   return arr[Math.floor(Math.random() * arr.length)];
 }
-function inputNum(x, d=2){
+function decimalsForKey(key, x){
+  const rounded = Math.round(x * 10 ** generatedDecimals) / 10 ** generatedDecimals;
+  if(['m','d'].includes(key) && x > 0 && rounded === 0) return key === 'm' ? 3 : 2;
+  if(generatedDecimals > 0) return generatedDecimals;
+  if(['m','d'].includes(key) && Math.abs(x) < 1) return key === 'm' ? 3 : 2;
+  return 0;
+}
+function inputNum(x, d=generatedDecimals){
   const rounded = Math.round(x * 10 ** d) / 10 ** d;
   return String(rounded).replace('.', ',');
+}
+function roundedForGenerator(key, x){
+  return parseNumber(inputNum(x, decimalsForKey(key, x)));
+}
+function knownAfterRound(all, key, selectedUnknown){
+  return key !== selectedUnknown && all[key] !== undefined ? roundedForGenerator(key, all[key]) : null;
+}
+function isPositiveKnown(all, key, selectedUnknown){
+  const n = knownAfterRound(all, key, selectedUnknown);
+  return n === null || n > 0;
+}
+function exampleMakesSense(all, selectedUnknown){
+  if(mode === 'mechanical'){
+    const h1 = knownAfterRound(all, 'h1', selectedUnknown);
+    const h2 = knownAfterRound(all, 'h2', selectedUnknown);
+    const v1 = knownAfterRound(all, 'v1', selectedUnknown);
+    const v2 = knownAfterRound(all, 'v2', selectedUnknown);
+    if(h1 !== null && h2 !== null && h1 === h2) return false;
+    if(v1 !== null && v2 !== null && v1 === v2) return false;
+    if(h1 !== null && h1 < 0) return false;
+    if(h2 !== null && h2 < 0) return false;
+    if(v1 !== null && v1 < 0) return false;
+    if(v2 !== null && v2 < 0) return false;
+    return true;
+  }
+  if(mode === 'intoWork'){
+    const v = knownAfterRound(all, 'v', selectedUnknown);
+    const h = knownAfterRound(all, 'h', selectedUnknown);
+    if(v !== null && v < 0) return false;
+    if(h !== null && h < 0) return false;
+    if(v !== null && h !== null && v === 0 && h === 0) return false;
+    return ['m','d','F'].every(key => isPositiveKnown(all, key, selectedUnknown));
+  }
+  const v1 = knownAfterRound(all, 'v1', selectedUnknown);
+  const v2 = knownAfterRound(all, 'v2', selectedUnknown);
+  if(v1 !== null && v1 <= 0) return false;
+  if(v2 !== null && v2 < 0) return false;
+  if(v1 !== null && v2 !== null && v1 <= v2) return false;
+  return ['m','d','F'].every(key => isPositiveKnown(all, key, selectedUnknown));
 }
 function assignKnown(all, u){
   for(const key of currentMode().fields){
     if(key === 'g') continue;
-    if(key !== u && all[key] !== undefined) values[key] = inputNum(all[key], ['d','m'].includes(key) ? 3 : 2);
+    if(key !== u && all[key] !== undefined) values[key] = inputNum(all[key], decimalsForKey(key, all[key]));
   }
 }
 function generateMechanical(){
@@ -687,16 +801,23 @@ function generateMechanical(){
       all.h1 = randInt(0, 25);
       all.v1 = randInt(4, 24);
       const maxH2 = all.h1 + all.v1 ** 2 / (2 * g) - 1;
-      all.h2 = Math.max(0, randInt(0, Math.max(0, Math.floor(maxH2))));
+      const maxH2Rounded = Math.max(0, Math.floor(maxH2));
+      const possibleHeights = [];
+      for(let h = 0; h <= maxH2Rounded; h++){
+        if(h !== all.h1) possibleHeights.push(h);
+      }
+      if(!possibleHeights.length) continue;
+      all.h2 = pick(possibleHeights);
       all.v2 = Math.sqrt(Math.max(0, all.v1 ** 2 + 2 * g * (all.h1 - all.h2)));
       candidates = ['v1','h1','v2','h2'];
       currentExampleText = 'Těleso se pohybuje mezi dvěma různými výškami.';
     }
-    if(candidates.includes(selectedUnknown)){
+    if(candidates.includes(selectedUnknown) && exampleMakesSense(all, selectedUnknown)){
       assignKnown(all, selectedUnknown);
-      return;
+      return true;
     }
   }
+  return false;
 }
 function generateIntoWork(){
   const g = 9.81;
@@ -705,7 +826,7 @@ function generateIntoWork(){
     const scenario = pick(['drop','speed','speed','both']);
     let all = {};
     let candidates = [];
-    all.m = rand(0.15, 4);
+    all.m = generatedDecimals === 0 ? randInt(1, 8) : rand(0.5, 4);
     if(scenario === 'drop'){
       all.v = 0;
       all.h = randInt(1, 25);
@@ -724,13 +845,14 @@ function generateIntoWork(){
       candidates = ['m','v','h','d','F'];
       currentExampleText = 'Těleso hodíme dolů z výšky a potom se zaryje do hlíny.';
     }
-    all.d = rand(0.03, 0.18);
+    all.d = generatedDecimals === 0 ? randInt(1, 3) : rand(0.03, 0.18);
     all.F = all.m * (0.5 * all.v ** 2 + g * all.h) / all.d;
-    if(candidates.includes(selectedUnknown)){
+    if(candidates.includes(selectedUnknown) && exampleMakesSense(all, selectedUnknown)){
       assignKnown(all, selectedUnknown);
-      return;
+      return true;
     }
   }
+  return false;
 }
 function generateThroughWood(){
   const selectedUnknown = unknown();
@@ -738,37 +860,47 @@ function generateThroughWood(){
     const scenario = pick(['slows','slows','stops']);
     const all = {};
     let candidates = [];
-    all.m = rand(0.004, 0.025);
-    all.v1 = randInt(180, 650);
-    all.d = rand(0.03, 0.25);
+    all.m = generatedDecimals === 0 ? randInt(1, 6) : rand(0.004, 0.025);
+    all.v1 = generatedDecimals === 0 ? randInt(20, 80) : randInt(180, 650);
+    all.d = generatedDecimals === 0 ? randInt(1, 4) : rand(0.03, 0.25);
     if(scenario === 'stops'){
       all.v2 = 0;
       candidates = ['m','v1','d','F'];
-      currentExampleText = 'Kulka se ve dřevě úplně zastaví.';
+      currentExampleText = 'Těleso se při průchodu brzdicí vrstvou úplně zastaví.';
     }else{
       all.v2 = randInt(Math.max(20, Math.round(all.v1 * 0.35)), Math.round(all.v1 * 0.85));
       candidates = ['m','v1','v2','d','F'];
-      currentExampleText = 'Kulka proletí dřevem a po průletu má menší rychlost.';
+      currentExampleText = 'Těleso projde brzdicí vrstvou a na konci má menší rychlost.';
     }
     all.F = all.m * (0.5 * all.v1 ** 2 - 0.5 * all.v2 ** 2) / all.d;
-    if(candidates.includes(selectedUnknown)){
+    if(candidates.includes(selectedUnknown) && exampleMakesSense(all, selectedUnknown)){
       assignKnown(all, selectedUnknown);
-      return;
+      return true;
     }
   }
+  return false;
 }
 function randomExample(){
+  if(selectedUnknowns().length !== 1){
+    currentExampleText = '';
+    calculate();
+    return;
+  }
   for(const k in values) delete values[k];
   for(const k in computed) delete computed[k];
   values.g = '9,81';
+  let generated = false;
   if(mode === 'mechanical'){
-    generateMechanical();
+    generated = generateMechanical();
   }
   if(mode === 'intoWork'){
-    generateIntoWork();
+    generated = generateIntoWork();
   }
   if(mode === 'throughWood'){
-    generateThroughWood();
+    generated = generateThroughWood();
+  }
+  if(!generated){
+    currentExampleText = 'Nepodařilo se najít rozumný příklad pro zvolenou neznámou a zaokrouhlení. Zkus jiné nastavení desetinných míst.';
   }
   renderFields();
   calculate();
@@ -779,8 +911,20 @@ function typesetMath(){
   }
 }
 
-$('clearAll').addEventListener('click', clearAll);
+function applyTheme(isDark){
+  document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+  $('themeSwitch').checked = isDark;
+}
+
+$('themeSwitch').addEventListener('change', e => applyTheme(e.target.checked));
+$('decimalToggle').addEventListener('click', () => $('decimalPanel').classList.toggle('open'));
+$('decimalPlaces').addEventListener('input', e => {
+  const n = Math.max(0, Math.min(4, parseInt(e.target.value || '0', 10)));
+  generatedDecimals = Number.isFinite(n) ? n : 1;
+  e.target.value = generatedDecimals;
+});
 $('randomExample').addEventListener('click', randomExample);
+applyTheme(false);
 renderModes();
 renderFields();
 calculate();
