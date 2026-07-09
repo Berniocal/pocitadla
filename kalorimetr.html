@@ -23,26 +23,32 @@
 :root{
   --bg:#fbf6ee; --panel:#ffffff; --ink:#2b2b2b; --muted:#6f6a63;
   --line:#ead8bf; --accent:#f4bd62; --accent2:#8ccfbd; --ok:#fff2a8;
-  --soft:#f7efe3; --bad:#ffe0dd;
+  --soft:#f7efe3; --bad:#ffe0dd; --side:#fffaf2; --shadow:rgba(70,50,20,.05);
+}
+body.dark{
+  --bg:#171717; --panel:#222222; --ink:#f4f1ea; --muted:#c7beb2;
+  --line:#454039; --accent:#f4bd62; --accent2:#77c6b5; --ok:#4b421d;
+  --soft:#2d2923; --bad:#57302e; --side:#1e1c19; --shadow:rgba(0,0,0,.25);
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
-.app{display:grid;grid-template-columns:360px 1fr;min-height:100vh}
-aside{padding:18px;border-right:1px solid var(--line);background:#fffaf2;position:sticky;top:0;height:100vh;overflow:auto}
+.app{display:grid;grid-template-columns:340px 1fr;min-height:100vh}
+aside{padding:18px;border-right:1px solid var(--line);background:var(--side);position:sticky;top:0;height:100vh;overflow:auto}
 main{padding:22px;overflow:auto}
 h1{font-size:25px;margin:0 0 12px} h2{font-size:22px;margin:0 0 12px} h3{font-size:18px;margin:18px 0 8px}
 .small{font-size:13px;color:var(--muted);line-height:1.35}.pill{display:inline-block;padding:4px 9px;border-radius:999px;background:var(--soft);border:1px solid var(--line);font-size:12px;margin:2px}
-.mode{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:15px;background:var(--panel);padding:11px 12px;margin:7px 0;cursor:pointer;font-weight:700;color:var(--ink)}
-.mode.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(244,189,98,.25);background:#fff8e8}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px;margin:14px 0;box-shadow:0 4px 18px rgba(70,50,20,.05)}
-.field{display:grid;grid-template-columns:minmax(120px,1fr) minmax(86px,116px) 48px;gap:8px;align-items:center;margin:8px 0;padding:8px;border-radius:13px;border:1px solid transparent}
-.field.unknown{background:#eef9f6;border-color:#8ccfbd}.field.unknown.computed{background:var(--ok);border-color:#ecd25a}.field input[readonly]{background:#fffdf5;font-weight:800;color:#7a4e00}.labelBlock{min-width:0;display:flex;flex-direction:column;gap:6px}.unknownPick{display:inline-flex;align-items:center;align-self:flex-start;gap:6px;font-size:12px;color:#286d60;cursor:pointer;user-select:none;white-space:nowrap;background:#f8fffc;border:1px solid #aee1d1;border-radius:999px;padding:3px 8px;line-height:1.1}.unknownPick input{width:auto;min-width:0;flex:0 0 auto;accent-color:var(--accent2);cursor:pointer;margin:0}
-.field.computed{background:var(--ok);border-color:#ecd25a}.field label{font-size:14px;line-height:1.2;min-width:0}.field input{width:100%;min-width:0;padding:9px 8px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:white;color:var(--ink)}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.themeBtn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:8px 10px;cursor:pointer;font-weight:800}
+.modeGrid{display:grid;grid-template-columns:1fr;gap:7px;margin-bottom:14px}.mode{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:10px 11px;cursor:pointer;font-weight:700;color:var(--ink)}
+.mode.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(244,189,98,.25);background:var(--soft)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;margin:14px 0;box-shadow:0 4px 18px var(--shadow)}
+.field{display:grid;grid-template-columns:minmax(116px,1fr) minmax(82px,112px) 44px;gap:8px;align-items:center;margin:8px 0;padding:8px;border-radius:8px;border:1px solid transparent}
+.field.unknown{background:#eef9f6;border-color:#8ccfbd}.field.unknown.computed{background:var(--ok);border-color:#ecd25a}body.dark .field.unknown{background:#18342f}body.dark .field input[readonly]{background:#332f25;color:#ffe69a}.field input[readonly]{background:#fffdf5;font-weight:800;color:#7a4e00}.labelBlock{min-width:0;display:flex;flex-direction:column;gap:6px}.unknownPick{display:inline-flex;align-items:center;align-self:flex-start;gap:6px;font-size:12px;color:#286d60;cursor:pointer;user-select:none;white-space:nowrap;background:#f8fffc;border:1px solid #aee1d1;border-radius:999px;padding:3px 8px;line-height:1.1}body.dark .unknownPick{background:#203732;color:#c7fff1;border-color:#4f8f82}.unknownPick input{width:auto;min-width:0;flex:0 0 auto;accent-color:var(--accent2);cursor:pointer;margin:0}
+.field.computed{background:var(--ok);border-color:#ecd25a}.field label{font-size:14px;line-height:1.2;min-width:0}.field input{width:100%;min-width:0;padding:9px 8px;border:1px solid var(--line);border-radius:8px;font-size:15px;background:var(--panel);color:var(--ink)}
 .field input:focus{outline:2px solid rgba(140,207,189,.7);border-color:var(--accent2)}
 .field input[list]{background-image:linear-gradient(45deg, transparent 50%, var(--muted) 50%),linear-gradient(135deg, var(--muted) 50%, transparent 50%);background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:28px}
 .unit{font-size:13px;color:var(--muted)}
-.btnrow{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:white;border-radius:12px;padding:9px 11px;cursor:pointer;font-weight:700}.btn:hover{background:#fff8e8}
-.resultBox{background:#f8fffc;border:1px solid #aee1d1;border-radius:22px;padding:18px;margin-bottom:16px}.steps{display:grid;gap:12px}.step{background:white;border:1px solid var(--line);border-left:7px solid var(--accent);border-radius:17px;padding:14px;overflow-x:auto}.step b{display:block;margin-bottom:8px}.deriveRows{display:grid;gap:10px;margin-top:8px}.deriveRow{display:grid;grid-template-columns:34px minmax(150px,1fr) 2fr;gap:12px;align-items:center;background:#fffdf9;border:1px solid var(--line);border-radius:14px;padding:10px}.deriveNo{width:26px;height:26px;border-radius:999px;background:#e8f6ef;border:1px solid #aee1d1;display:flex;align-items:center;justify-content:center;font-weight:800;color:#126b42}.deriveText{font-size:14px;color:var(--muted);line-height:1.25}.deriveMath{overflow-x:auto;text-align:center}.warn{background:var(--bad);border:1px solid #f2a29a;border-radius:14px;padding:10px;margin-top:10px}.muted{color:var(--muted)}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.btn,.iconBtn,.decimalSelect{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:9px 11px;cursor:pointer;font-weight:700}.iconBtn{width:42px;padding:9px 0;font-size:18px;line-height:1}.decimalSelect{display:none}.decimalSelect.open{display:block}.btn:hover,.iconBtn:hover,.themeBtn:hover{background:var(--soft)}
+.problemBox{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px;margin-bottom:16px}.problemText{font-size:18px;line-height:1.45}.problemText ul{margin:10px 0 0;padding-left:22px}.solutionBox{background:#f8fffc;border:1px solid #aee1d1;border-radius:8px;padding:0;margin-bottom:16px}body.dark .solutionBox{background:#18342f}.solutionBox summary{cursor:pointer;font-weight:800;padding:14px 16px}.solutionInner{padding:0 16px 16px}.resultBox{border-top:1px solid var(--line);padding-top:14px;margin-bottom:16px}.steps{display:grid;gap:12px}.step{background:var(--panel);border:1px solid var(--line);border-left:7px solid var(--accent);border-radius:8px;padding:14px;overflow-x:auto}.step b{display:block;margin-bottom:8px}.deriveRows{display:grid;gap:10px;margin-top:8px}.deriveRow{display:grid;grid-template-columns:34px minmax(150px,1fr) 2fr;gap:12px;align-items:center;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:10px}.deriveNo{width:26px;height:26px;border-radius:999px;background:#e8f6ef;border:1px solid #aee1d1;display:flex;align-items:center;justify-content:center;font-weight:800;color:#126b42}.deriveText{font-size:14px;color:var(--muted);line-height:1.25}.deriveMath{overflow-x:auto;text-align:center}.warn{background:var(--bad);border:1px solid #f2a29a;border-radius:8px;padding:10px;margin-top:10px}.muted{color:var(--muted)}
 @media(max-width:850px){
   .app{grid-template-columns:1fr}
   aside{height:auto;position:relative;border-right:0;border-bottom:1px solid var(--line)}
@@ -108,24 +114,42 @@ h1{font-size:25px;margin:0 0 12px} h2{font-size:22px;margin:0 0 12px} h3{font-si
 <body>
 <div class="app">
 <aside>
-  <h1>Kalorimetrická kalkulačka</h1>
-  <p class="small">Vyber typ úlohy. Zaškrtni jednu veličinu jako neznámou a doplň ostatní hodnoty. Jakmile je vstupů dostatek, neznámá se automaticky dopočítá ve žlutém poli a vpravo se ukáže vzorový výpočet.</p>
-  <div id="modes"></div>
+  <div class="topbar">
+    <h1>Kalorimetr</h1>
+    <button class="themeBtn" id="themeToggle" type="button">Tmavý</button>
+  </div>
+  <div id="modes" class="modeGrid"></div>
   <div class="card">
-    <h3>Vstupní veličiny</h3>
+    <h3>Dostupné veličiny</h3>
     <div id="fields"></div>
     <div class="btnrow">
-      <button class="btn" id="randomExample">Generovat náhodný příklad</button>
-      <button class="btn" id="clearAll">Smazat vše</button>
+      <button class="btn" id="randomExample" type="button">Generovat</button>
+      <button class="iconBtn" id="decimalToggle" type="button" title="Nastavit desetinná místa generátoru">✎</button>
+      <select id="decimalPlaces" class="decimalSelect" title="Počet desetinných míst u generovaných hodnot">
+        <option value="0">0 míst</option>
+        <option value="1" selected>1 místo</option>
+        <option value="2">2 místa</option>
+        <option value="3">3 místa</option>
+      </select>
     </div>
+    <p class="small">U tohoto projektu lze jednoznačně počítat vždy jednu neznámou. Když jich označíš víc, aplikace to napíše a výpočet nespustí.</p>
   </div>
 </aside>
 <main>
-  <div class="resultBox">
-    <h2 id="status">Zadej hodnoty</h2>
-    <div id="equation" class="muted"></div>
-  </div>
-  <div class="steps" id="steps"></div>
+  <section class="problemBox">
+    <h2>Slovní zadání</h2>
+    <div id="problemText" class="problemText"></div>
+  </section>
+  <details class="solutionBox" id="solutionDetails">
+    <summary>Zobrazit výpočet a vyjádření</summary>
+    <div class="solutionInner">
+      <div class="resultBox">
+        <h2 id="status">Zadej hodnoty</h2>
+        <div id="equation" class="muted"></div>
+      </div>
+      <div class="steps" id="steps"></div>
+    </div>
+  </details>
 </main>
 </div>
 <script>
@@ -187,61 +211,74 @@ const visible = {
  fullPhase:['m1','t1','m2','t2','m3','t3','cIce','cWater','cSteam','tM','tB','lT','lV','tFinal']
 };
 let mode='mix';
-const values = {}; const computed = {}; let typingTimer=null;
-const unknownByMode = {mix:'t', mixCal:'t', melt:'tFinal', boil:'tFinal', fullPhase:'tFinal'};
-function currentUnknown(){
-  const keys = visible[mode] || [];
-  if(!keys.includes(unknownByMode[mode])) unknownByMode[mode] = keys.includes('t') ? 't' : keys[keys.length-1];
-  return unknownByMode[mode];
+const values = {}; const computed = {}; let typingTimer=null; let generatorDecimals=1;
+const unknownByMode = {mix:['t'], mixCal:['t'], melt:['tFinal'], boil:['tFinal'], fullPhase:['tFinal']};
+function defaultUnknownForMode(m){
+  const keys = visible[m] || [];
+  return keys.includes('t') ? 't' : keys[keys.length-1];
 }
-function selectUnknown(k){
-  const previous = currentUnknown();
-  if(previous && computed[previous]){ delete values[previous]; delete computed[previous]; }
-  unknownByMode[mode]=k;
-  delete values[k];
-  delete computed[k];
+function selectedUnknowns(){
+  const keys = visible[mode] || [];
+  return (unknownByMode[mode] || []).filter(k=>keys.includes(k));
+}
+function ensureDefaultUnknown(){
+  if(!selectedUnknowns().length) unknownByMode[mode]=[defaultUnknownForMode(mode)];
+}
+function currentUnknown(){
+  return selectedUnknowns()[0] || null;
+}
+function toggleUnknown(k, checked){
+  const set = new Set(selectedUnknowns());
+  if(checked) set.add(k); else set.delete(k);
+  for(const key of Object.keys(computed)){ delete values[key]; delete computed[key]; }
+  if(checked) delete values[k];
+  unknownByMode[mode]=[...set];
   renderFields();
   calculate();
 }
 const $ = id => document.getElementById(id);
 function fmt(x,d=2){ if(!isFinite(x)) return ''; return Number(x).toLocaleString('cs-CZ',{maximumFractionDigits:d,minimumFractionDigits:d}).replace(/\s/g,'\u202f'); }
 function latexNum(x,d=2){ return fmt(x,d).replace(',', '{,}'); }
-function latexTerm(x,d=2){ const s=latexNum(x,d); return Number(x)<0 ? `\\left(${s}\\right)` : s; }
+function latexTerm(x,d=2){ const s=latexNum(x,d); return Number(x)<0 ? `(${s})` : s; }
 function val(k){ const v = parseFloat(String(values[k]??'').replace(',','.')); return Number.isFinite(v)?v:null; }
+function mustBePositive(k){
+  return ['m1','m2','m3','c1','c2','Ck','cIce','cWater','cSteam','lT','lV'].includes(k);
+}
 function setComputed(k,v){
-  if(k!==currentUnknown()) return false;
+  if(selectedUnknowns().length!==1 || k!==currentUnknown()) return false;
+  if(mustBePositive(k) && !(v>0)) return false;
   if(isFinite(v)){
-    values[k]=String(Math.round(v*100)/100).replace('.',',');
+    values[k]=safeComputed(k,v);
     computed[k]=true;
     return true;
   }
   return false;
 }
 function clearSelectedComputed(){
-  const k=currentUnknown();
-  if(computed[k]){ delete values[k]; delete computed[k]; }
+  for(const k of selectedUnknowns()){
+    if(computed[k]){ delete values[k]; delete computed[k]; }
+  }
 }
 function clearComputed(){ for(const k of Object.keys(computed)){ if(computed[k]) delete values[k]; } for(const k in computed) delete computed[k]; renderFields(); calculate(); }
-function clearAll(){ for(const k in values) delete values[k]; for(const k in computed) delete computed[k]; renderFields(); calculate(); }
-function renderModes(){ $('modes').innerHTML=modes.map(m=>`<button class="mode ${m.id===mode?'active':''}" data-mode="${m.id}">${m.name}</button>`).join(''); document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>{mode=b.dataset.mode; currentUnknown(); for(const k in computed){delete values[k]; delete computed[k];} renderModes(); renderFields(); calculate();}); }
+function renderModes(){ $('modes').innerHTML=modes.map(m=>`<button class="mode ${m.id===mode?'active':''}" data-mode="${m.id}">${m.name}</button>`).join(''); document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>{mode=b.dataset.mode; ensureDefaultUnknown(); for(const k in computed){delete values[k]; delete computed[k];} renderModes(); renderFields(); calculate();}); }
 function renderFields(){
  const keys=visible[mode];
- const u=currentUnknown();
+ const unknownSet=new Set(selectedUnknowns());
  $('fields').innerHTML=keys.map(k=>{
    const l=labelFor(k);
    const listId = (k==='c1'||k==='c2'||k==='cIce'||k==='cWater'||k==='cSteam') ? `list_${k}` : '';
    const listAttr = listId ? ` list="${listId}" title="Můžeš napsat vlastní hodnotu nebo vybrat látku ze seznamu."` : '';
    const dl = listId ? heatCapacityDatalist(listId) : '';
-   const checked = k===u ? ' checked' : '';
-   const readOnly = k===u ? ' readonly' : '';
-   const placeholder = k===u ? 'neznámá' : '?';
-   return `<div class="field ${k===u?'unknown':''} ${computed[k]?'computed':''}" id="row_${k}"><div class="labelBlock"><label for="${k}"><b>${l[0]}</b><br><span class="small">${l[2]}</span></label><label class="unknownPick" title="Označit ${l[0]} jako jedinou neznámou"><input type="checkbox" data-unknown="${k}"${checked}><span>neznámá</span></label></div><input inputmode="decimal" id="${k}" value="${values[k]??''}" placeholder="${placeholder}" autocomplete="off"${listAttr}${readOnly}>${dl}<span class="unit">${l[1]}</span></div>`
+   const checked = unknownSet.has(k) ? ' checked' : '';
+   const readOnly = unknownSet.has(k) ? ' readonly' : '';
+   const placeholder = unknownSet.has(k) ? 'neznámá' : '?';
+   return `<div class="field ${unknownSet.has(k)?'unknown':''} ${computed[k]?'computed':''}" id="row_${k}"><div class="labelBlock"><label for="${k}"><b>${l[0]}</b><br><span class="small">${l[2]}</span></label><label class="unknownPick" title="Označit ${l[0]} jako neznámou"><input type="checkbox" data-unknown="${k}"${checked}><span>neznámá</span></label></div><input inputmode="decimal" id="${k}" value="${values[k]??''}" placeholder="${placeholder}" autocomplete="off"${listAttr}${readOnly}>${dl}<span class="unit">${l[1]}</span></div>`
  }).join('');
  keys.forEach(k=>{
    const input=$(k);
    const box=document.querySelector(`input[data-unknown="${k}"]`);
-   box.addEventListener('change',e=>{ if(e.target.checked || k!==currentUnknown()) selectUnknown(k); else e.target.checked=true; });
-   if(k===u) return;
+   box.addEventListener('change',e=>toggleUnknown(k, e.target.checked));
+   if(unknownSet.has(k)) return;
    input.addEventListener('input',e=>{values[k]=e.target.value; computed[k]=false; clearSelectedComputed(); clearTimeout(typingTimer); typingTimer=setTimeout(calculate,80);});
    if(k==='c1'||k==='c2'||k==='cIce'||k==='cWater'||k==='cSteam'){
      const openList=()=>{ try{ if(input.showPicker) input.showPicker(); }catch(e){} };
@@ -351,9 +388,46 @@ function linearDerivationFor(x, includeCal){
  };
  return arr[x] || [{txt:'Výchozí rovnice', eq:base}];
 }
+const derivationTextPatterns = [
+  ['m_2c_2(t-t_2)','m_2c_2(t-t_2)'],
+  ['m_1c_1(t_1-t)','m_1c_1(t_1-t)'],
+  ['C_k(t-t_k)','C_k(t-t_k)'],
+  ['c_1(t_1-t)','c_1(t_1-t)'],
+  ['c_2(t-t_2)','c_2(t-t_2)'],
+  ['m_1(t_1-t)','m_1(t_1-t)'],
+  ['m_2(t-t_2)','m_2(t-t_2)'],
+  ['(t-t_k)','(t-t_k)'],
+  ['m_1c_1t','m_1c_1t'],
+  ['m_2c_2t_2','m_2c_2t_2'],
+  ['C_kt_k','C_k t_k'],
+  ['m_1c_1','m_1c_1'],
+  ['m_2c_2','m_2c_2'],
+  ['C_k','C_k'],
+  ['t_1','t_1'],
+  ['t_2','t_2'],
+  ['t_k','t_k'],
+  ['m_1','m_1'],
+  ['m_2','m_2'],
+  ['c_1','c_1'],
+  ['c_2','c_2']
+];
+function escapeRegExpText(s){
+  const specials = '\\.^$*+?()[]{}|';
+  return s.split('').map(ch => specials.includes(ch) ? '\\' + ch : ch).join('');
+}
+function derivationTextHtml(txt){
+  const map = new Map(derivationTextPatterns);
+  const re = new RegExp(derivationTextPatterns.map(p=>escapeRegExpText(p[0])).join('|'), 'g');
+  return txt
+    .replace(/společné t/g, 'společné \\(t\\)')
+    .replace(/u t/g, 'u \\(t\\)')
+    .replace(/s t /g, 's \\(t\\) ')
+    .replace(/Odečteme t od/g, 'Odečteme \\(t\\) od')
+    .replace(re, m => `\\(${map.get(m)}\\)`);
+}
 function derivationHtml(x, includeCal){
  const rows = linearDerivationFor(x, includeCal);
- return `<div class="deriveRows">` + rows.map((row,i)=>`<div class="deriveRow"><div class="deriveNo">${i+1}</div><div class="deriveText">${row.txt}</div><div class="deriveMath">\\[${row.eq}\\]</div></div>`).join('') + `</div>`;
+ return `<div class="deriveRows">` + rows.map((row,i)=>`<div class="deriveRow"><div class="deriveNo">${i+1}</div><div class="deriveText">${derivationTextHtml(row.txt)}</div><div class="deriveMath">\\[${row.eq}\\]</div></div>`).join('') + `</div>`;
 }
 
 
@@ -814,81 +888,148 @@ function solvePhase(kind){
 function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
 function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 function nice(v,d=2){ return String(Math.round(v*Math.pow(10,d))/Math.pow(10,d)).replace('.',','); }
+function generatedDecimalsFor(k){
+  if(k==='m1'||k==='m2'||k==='m3') return generatorDecimals;
+  return (k==='c1'||k==='c2'||k==='Ck'||k==='cIce'||k==='cWater'||k==='cSteam'||k==='lT'||k==='lV') ? 0 : generatorDecimals;
+}
+function randomMass(min, max, wholeMin=1, wholeMax=8){
+  if(generatorDecimals===0) return randInt(wholeMin, wholeMax);
+  const scale = Math.pow(10, Math.max(1, generatorDecimals));
+  const lo = Math.max(1, Math.round(min*scale));
+  const hi = Math.max(lo, Math.round(max*scale));
+  return randInt(lo, hi)/scale;
+}
+function displayDecimalsFor(k){
+  if(k==='c1'||k==='c2'||k==='Ck'||k==='cIce'||k==='cWater'||k==='cSteam'||k==='lT'||k==='lV') return 0;
+  const raw = String(values[k] ?? '');
+  const m = raw.match(/[,.](\d+)/);
+  return m ? Math.min(4, m[1].length) : 0;
+}
+function safeNice(k,v){
+  let d=generatedDecimalsFor(k);
+  let rounded=Number(nice(v,d).replace(',','.'));
+  while(mustBePositive(k) && !(rounded>0) && d<4){
+    d++;
+    rounded=Number(nice(v,d).replace(',','.'));
+  }
+  return nice(rounded,d);
+}
+function safeComputed(k,v){
+  let d = (k==='c1'||k==='c2'||k==='Ck'||k==='cIce'||k==='cWater'||k==='cSteam'||k==='lT'||k==='lV') ? 0 : 2;
+  let rounded=Number(nice(v,d).replace(',','.'));
+  while(mustBePositive(k) && !(rounded>0) && d<4){
+    d++;
+    rounded=Number(nice(v,d).replace(',','.'));
+  }
+  return nice(rounded,d);
+}
+function linearValueFor(x, includeCal){
+  const required = includeCal ? ['m1','c1','t1','m2','c2','t2','Ck','tk','t'] : ['m1','c1','t1','m2','c2','t2','t'];
+  if(required.some(k=>k!==x && val(k)==null)) return null;
+  const m1=val('m1'), c1=val('c1'), t1=val('t1'), m2=val('m2'), c2=val('c2'), t2=val('t2');
+  const Ck=includeCal ? val('Ck') : 0, tk=includeCal ? val('tk') : 0, t=val('t');
+  if(x==='t') return (m1*c1*t1+m2*c2*t2+(includeCal?Ck*tk:0))/(m1*c1+m2*c2+(includeCal?Ck:0));
+  if(x==='t1') return (m2*c2*(t-t2)+(includeCal?Ck*(t-tk):0))/(m1*c1)+t;
+  if(x==='t2') return t-(m1*c1*(t1-t)-(includeCal?Ck*(t-tk):0))/(m2*c2);
+  if(x==='m1') return (m2*c2*(t-t2)+(includeCal?Ck*(t-tk):0))/(c1*(t1-t));
+  if(x==='m2') return (m1*c1*(t1-t)-(includeCal?Ck*(t-tk):0))/(c2*(t-t2));
+  if(x==='c1') return (m2*c2*(t-t2)+(includeCal?Ck*(t-tk):0))/(m1*(t1-t));
+  if(x==='c2') return (m1*c1*(t1-t)-(includeCal?Ck*(t-tk):0))/(m2*(t-t2));
+  if(includeCal && x==='Ck') return (m1*c1*(t1-t)-m2*c2*(t-t2))/(t-tk);
+  if(includeCal && x==='tk') return t-(m1*c1*(t1-t)-m2*c2*(t-t2))/Ck;
+  return null;
+}
+function generatedLinearExampleIsOk(missing, includeCal){
+  const r=linearValueFor(missing, includeCal);
+  if(!Number.isFinite(r)) return false;
+  if(missing==='Ck') return r>=20 && r<=800;
+  if(missing==='m1'||missing==='m2'||missing==='m3') return r>=0.05 && r<=20;
+  if(missing==='c1'||missing==='c2') return r>=100 && r<=8000;
+  return !mustBePositive(missing) || r>0;
+}
 function resetValues(){ for(const k in values) delete values[k]; for(const k in computed) delete computed[k]; }
-function fillObject(obj){ resetValues(); for(const [k,v] of Object.entries(obj)) values[k]=nice(v, (k==='c1'||k==='c2'||k==='Ck'||k==='cIce'||k==='cWater'||k==='cSteam'||k==='lT'||k==='lV')?0:2); }
+function fillObject(obj){ resetValues(); for(const [k,v] of Object.entries(obj)) values[k]=safeNice(k,v); }
 function generateRandomExample(){
+ const chosen=selectedUnknowns();
+ if(chosen.length!==1){ calculate(); return; }
  if(mode==='mix' || mode==='mixCal'){
    const includeCal = mode==='mixCal';
-   const cOptions=[4200,3900,2500,900,840,460];
-   let obj={
-     m1: randInt(20,90)/100,
-     c1: pick(cOptions),
-     t1: randInt(50,95),
-     m2: randInt(20,120)/100,
-     c2: pick(cOptions),
-     t2: randInt(5,30)
-   };
-   if(includeCal){ obj.Ck=randInt(40,250); obj.tk=obj.t2; }
-   obj.t=(obj.m1*obj.c1*obj.t1+obj.m2*obj.c2*obj.t2+(includeCal?obj.Ck*obj.tk:0))/(obj.m1*obj.c1+obj.m2*obj.c2+(includeCal?obj.Ck:0));
    const unknowns = includeCal ? ['t','t1','t2','m1','m2','c1','c2','Ck','tk'] : ['t','t1','t2','m1','m2','c1','c2'];
-   const selected = currentUnknown();
+   const selected = chosen[0];
    const missing = unknowns.includes(selected) ? selected : 't';
-   fillObject(obj);
-   unknownByMode[mode]=missing;
-   delete values[missing]; delete computed[missing];
-   renderFields(); calculate();
+   const cOptions=[4200,3900,2500,900,840,460];
+   for(let attempt=0; attempt<80; attempt++){
+     let obj={
+       m1: randomMass(0.2, 0.9, 2, 8),
+       c1: pick(cOptions),
+       t1: randInt(50,95),
+       m2: randomMass(0.2, 1.2, 2, 10),
+       c2: pick(cOptions),
+       t2: randInt(5,30)
+     };
+     if(includeCal){ obj.Ck=randInt(40,250); obj.tk=obj.t2; }
+     obj.t=(obj.m1*obj.c1*obj.t1+obj.m2*obj.c2*obj.t2+(includeCal?obj.Ck*obj.tk:0))/(obj.m1*obj.c1+obj.m2*obj.c2+(includeCal?obj.Ck:0));
+     fillObject(obj);
+     unknownByMode[mode]=[missing];
+     delete values[missing]; delete computed[missing];
+     if(generatedLinearExampleIsOk(missing, includeCal)){
+       renderFields(); calculate();
+       return;
+     }
+   }
+   calculate();
    return;
  }
  if(mode==='melt'){
    const obj={
-     m1: randInt(5,45)/100, t1: -randInt(5,20),
-     m2: randInt(30,140)/100, t2: randInt(15,70),
+     m1: randomMass(0.05, 0.45, 1, 6), t1: -randInt(5,20),
+     m2: randomMass(0.3, 1.4, 2, 10), t2: randInt(15,70),
      cIce:2100, cWater:4200, tM:0, lT:334000
    };
    const d={...obj, parts:[['m1','t1'],['m2','t2']]};
    obj.tFinal = computePhase('melt', d).final.t;
    const unknowns=['m1','t1','m2','t2','cIce','cWater','tM','lT','tFinal'];
-   const selected=currentUnknown();
+   const selected=chosen[0];
    const missing=unknowns.includes(selected) ? selected : 'tFinal';
    fillObject(obj);
-   unknownByMode[mode]=missing;
+   unknownByMode[mode]=[missing];
    delete values[missing]; delete computed[missing];
    renderFields(); calculate();
    return;
  }
  if(mode==='boil'){
    const obj={
-     m1: randInt(50,200)/100, t1: randInt(10,70),
-     m2: randInt(10,80)/100, t2: randInt(100,140),
+     m1: randomMass(0.5, 2.0, 2, 12), t1: randInt(10,70),
+     m2: randomMass(0.1, 0.8, 1, 7), t2: randInt(100,140),
      cWater:4200, cSteam:1840,
      tB:100, lV:2260000
    };
    const d={...obj, parts:[['m1','t1'],['m2','t2']]};
    obj.tFinal = computePhase('boil', d).final.t;
    const unknowns=['m1','t1','m2','t2','cWater','cSteam','tB','lV','tFinal'];
-   const selected=currentUnknown();
+   const selected=chosen[0];
    const missing=unknowns.includes(selected) ? selected : 'tFinal';
    fillObject(obj);
-   unknownByMode[mode]=missing;
+   unknownByMode[mode]=[missing];
    delete values[missing]; delete computed[missing];
    renderFields(); calculate();
    return;
  }
  if(mode==='fullPhase'){
    const obj={
-     m1: randInt(5,60)/100, t1: -randInt(5,20),
-     m2: randInt(20,160)/100, t2: randInt(10,80),
-     m3: randInt(5,70)/100, t3: randInt(100,150),
+     m1: randomMass(0.05, 0.6, 1, 6), t1: -randInt(5,20),
+     m2: randomMass(0.2, 1.6, 2, 12), t2: randInt(10,80),
+     m3: randomMass(0.05, 0.7, 1, 6), t3: randInt(100,150),
      cIce:2100, cWater:4200, cSteam:1840,
      tM:0, tB:100, lT:334000, lV:2260000
    };
    const d={...obj, parts:[['m1','t1'],['m2','t2'],['m3','t3']]};
    obj.tFinal = computePhase('fullPhase', d).final.t;
    const unknowns=['m1','t1','m2','t2','m3','t3','cIce','cWater','cSteam','tM','tB','lT','lV','tFinal'];
-   const selected=currentUnknown();
+   const selected=chosen[0];
    const missing=unknowns.includes(selected) ? selected : 'tFinal';
    fillObject(obj);
-   unknownByMode[mode]=missing;
+   unknownByMode[mode]=[missing];
    delete values[missing]; delete computed[missing];
    renderFields(); calculate();
    return;
@@ -897,7 +1038,7 @@ function generateRandomExample(){
 
 
 function typesetMath(){
- const nodes = [$('steps'), $('equation')].filter(Boolean);
+ const nodes = [$('steps'), $('equation'), $('problemText')].filter(Boolean);
  if(window.MathJax && MathJax.typesetPromise){
    try{ if(MathJax.typesetClear) MathJax.typesetClear(nodes); }catch(e){}
    MathJax.typesetPromise(nodes).catch(err=>console.warn('MathJax typeset failed:', err));
@@ -905,10 +1046,48 @@ function typesetMath(){
 }
 window.typesetMath = typesetMath;
 
+function modeIntro(){
+  if(mode==='mix') return 'Dvě látky si vymění teplo a výsledkem je společná rovnovážná teplota.';
+  if(mode==='mixCal') return 'Dvě látky si vymění teplo v kalorimetru, který se do výměny tepla také započítá.';
+  if(mode==='melt') return 'Led a voda si vymění teplo, takže může proběhnout tání nebo tuhnutí.';
+  if(mode==='boil') return 'Voda a pára si vymění teplo, takže může proběhnout vypařování nebo kondenzace.';
+  return 'Led, voda a pára si vymění teplo a mohou proběhnout obě skupenské přeměny.';
+}
+function problemStatement(extraWarning=''){
+  const keys=visible[mode] || [];
+  const unknowns=selectedUnknowns();
+  const knownRows=keys.filter(k=>!unknowns.includes(k)).map(k=>{
+    const l=labelFor(k);
+    const v=val(k);
+    const shown = v==null ? 'není zadáno' : `${fmt(v, displayDecimalsFor(k))} ${l[1]}`;
+    return `<li><b>${l[0]}</b> (${l[2]}): ${shown}</li>`;
+  }).join('');
+  const unknownText = unknowns.length ? unknowns.map(k=>`<b>${labelFor(k)[0]}</b> (${labelFor(k)[2]})`).join(', ') : 'zatím není vybraná žádná veličina';
+  const warning = extraWarning ? `<div class="warn">${extraWarning}</div>` : '';
+  return `<p>${modeIntro()}</p><p>Urči: ${unknownText}.</p><p>Známé hodnoty:</p><ul>${knownRows || '<li>Zatím nejsou zadané žádné známé hodnoty.</li>'}</ul>${warning}`;
+}
+function unknownValidationMessage(){
+  const chosen=selectedUnknowns();
+  if(chosen.length===0) return 'Vyber jednu veličinu jako neznámou.';
+  if(chosen.length>1) return 'Tohle u kalorimetru nejde jednoznačně spočítat: v tomto projektu může být označená právě jedna neznámá.';
+  return '';
+}
+
 function calculate(){
+ const validation=unknownValidationMessage();
+ if(validation){
+   renderFieldsPreserveFocus();
+   $('problemText').innerHTML = problemStatement(validation);
+   $('status').textContent = 'Nejde spočítat';
+   $('equation').innerHTML = `<span class="pill">${modes.find(m=>m.id===mode).name}</span>`;
+   $('steps').innerHTML = `<div class="warn">${validation}</div>`;
+   typesetMath();
+   return;
+ }
  const r = (mode==='mix')?solveLinear(false):(mode==='mixCal')?solveLinear(true):(mode==='melt')?solvePhase('melt'):(mode==='boil')?solvePhase('boil'):solvePhase('fullPhase');
  renderFieldsPreserveFocus();
  const u=currentUnknown();
+ $('problemText').innerHTML = problemStatement();
  $('status').textContent = r.ready ? `Dopočítaná neznámá: ${labelFor(u)[0]}` : `Zatím chybí hodnoty pro ${labelFor(u)[0]}`;
  $('equation').innerHTML = `<span class="pill">${modes.find(m=>m.id===mode).name}</span><span class="pill">neznámá: ${labelFor(u)[0]}</span>`;
  const missing = (r.missingInputs && r.missingInputs.length) ? ` Chybí ještě: ${r.missingInputs.map(k=>labelFor(k)[0]).join(', ')}.` : '';
@@ -916,8 +1095,15 @@ function calculate(){
  $('steps').innerHTML = r.steps.join('') + (!r.ready?`<div class="warn">${warnBase}${missing}</div>`:'');
  typesetMath();
 }
-function renderFieldsPreserveFocus(){ const active=document.activeElement; const id=active&&active.id; const pos=active&&active.selectionStart; renderFields(); if(id && $(id) && id!==currentUnknown() && !computed[id]){ $(id).focus(); try{$(id).setSelectionRange(pos,pos)}catch(e){} } }
-$('randomExample').onclick=generateRandomExample; $('clearAll').onclick=clearAll;
+function renderFieldsPreserveFocus(){ const active=document.activeElement; const id=active&&active.id; const pos=active&&active.selectionStart; renderFields(); if(id && $(id) && !selectedUnknowns().includes(id) && !computed[id]){ $(id).focus(); try{$(id).setSelectionRange(pos,pos)}catch(e){} } }
+$('randomExample').onclick=generateRandomExample;
+$('decimalToggle').onclick=()=>{$('decimalPlaces').classList.toggle('open');};
+$('decimalPlaces').onchange=e=>{generatorDecimals=Number(e.target.value)||0;};
+$('themeToggle').onclick=()=>{
+  document.body.classList.toggle('dark');
+  $('themeToggle').textContent=document.body.classList.contains('dark') ? 'Světlý' : 'Tmavý';
+};
+ensureDefaultUnknown();
 renderModes(); renderFields(); calculate();
 window.addEventListener('load', () => setTimeout(typesetMath, 0));
 </script>
