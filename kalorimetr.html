@@ -47,7 +47,8 @@ h1{font-size:25px;margin:0 0 12px} h2{font-size:22px;margin:0 0 12px} h3{font-si
 .field input:focus{outline:2px solid rgba(140,207,189,.7);border-color:var(--accent2)}
 .field input[list]{background-image:linear-gradient(45deg, transparent 50%, var(--muted) 50%),linear-gradient(135deg, var(--muted) 50%, transparent 50%);background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:28px}
 .unit{font-size:13px;color:var(--muted)}
-.btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.btn,.iconBtn,.decimalSelect{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:9px 11px;cursor:pointer;font-weight:700}.iconBtn{width:42px;padding:9px 0;font-size:18px;line-height:1}.decimalSelect{display:none}.decimalSelect.open{display:block}.btn:hover,.iconBtn:hover,.themeBtn:hover{background:var(--soft)}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.btn,.iconBtn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:9px 11px;cursor:pointer;font-weight:700}.iconBtn{width:42px;padding:9px 0;font-size:18px;line-height:1}.btn:hover,.iconBtn:hover,.themeBtn:hover{background:var(--soft)}
+.decimalPanel{display:none;width:100%;margin-top:8px;padding:10px;border:1px dashed var(--line);border-radius:8px;background:var(--soft)}.decimalPanel.open{display:block}.decimalPanel>label{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700}.decimalPanel input[type="number"]{width:72px;padding:7px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}.choiceBlock{display:grid;gap:8px;margin-top:10px}.choiceBlock label{display:grid;grid-template-columns:20px 1fr;gap:8px;align-items:start;font-size:13px;line-height:1.25;color:var(--ink)}.choiceBlock input{margin-top:2px;accent-color:var(--accent2)}.dangerBanner{background:#ffe2df;border:2px solid #d22f27;color:#8f1611;border-radius:8px;padding:10px;margin:10px 0;font-weight:800;line-height:1.35}body.dark .dangerBanner{background:#522523;color:#ffd6d3;border-color:#ff8b83}.hidden{display:none!important}
 .problemBox{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px;margin-bottom:16px}.problemText{font-size:18px;line-height:1.45}.problemText ul{margin:10px 0 0;padding-left:22px}.solutionBox{background:#f8fffc;border:1px solid #aee1d1;border-radius:8px;padding:0;margin-bottom:16px}body.dark .solutionBox{background:#18342f}.solutionBox summary{cursor:pointer;font-weight:800;padding:14px 16px}.solutionInner{padding:0 16px 16px}.resultBox{border-top:1px solid var(--line);padding-top:14px;margin-bottom:16px}.steps{display:grid;gap:12px}.step{background:var(--panel);border:1px solid var(--line);border-left:7px solid var(--accent);border-radius:8px;padding:14px;overflow-x:auto}.step b{display:block;margin-bottom:8px}.deriveRows{display:grid;gap:10px;margin-top:8px}.deriveRow{display:grid;grid-template-columns:34px minmax(150px,1fr) 2fr;gap:12px;align-items:center;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:10px}.deriveNo{width:26px;height:26px;border-radius:999px;background:#e8f6ef;border:1px solid #aee1d1;display:flex;align-items:center;justify-content:center;font-weight:800;color:#126b42}.deriveText{font-size:14px;color:var(--muted);line-height:1.25}.deriveMath{overflow-x:auto;text-align:center}.warn{background:var(--bad);border:1px solid #f2a29a;border-radius:8px;padding:10px;margin-top:10px}.muted{color:var(--muted)}
 @media(max-width:850px){
   .app{grid-template-columns:1fr}
@@ -122,17 +123,19 @@ h1{font-size:25px;margin:0 0 12px} h2{font-size:22px;margin:0 0 12px} h3{font-si
   <div class="card">
     <h3>Dostupné veličiny</h3>
     <div id="fields"></div>
+    <div id="unknownWarning" class="dangerBanner hidden"></div>
     <div class="btnrow">
       <button class="btn" id="randomExample" type="button">Generovat</button>
-      <button class="iconBtn" id="decimalToggle" type="button" title="Nastavit desetinná místa generátoru">✎</button>
-      <select id="decimalPlaces" class="decimalSelect" title="Počet desetinných míst u generovaných hodnot">
-        <option value="0">0 míst</option>
-        <option value="1" selected>1 místo</option>
-        <option value="2">2 místa</option>
-        <option value="3">3 místa</option>
-      </select>
+      <button class="iconBtn" id="decimalToggle" type="button" title="Nastavení generátoru" aria-label="Nastavení generátoru">✎</button>
+      <div class="decimalPanel" id="decimalPanel">
+        <label>Desetinná místa <input type="number" id="decimalPlaces" min="0" max="4" step="1" value="1"></label>
+        <div class="choiceBlock" aria-label="Režim výběru neznámých">
+          <label><input type="radio" name="unknownMode" id="unknownModeAuto" value="auto" checked> <span>Vyberu jednu hlavní neznámou. Generátor smí přidat další neznámé, pokud to jde.</span></label>
+          <label><input type="radio" name="unknownMode" id="unknownModeManual" value="manual"> <span>Všechny neznámé vybírám ručně. Generátor už žádné další nepřidá.</span></label>
+        </div>
+        <p class="small">U kalorimetrie tady počítáme z jedné energetické bilance, takže jednoznačně dopočítat jde právě jedna neznámá. V ručním režimu můžeš označit více neznámých, ale aplikace pak červeně upozorní, že úloha není jednoznačná.</p>
+      </div>
     </div>
-    <p class="small">U tohoto projektu lze jednoznačně počítat vždy jednu neznámou. Když jich označíš víc, aplikace to napíše a výpočet nespustí.</p>
   </div>
 </aside>
 <main>
@@ -211,15 +214,22 @@ const visible = {
  fullPhase:['m1','t1','m2','t2','m3','t3','cIce','cWater','cSteam','tM','tB','lT','lV','tFinal']
 };
 let mode='mix';
-const values = {}; const computed = {}; let typingTimer=null; let generatorDecimals=1;
+const values = {}; const computed = {}; let typingTimer=null; let generatorDecimals=1; let unknownSelectionMode='auto';
 const unknownByMode = {mix:['t'], mixCal:['t'], melt:['tFinal'], boil:['tFinal'], fullPhase:['tFinal']};
 function defaultUnknownForMode(m){
   const keys = visible[m] || [];
   return keys.includes('t') ? 't' : keys[keys.length-1];
 }
+function setSelectedUnknowns(list){
+  const keys = visible[mode] || [];
+  const clean = [...new Set((list || []).filter(k=>keys.includes(k)))];
+  unknownByMode[mode] = clean.length ? clean : [defaultUnknownForMode(mode)];
+}
 function selectedUnknowns(){
   const keys = visible[mode] || [];
-  return (unknownByMode[mode] || []).filter(k=>keys.includes(k));
+  const clean = [...new Set((unknownByMode[mode] || []).filter(k=>keys.includes(k)))];
+  unknownByMode[mode] = clean.length ? clean : [defaultUnknownForMode(mode)];
+  return unknownByMode[mode];
 }
 function ensureDefaultUnknown(){
   if(!selectedUnknowns().length) unknownByMode[mode]=[defaultUnknownForMode(mode)];
@@ -228,11 +238,26 @@ function currentUnknown(){
   return selectedUnknowns()[0] || null;
 }
 function toggleUnknown(k, checked){
-  const set = new Set(selectedUnknowns());
-  if(checked) set.add(k); else set.delete(k);
-  for(const key of Object.keys(computed)){ delete values[key]; delete computed[key]; }
-  if(checked) delete values[k];
-  unknownByMode[mode]=[...set];
+  const previous = selectedUnknowns();
+  if(unknownSelectionMode === 'auto'){
+    for(const old of previous){ delete computed[old]; }
+    delete values[k];
+    delete computed[k];
+    setSelectedUnknowns([k]);
+  }else{
+    const list = [...previous];
+    if(checked){
+      if(!list.includes(k)) list.push(k);
+      delete values[k];
+      delete computed[k];
+    }else{
+      const index = list.indexOf(k);
+      if(index >= 0) list.splice(index, 1);
+      delete computed[k];
+    }
+    if(!list.length) list.push(k);
+    setSelectedUnknowns(list);
+  }
   renderFields();
   calculate();
 }
@@ -260,7 +285,7 @@ function clearSelectedComputed(){
   }
 }
 function clearComputed(){ for(const k of Object.keys(computed)){ if(computed[k]) delete values[k]; } for(const k in computed) delete computed[k]; renderFields(); calculate(); }
-function renderModes(){ $('modes').innerHTML=modes.map(m=>`<button class="mode ${m.id===mode?'active':''}" data-mode="${m.id}">${m.name}</button>`).join(''); document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>{mode=b.dataset.mode; ensureDefaultUnknown(); for(const k in computed){delete values[k]; delete computed[k];} renderModes(); renderFields(); calculate();}); }
+function renderModes(){ $('modes').innerHTML=modes.map(m=>`<button class="mode ${m.id===mode?'active':''}" data-mode="${m.id}">${m.name}</button>`).join(''); document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>{mode=b.dataset.mode; ensureDefaultUnknown(); if(unknownSelectionMode==='auto') setSelectedUnknowns([currentUnknown() || defaultUnknownForMode(mode)]); for(const k in computed){delete values[k]; delete computed[k];} renderModes(); renderFields(); calculate();}); }
 function renderFields(){
  const keys=visible[mode];
  const unknownSet=new Set(selectedUnknowns());
@@ -286,6 +311,22 @@ function renderFields(){
      input.addEventListener('click',()=>setTimeout(openList,40));
    }
  });
+ updateUnknownWarning();
+}
+
+function maxSolvableUnknowns(){ return 1; }
+function updateUnknownWarning(){
+  const box=$('unknownWarning');
+  if(!box) return;
+  const chosen=selectedUnknowns();
+  const max=maxSolvableUnknowns();
+  if(chosen.length>max){
+    box.classList.remove('hidden');
+    box.innerHTML = `⚠️ Vybráno je ${chosen.length} neznámých (${chosen.map(k=>labelFor(k)[0]).join(', ')}). Tahle úloha má jednu energetickou bilanci, proto jde jednoznačně spočítat nejvýše ${max} neznámou.`;
+  }else{
+    box.classList.add('hidden');
+    box.textContent='';
+  }
 }
 function variableLatex(k){
  const map={m1:'m_1',c1:'c_1',t1:'t_1',m2:'m_2',c2:'c_2',t2:'t_2',m3:'m_3',t3:'t_3',t:'t',Ck:'C_k',tk:'t_k',cIce:'c_l',cWater:'c_v',cSteam:'c_p',tM:'t_t',tB:'t_v',lT:'l_t',lV:'l_v',tFinal:'t'};
@@ -949,14 +990,28 @@ function generatedLinearExampleIsOk(missing, includeCal){
 }
 function resetValues(){ for(const k in values) delete values[k]; for(const k in computed) delete computed[k]; }
 function fillObject(obj){ resetValues(); for(const [k,v] of Object.entries(obj)) values[k]=safeNice(k,v); }
+
+function generatedUnknownsFor(candidates, fallback){
+  const selected = selectedUnknowns().filter(k=>candidates.includes(k));
+  if(unknownSelectionMode === 'manual') return selected.length ? selected : [fallback];
+  const primary = selected[0] || fallback;
+  return [primary];
+}
+function applyGeneratedObject(obj, candidates, fallback){
+  const missingList = generatedUnknownsFor(candidates, fallback);
+  fillObject(obj);
+  setSelectedUnknowns(missingList);
+  for(const key of missingList){ delete values[key]; delete computed[key]; }
+  renderFields();
+  calculate();
+}
 function generateRandomExample(){
- const chosen=selectedUnknowns();
- if(chosen.length!==1){ calculate(); return; }
+ const requested=unknownSelectionMode==='auto' ? [currentUnknown()] : selectedUnknowns();
  if(mode==='mix' || mode==='mixCal'){
    const includeCal = mode==='mixCal';
    const unknowns = includeCal ? ['t','t1','t2','m1','m2','c1','c2','Ck','tk'] : ['t','t1','t2','m1','m2','c1','c2'];
-   const selected = chosen[0];
-   const missing = unknowns.includes(selected) ? selected : 't';
+   const selected = requested.find(k=>unknowns.includes(k));
+   const missing = selected || 't';
    const cOptions=[4200,3900,2500,900,840,460];
    for(let attempt=0; attempt<80; attempt++){
      let obj={
@@ -969,10 +1024,11 @@ function generateRandomExample(){
      };
      if(includeCal){ obj.Ck=randInt(40,250); obj.tk=obj.t2; }
      obj.t=(obj.m1*obj.c1*obj.t1+obj.m2*obj.c2*obj.t2+(includeCal?obj.Ck*obj.tk:0))/(obj.m1*obj.c1+obj.m2*obj.c2+(includeCal?obj.Ck:0));
+     const finalUnknowns = generatedUnknownsFor(unknowns, missing);
      fillObject(obj);
-     unknownByMode[mode]=[missing];
-     delete values[missing]; delete computed[missing];
-     if(generatedLinearExampleIsOk(missing, includeCal)){
+     setSelectedUnknowns(finalUnknowns);
+     for(const key of finalUnknowns){ delete values[key]; delete computed[key]; }
+     if(finalUnknowns.length>1 || generatedLinearExampleIsOk(finalUnknowns[0], includeCal)){
        renderFields(); calculate();
        return;
      }
@@ -989,12 +1045,9 @@ function generateRandomExample(){
    const d={...obj, parts:[['m1','t1'],['m2','t2']]};
    obj.tFinal = computePhase('melt', d).final.t;
    const unknowns=['m1','t1','m2','t2','cIce','cWater','tM','lT','tFinal'];
-   const selected=chosen[0];
-   const missing=unknowns.includes(selected) ? selected : 'tFinal';
-   fillObject(obj);
-   unknownByMode[mode]=[missing];
-   delete values[missing]; delete computed[missing];
-   renderFields(); calculate();
+   const selected=requested.find(k=>unknowns.includes(k));
+   const missing=selected || 'tFinal';
+   applyGeneratedObject(obj, unknowns, missing);
    return;
  }
  if(mode==='boil'){
@@ -1007,12 +1060,9 @@ function generateRandomExample(){
    const d={...obj, parts:[['m1','t1'],['m2','t2']]};
    obj.tFinal = computePhase('boil', d).final.t;
    const unknowns=['m1','t1','m2','t2','cWater','cSteam','tB','lV','tFinal'];
-   const selected=chosen[0];
-   const missing=unknowns.includes(selected) ? selected : 'tFinal';
-   fillObject(obj);
-   unknownByMode[mode]=[missing];
-   delete values[missing]; delete computed[missing];
-   renderFields(); calculate();
+   const selected=requested.find(k=>unknowns.includes(k));
+   const missing=selected || 'tFinal';
+   applyGeneratedObject(obj, unknowns, missing);
    return;
  }
  if(mode==='fullPhase'){
@@ -1026,12 +1076,9 @@ function generateRandomExample(){
    const d={...obj, parts:[['m1','t1'],['m2','t2'],['m3','t3']]};
    obj.tFinal = computePhase('fullPhase', d).final.t;
    const unknowns=['m1','t1','m2','t2','m3','t3','cIce','cWater','cSteam','tM','tB','lT','lV','tFinal'];
-   const selected=chosen[0];
-   const missing=unknowns.includes(selected) ? selected : 'tFinal';
-   fillObject(obj);
-   unknownByMode[mode]=[missing];
-   delete values[missing]; delete computed[missing];
-   renderFields(); calculate();
+   const selected=requested.find(k=>unknowns.includes(k));
+   const missing=selected || 'tFinal';
+   applyGeneratedObject(obj, unknowns, missing);
    return;
  }
 }
@@ -1069,11 +1116,12 @@ function problemStatement(extraWarning=''){
 function unknownValidationMessage(){
   const chosen=selectedUnknowns();
   if(chosen.length===0) return 'Vyber jednu veličinu jako neznámou.';
-  if(chosen.length>1) return 'Tohle u kalorimetru nejde jednoznačně spočítat: v tomto projektu může být označená právě jedna neznámá.';
+  if(chosen.length>maxSolvableUnknowns()) return `Vybráno je moc neznámých (${chosen.map(k=>labelFor(k)[0]).join(', ')}). Z jedné kalorimetrické rovnice nelze jednoznačně určit více než jednu neznámou.`;
   return '';
 }
 
 function calculate(){
+ updateUnknownWarning();
  const validation=unknownValidationMessage();
  if(validation){
    renderFieldsPreserveFocus();
@@ -1097,8 +1145,21 @@ function calculate(){
 }
 function renderFieldsPreserveFocus(){ const active=document.activeElement; const id=active&&active.id; const pos=active&&active.selectionStart; renderFields(); if(id && $(id) && !selectedUnknowns().includes(id) && !computed[id]){ $(id).focus(); try{$(id).setSelectionRange(pos,pos)}catch(e){} } }
 $('randomExample').onclick=generateRandomExample;
-$('decimalToggle').onclick=()=>{$('decimalPlaces').classList.toggle('open');};
-$('decimalPlaces').onchange=e=>{generatorDecimals=Number(e.target.value)||0;};
+$('decimalToggle').onclick=()=>{$('decimalPanel').classList.toggle('open');};
+$('decimalPlaces').addEventListener('input', e=>{
+  const n=Math.max(0, Math.min(4, parseInt(e.target.value || '0', 10)));
+  generatorDecimals=Number.isFinite(n) ? n : 1;
+  e.target.value=generatorDecimals;
+});
+document.querySelectorAll('input[name="unknownMode"]').forEach(radio=>{
+  radio.addEventListener('change', e=>{
+    unknownSelectionMode=e.target.value;
+    if(unknownSelectionMode==='auto') setSelectedUnknowns([currentUnknown() || defaultUnknownForMode(mode)]);
+    for(const k in computed){ delete computed[k]; if(selectedUnknowns().includes(k)) delete values[k]; }
+    renderFields();
+    calculate();
+  });
+});
 $('themeToggle').onclick=()=>{
   document.body.classList.toggle('dark');
   $('themeToggle').textContent=document.body.classList.contains('dark') ? 'Světlý' : 'Tmavý';
