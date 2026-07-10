@@ -70,7 +70,13 @@ p{line-height:1.45}
 .decimalPanel{display:none;width:100%;margin-top:8px;padding:10px;border:1px dashed var(--line);border-radius:8px;background:var(--soft)}
 .decimalPanel.open{display:block}
 .decimalPanel label{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700}
-.decimalPanel input{width:72px;padding:7px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
+.decimalPanel input[type="number"]{width:72px;padding:7px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
+.choiceBlock{display:grid;gap:8px;margin-top:12px}
+.choiceBlock label{display:flex;align-items:flex-start;gap:8px;font-weight:650;line-height:1.3}
+.choiceBlock input{margin-top:3px;accent-color:var(--accent2)}
+.dangerBanner{margin:10px 0 0;padding:10px 11px;border-radius:8px;border:2px solid #e64b3c;background:#ffe1dd;color:#8b1d13;font-weight:850;line-height:1.35}
+[data-theme="dark"] .dangerBanner{background:#461d1a;color:#ffd1cc;border-color:#ff7b70}
+.hidden{display:none!important}
 .resultBox{background:#f8fffc;border:1px solid #aee1d1;border-radius:8px;padding:18px;margin-bottom:16px}
 [data-theme="dark"] .resultBox{background:#17302c;border-color:#366a61}
 .assignmentTitle{font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:850;margin:0 0 8px}
@@ -133,12 +139,17 @@ p{line-height:1.45}
   <div class="card">
     <h3>Dostupné veličiny</h3>
     <div id="fields"></div>
+    <div id="unknownWarning" class="dangerBanner hidden"></div>
     <div class="btnrow">
       <button class="btn" id="randomExample">Generovat</button>
       <button class="iconBtn" id="decimalToggle" title="Nastavení generátoru" aria-label="Nastavení generátoru">✎</button>
       <div class="decimalPanel" id="decimalPanel">
         <label>Desetinná místa <input type="number" id="decimalPlaces" min="0" max="4" step="1" value="1"></label>
-        <p class="small">Platí pro nově generované příklady. Generátor zároveň nedovolí nulovou hmotnost ani nulovou dráhu odporové síly.</p>
+        <div class="choiceBlock" aria-label="Režim výběru neznámých">
+          <label><input type="radio" name="unknownMode" id="unknownModeAuto" value="auto" checked> <span>Vyberu jednu hlavní neznámou. Generátor smí přidat další neznámé, pokud to jde.</span></label>
+          <label><input type="radio" name="unknownMode" id="unknownModeManual" value="manual"> <span>Všechny neznámé vybírám ručně. Generátor už žádné další nepřidá.</span></label>
+        </div>
+        <p class="small">U tohoto projektu je vždy jen jedna základní rovnice, takže jednoznačně dopočítat jde právě jedna neznámá. Platí pro nově generované příklady.</p>
       </div>
     </div>
   </div>
@@ -203,24 +214,49 @@ const computed = {};
 const selectedUnknownsByMode = { mechanical:['v2'], intoWork:['F'], throughWood:['F'] };
 let currentExampleText = '';
 let generatedDecimals = 1;
+let unknownSelectionMode = 'auto';
 const $ = id => document.getElementById(id);
 
 function currentMode(){ return modes.find(m => m.id === mode); }
-function selectedUnknowns(){ return selectedUnknownsByMode[mode] || [currentMode().defaultUnknown]; }
+function maxSolvableUnknowns(){ return 1; }
+function selectedUnknowns(){
+  const cfg = currentMode();
+  const list = (selectedUnknownsByMode[mode] || [cfg.defaultUnknown]).filter(k => cfg.unknowns.includes(k));
+  if(!list.length) list.push(cfg.defaultUnknown);
+  selectedUnknownsByMode[mode] = [...new Set(list)];
+  return selectedUnknownsByMode[mode];
+}
 function unknown(){ return selectedUnknowns()[0] || currentMode().defaultUnknown; }
+function setSelectedUnknowns(list){
+  const cfg = currentMode();
+  const clean = [...new Set(list.filter(k => cfg.unknowns.includes(k)))];
+  selectedUnknownsByMode[mode] = clean.length ? clean : [cfg.defaultUnknown];
+}
 function setUnknown(k, checked){
-  const list = selectedUnknowns();
-  if(checked){
-    if(!list.includes(k)) list.push(k);
-    delete values[k];
-    delete computed[k];
+  const previous = selectedUnknowns();
+  if(unknownSelectionMode === 'auto'){
+    if(checked || !previous.includes(k)){
+      for(const old of previous){ delete computed[old]; }
+      delete values[k];
+      delete computed[k];
+      setSelectedUnknowns([k]);
+    }else{
+      setSelectedUnknowns([k]);
+    }
   }else{
-    const index = list.indexOf(k);
-    if(index >= 0) list.splice(index, 1);
-    delete computed[k];
+    const list = [...previous];
+    if(checked){
+      if(!list.includes(k)) list.push(k);
+      delete values[k];
+      delete computed[k];
+    }else{
+      const index = list.indexOf(k);
+      if(index >= 0) list.splice(index, 1);
+      delete computed[k];
+    }
+    if(!list.length) list.push(k);
+    setSelectedUnknowns(list);
   }
-  if(!list.length) list.push(k);
-  selectedUnknownsByMode[mode] = list;
   renderFields();
   calculate();
 }
@@ -276,6 +312,7 @@ function renderModes(){
       for(const k in computed) delete computed[k];
       if(!values.g) values.g = '9,81';
       if(!selectedUnknownsByMode[mode]?.length) selectedUnknownsByMode[mode] = [currentMode().defaultUnknown];
+      if(unknownSelectionMode === 'auto') setSelectedUnknowns([unknown()]);
       renderModes();
       renderFields();
       calculate();
@@ -316,7 +353,22 @@ function renderFields(){
       calculate();
     });
   });
+  updateUnknownWarning();
 }
+function updateUnknownWarning(){
+  const box = $('unknownWarning');
+  if(!box) return;
+  const unknowns = selectedUnknowns();
+  const max = maxSolvableUnknowns();
+  if(unknowns.length > max){
+    box.classList.remove('hidden');
+    box.innerHTML = `⚠️ Vybráno je ${unknowns.length} neznámých (${unknowns.map(k => labels[k][0]).join(', ')}). Tahle úloha má jen jednu rovnici, proto jde jednoznačně spočítat nejvýše ${max} neznámou.`;
+  }else{
+    box.classList.add('hidden');
+    box.textContent = '';
+  }
+}
+
 function missingInputs(){
   const unknowns = selectedUnknowns();
   return currentMode().fields.filter(k => !unknowns.includes(k) && val(k) === null);
@@ -656,14 +708,15 @@ function renderAssignment(extra=''){
   $('assignmentText').innerHTML = assignmentHtml(extra);
 }
 function calculate(){
+  updateUnknownWarning();
   const steps = baseSteps();
   const miss = missingInputs();
   const unknowns = selectedUnknowns();
   const u = unknown();
 
   if(unknowns.length !== 1){
-    renderAssignment(`<div class="warn">Tahle úloha má jen jednu základní rovnici, takže s více neznámými nejde jednoznačně spočítat. Nech označenou právě jednu neznámou.</div>`);
-    $('status').textContent = 'Vyber právě jednu neznámou.';
+    renderAssignment(`<div class="warn"><b>Nelze jednoznačně spočítat.</b> Tahle úloha má jen jednu základní rovnici, takže s více neznámými nejde jednoznačně určit výsledek. V ručním režimu můžeš neznámé označit, ale pro výpočet musí zůstat právě jedna.</div>`);
+    $('status').textContent = 'Vybráno moc neznámých — výpočet není jednoznačný.';
     $('steps').innerHTML = steps.join('');
     typesetMath();
     return;
@@ -723,8 +776,12 @@ function inputNum(x, d=generatedDecimals){
 function roundedForGenerator(key, x){
   return parseNumber(inputNum(x, decimalsForKey(key, x)));
 }
+function normalizeUnknownList(selectedUnknown){
+  return Array.isArray(selectedUnknown) ? selectedUnknown : [selectedUnknown];
+}
 function knownAfterRound(all, key, selectedUnknown){
-  return key !== selectedUnknown && all[key] !== undefined ? roundedForGenerator(key, all[key]) : null;
+  const list = normalizeUnknownList(selectedUnknown);
+  return !list.includes(key) && all[key] !== undefined ? roundedForGenerator(key, all[key]) : null;
 }
 function isPositiveKnown(all, key, selectedUnknown){
   const n = knownAfterRound(all, key, selectedUnknown);
@@ -759,16 +816,33 @@ function exampleMakesSense(all, selectedUnknown){
   if(v1 !== null && v2 !== null && v1 <= v2) return false;
   return ['m','d','F'].every(key => isPositiveKnown(all, key, selectedUnknown));
 }
-function assignKnown(all, u){
+function assignKnown(all, unknownList){
+  const list = normalizeUnknownList(unknownList);
   for(const key of currentMode().fields){
     if(key === 'g') continue;
-    if(key !== u && all[key] !== undefined) values[key] = inputNum(all[key], decimalsForKey(key, all[key]));
+    if(!list.includes(key) && all[key] !== undefined) values[key] = inputNum(all[key], decimalsForKey(key, all[key]));
   }
+}
+function candidatesCoverSelected(candidates, selectedList){
+  return selectedList.every(k => candidates.includes(k));
+}
+function autoUnknownsForGenerated(candidates, all, primary){
+  const selected = [primary];
+  const slots = maxSolvableUnknowns() - selected.length;
+  if(slots <= 0) return selected;
+  const extras = candidates.filter(k => k !== primary);
+  while(selected.length < maxSolvableUnknowns() && extras.length){
+    const k = extras.splice(Math.floor(Math.random() * extras.length), 1)[0];
+    const trial = [...selected, k];
+    if(exampleMakesSense(all, trial)) selected.push(k);
+  }
+  return selected;
 }
 function generateMechanical(){
   const g = 9.81;
-  const selectedUnknown = unknown();
-  for(let attempt = 0; attempt < 80; attempt++){
+  const primaryUnknown = unknown();
+  const requestedUnknowns = unknownSelectionMode === 'auto' ? [primaryUnknown] : selectedUnknowns();
+  for(let attempt = 0; attempt < 120; attempt++){
     const scenario = pick(['fall','fall','throwDown','throwUp','platforms']);
     let all = {};
     let candidates = [];
@@ -812,8 +886,10 @@ function generateMechanical(){
       candidates = ['v1','h1','v2','h2'];
       currentExampleText = 'Těleso se pohybuje mezi dvěma různými výškami.';
     }
-    if(candidates.includes(selectedUnknown) && exampleMakesSense(all, selectedUnknown)){
-      assignKnown(all, selectedUnknown);
+    if(candidatesCoverSelected(candidates, requestedUnknowns) && exampleMakesSense(all, requestedUnknowns)){
+      const finalUnknowns = unknownSelectionMode === 'auto' ? autoUnknownsForGenerated(candidates, all, primaryUnknown) : requestedUnknowns;
+      setSelectedUnknowns(finalUnknowns);
+      assignKnown(all, finalUnknowns);
       return true;
     }
   }
@@ -821,8 +897,9 @@ function generateMechanical(){
 }
 function generateIntoWork(){
   const g = 9.81;
-  const selectedUnknown = unknown();
-  for(let attempt = 0; attempt < 80; attempt++){
+  const primaryUnknown = unknown();
+  const requestedUnknowns = unknownSelectionMode === 'auto' ? [primaryUnknown] : selectedUnknowns();
+  for(let attempt = 0; attempt < 120; attempt++){
     const scenario = pick(['drop','speed','speed','both']);
     let all = {};
     let candidates = [];
@@ -847,16 +924,19 @@ function generateIntoWork(){
     }
     all.d = generatedDecimals === 0 ? randInt(1, 3) : rand(0.03, 0.18);
     all.F = all.m * (0.5 * all.v ** 2 + g * all.h) / all.d;
-    if(candidates.includes(selectedUnknown) && exampleMakesSense(all, selectedUnknown)){
-      assignKnown(all, selectedUnknown);
+    if(candidatesCoverSelected(candidates, requestedUnknowns) && exampleMakesSense(all, requestedUnknowns)){
+      const finalUnknowns = unknownSelectionMode === 'auto' ? autoUnknownsForGenerated(candidates, all, primaryUnknown) : requestedUnknowns;
+      setSelectedUnknowns(finalUnknowns);
+      assignKnown(all, finalUnknowns);
       return true;
     }
   }
   return false;
 }
 function generateThroughWood(){
-  const selectedUnknown = unknown();
-  for(let attempt = 0; attempt < 80; attempt++){
+  const primaryUnknown = unknown();
+  const requestedUnknowns = unknownSelectionMode === 'auto' ? [primaryUnknown] : selectedUnknowns();
+  for(let attempt = 0; attempt < 120; attempt++){
     const scenario = pick(['slows','slows','stops']);
     const all = {};
     let candidates = [];
@@ -873,19 +953,16 @@ function generateThroughWood(){
       currentExampleText = 'Těleso projde brzdicí vrstvou a na konci má menší rychlost.';
     }
     all.F = all.m * (0.5 * all.v1 ** 2 - 0.5 * all.v2 ** 2) / all.d;
-    if(candidates.includes(selectedUnknown) && exampleMakesSense(all, selectedUnknown)){
-      assignKnown(all, selectedUnknown);
+    if(candidatesCoverSelected(candidates, requestedUnknowns) && exampleMakesSense(all, requestedUnknowns)){
+      const finalUnknowns = unknownSelectionMode === 'auto' ? autoUnknownsForGenerated(candidates, all, primaryUnknown) : requestedUnknowns;
+      setSelectedUnknowns(finalUnknowns);
+      assignKnown(all, finalUnknowns);
       return true;
     }
   }
   return false;
 }
 function randomExample(){
-  if(selectedUnknowns().length !== 1){
-    currentExampleText = '';
-    calculate();
-    return;
-  }
   for(const k in values) delete values[k];
   for(const k in computed) delete computed[k];
   values.g = '9,81';
@@ -900,7 +977,7 @@ function randomExample(){
     generated = generateThroughWood();
   }
   if(!generated){
-    currentExampleText = 'Nepodařilo se najít rozumný příklad pro zvolenou neznámou a zaokrouhlení. Zkus jiné nastavení desetinných míst.';
+    currentExampleText = 'Nepodařilo se najít rozumný příklad pro zvolenou kombinaci neznámých a zaokrouhlení. Zkus jiné nastavení desetinných míst.';
   }
   renderFields();
   calculate();
@@ -922,6 +999,14 @@ $('decimalPlaces').addEventListener('input', e => {
   const n = Math.max(0, Math.min(4, parseInt(e.target.value || '0', 10)));
   generatedDecimals = Number.isFinite(n) ? n : 1;
   e.target.value = generatedDecimals;
+});
+document.querySelectorAll('input[name="unknownMode"]').forEach(radio => {
+  radio.addEventListener('change', e => {
+    unknownSelectionMode = e.target.value;
+    if(unknownSelectionMode === 'auto') setSelectedUnknowns([unknown()]);
+    renderFields();
+    calculate();
+  });
 });
 $('randomExample').addEventListener('click', randomExample);
 applyTheme(false);
