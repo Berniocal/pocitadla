@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#145d77">
+<title>Fyzikální generátory a animace</title>
+<style>
+:root{
+  --bg:#f3f7f8;--panel:#fff;--ink:#17313d;--muted:#607681;--line:#d7e3e8;
+  --primary:#145d77;--primary-soft:#e5f3f8;--shadow:0 10px 30px rgba(18,62,78,.08);
+  --motion:#3569a7;--laws:#8757a4;--thermal:#bb642f;--fluids:#087f77;--tools:#59646a;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:linear-gradient(180deg,#eaf5f8 0,#f7f9f9 260px);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+a{color:inherit}
+.wrap{width:min(1180px,calc(100% - 28px));margin:auto;padding:34px 0 60px}
+.hero{padding:30px clamp(20px,4vw,46px);border:1px solid #cfe1e8;border-radius:25px;background:rgba(255,255,255,.88);box-shadow:var(--shadow);backdrop-filter:blur(8px)}
+.eyebrow{margin:0 0 7px;color:var(--primary);font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:.78rem}
+h1{margin:0;font-size:clamp(2rem,5vw,3.5rem);line-height:1.05;letter-spacing:-.035em}
+.lead{max-width:790px;margin:14px 0 0;color:var(--muted);font-size:1.08rem;line-height:1.6}
+.search{display:flex;align-items:center;gap:10px;margin-top:24px;max-width:620px;padding:6px 8px 6px 15px;border:1px solid var(--line);border-radius:15px;background:#fff}
+.search span{font-size:1.15rem}.search input{width:100%;border:0;outline:0;padding:9px 4px;font:inherit;color:var(--ink);background:transparent}
+.jump{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 0}.jump a{text-decoration:none;padding:8px 11px;border:1px solid var(--line);border-radius:999px;background:#fff;font-size:.88rem;font-weight:700;color:#3e5965}.jump a:hover{border-color:#8fb6c5;background:var(--primary-soft)}
+section{margin-top:35px;scroll-margin-top:18px}.section-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:13px}.section-head h2{margin:0;font-size:clamp(1.35rem,3vw,1.8rem)}.section-head p{margin:0;color:var(--muted);font-size:.92rem}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.card{--cat:var(--primary);position:relative;display:flex;min-height:184px;flex-direction:column;text-decoration:none;padding:20px;border:1px solid var(--line);border-radius:18px;background:var(--panel);box-shadow:0 5px 18px rgba(30,70,85,.045);overflow:hidden;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
+.card::before{content:"";position:absolute;inset:0 auto 0 0;width:5px;background:var(--cat)}
+.card:hover,.card:focus-visible{transform:translateY(-3px);border-color:color-mix(in srgb,var(--cat) 42%,#ccdce2);box-shadow:0 12px 28px rgba(28,67,82,.11);outline:none}
+.card .icon{display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:color-mix(in srgb,var(--cat) 12%,white);font-size:1.35rem}
+.card h3{margin:15px 0 7px;font-size:1.12rem}.card p{margin:0;color:var(--muted);line-height:1.45;font-size:.93rem}.open{margin-top:auto;padding-top:15px;color:var(--cat);font-weight:800;font-size:.9rem}.open::after{content:" →"}
+.motion{--cat:var(--motion)}.laws{--cat:var(--laws)}.thermal{--cat:var(--thermal)}.fluids{--cat:var(--fluids)}.tools{--cat:var(--tools)}
+.empty{display:none;margin-top:30px;padding:25px;text-align:center;border:1px dashed var(--line);border-radius:18px;color:var(--muted);background:#ffffffa6}
+footer{margin-top:42px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:.88rem;text-align:center}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.wrap{width:min(100% - 18px,1180px);padding-top:10px}.hero{border-radius:19px;padding:23px 17px}.grid{grid-template-columns:1fr}.section-head{display:block}.section-head p{margin-top:4px}.card{min-height:165px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="hero">
+    <p class="eyebrow">Fyzika interaktivně</p>
+    <h1>Generátory, kalkulačky a animace</h1>
+    <p class="lead">Přehled všech fyzikálních stránek v repozitáři. Aplikace jsou rozdělené podle témat, aby se dal rychle najít správný typ úlohy nebo názorná animace.</p>
+    <label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Hledat například pohyb, energie, kalorimetr…" autocomplete="off" aria-label="Hledat aplikaci"></label>
+    <nav class="jump" aria-label="Témata">
+      <a href="#pohyb">Pohyb</a><a href="#zachovani">Zákony zachování</a><a href="#termika">Termika</a><a href="#kapaliny">Kapaliny</a><a href="#zaklady">Základy</a>
+    </nav>
+  </header>
+
+  <section id="pohyb" data-section>
+    <div class="section-head"><h2>Pohyb těles</h2><p>Kinematika a slovní úlohy o pohybu</p></div>
+    <div class="grid">
+      <a class="card motion" href="rovnopohyb.html" data-search="rovnoměrný pohyb průměrná rychlost setkání proti sobě za sebou">
+        <span class="icon" aria-hidden="true">↔️</span><h3>Rovnoměrný pohyb</h3><p>Průměrná rychlost, pohyb proti sobě a pohyb za sebou.</p><span class="open">Otevřít generátor</span>
+      </a>
+      <a class="card motion" href="nerovpohyb.html" data-search="rovnoměrně zrychlený zpomalený pohyb zrychlení rychlost dráha čas">
+        <span class="icon" aria-hidden="true">📈</span><h3>Zrychlený a zpomalený pohyb</h3><p>Úlohy s počáteční rychlostí i bez ní, se zrychlováním nebo zpomalováním.</p><span class="open">Otevřít generátor</span>
+      </a>
+    </div>
+  </section>
+
+  <section id="zachovani" data-section>
+    <div class="section-head"><h2>Zákony zachování a energie</h2><p>Hybnost, mechanická energie a její přeměny</p></div>
+    <div class="grid">
+      <a class="card laws" href="zzh.html" data-search="zákon zachování hybnosti srážka odhození hybnost">
+        <span class="icon" aria-hidden="true">💥</span><h3>Zákon zachování hybnosti</h3><p>Srážky, odhození a další úlohy založené na zachování celkové hybnosti.</p><span class="open">Otevřít generátor</span>
+      </a>
+      <a class="card laws" href="zzme.html" data-search="zákon zachování mechanické energie energie polohová pohybová ztráty">
+        <span class="icon" aria-hidden="true">🎢</span><h3>Zákon zachování energie</h3><p>Přeměny polohové a pohybové energie, včetně úloh se ztrátami.</p><span class="open">Otevřít generátor</span>
+      </a>
+      <a class="card laws" href="mechteplo.html" data-search="mechanická vnitřní energie práce teplo přeměna energie">
+        <span class="icon" aria-hidden="true">⚙️</span><h3>Mechanická a vnitřní energie</h3><p>Výpočty přeměn mezi mechanickou a vnitřní energií.</p><span class="open">Otevřít generátor</span>
+      </a>
+    </div>
+  </section>
+
+  <section id="termika" data-section>
+    <div class="section-head"><h2>Molekulová fyzika a termika</h2><p>Teplo, tepelná bilance a látkové množství</p></div>
+    <div class="grid">
+      <a class="card thermal" href="kalorimetr.html" data-search="kalorimetr kalorimetrie tepelná bilance teplo směšování led voda pára">
+        <span class="icon" aria-hidden="true">🌡️</span><h3>Kalorimetrická kalkulačka</h3><p>Kalorimetrické úlohy, tepelná bilance a skupenské přeměny.</p><span class="open">Otevřít kalkulačku</span>
+      </a>
+      <a class="card thermal" href="molvel.html" data-search="molární veličiny látkové množství molární hmotnost počet částic">
+        <span class="icon" aria-hidden="true">🧪</span><h3>Molární veličiny</h3><p>Procvičování vztahů mezi látkovým množstvím, hmotností a počtem částic.</p><span class="open">Otevřít generátor</span>
+      </a>
+    </div>
+  </section>
+
+  <section id="kapaliny" data-section>
+    <div class="section-head"><h2>Mechanika kapalin</h2><p>Vztlaková síla, plování a hustota</p></div>
+    <div class="grid">
+      <a class="card fluids" href="archimed.html" data-search="Archimedův zákon vztlaková síla hustota kapalina plování potápění kvádr">
+        <span class="icon" aria-hidden="true">🧊</span><h3>Archimedův zákon</h3><p>Interaktivně potápěj kvádr, měň hustoty a sleduj tíhovou a vztlakovou sílu.</p><span class="open">Spustit animaci</span>
+      </a>
+    </div>
+  </section>
+
+  <section id="zaklady" data-section>
+    <div class="section-head"><h2>Základní dovednosti</h2><p>Pomocné nástroje použitelné napříč fyzikou</p></div>
+    <div class="grid">
+      <a class="card tools" href="prevody.html" data-search="převody jednotek délka plocha objem čas rychlost fyzikální jednotky">
+        <span class="icon" aria-hidden="true">🔁</span><h3>Převody jednotek</h3><p>Generátor úloh na převody fyzikálních jednotek pro ZŠ i SŠ.</p><span class="open">Otevřít generátor</span>
+      </a>
+    </div>
+  </section>
+
+  <div id="empty" class="empty">Pro zadaný výraz nebyla nalezena žádná aplikace.</div>
+  <footer>Fyzikální generátory a interaktivní pomůcky</footer>
+</main>
+<script>
+const input=document.getElementById('search');
+const cards=[...document.querySelectorAll('.card')];
+const sections=[...document.querySelectorAll('[data-section]')];
+const empty=document.getElementById('empty');
+const normalize=s=>s.toLocaleLowerCase('cs').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+input.addEventListener('input',()=>{
+  const q=normalize(input.value.trim());
+  let visible=0;
+  cards.forEach(card=>{
+    const match=!q||normalize(card.textContent+' '+card.dataset.search).includes(q);
+    card.hidden=!match;if(match)visible++;
+  });
+  sections.forEach(section=>section.hidden=![...section.querySelectorAll('.card')].some(card=>!card.hidden));
+  empty.style.display=visible?'none':'block';
+});
+</script>
+</body>
+</html>
