@@ -28,6 +28,8 @@ p{line-height:1.45}
 .btnrow{display:flex;gap:8px;flex-wrap:wrap}
 .btn,.iconBtn{border:1px solid var(--line);background:white;border-radius:8px;padding:9px 11px;cursor:pointer;font-weight:700;color:var(--ink)}
 .btn:hover,.iconBtn:hover{background:#fff8e8}
+.btn.resultsBtn{background:#dff4e8;border-color:#69b98d;color:#1f6b4a;box-shadow:0 2px 8px rgba(57,139,99,.14)}
+.btn.resultsBtn:hover{background:#cfeedd;border-color:#4fa978}
 .iconBtn{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;font-size:22px;padding:0;flex:0 0 auto}
 .resultBox{background:#f8fffc;border:1px solid #aee1d1;border-radius:8px;padding:18px;margin-bottom:16px}
 .muted{color:var(--muted)}
@@ -98,7 +100,7 @@ p{line-height:1.45}
       <h3>Ovládání</h3>
       <div class="btnrow">
         <button class="btn" id="generateBtn">Generovat příklady</button>
-        <button class="btn" id="toggleAnswersBtn">Zobrazit výsledky</button>
+        <button class="btn resultsBtn" id="toggleAnswersBtn">Zobrazit výsledky</button>
       </div>
       <div class="sep"></div>
       <div class="btnrow">
@@ -681,17 +683,17 @@ function renderExamples(){
     return;
   }
   $('examples').innerHTML = examples.map(ex => {
-    const answer = settings.mode === 'ss'
-      ? `<span class="exp">${ex.resultExp} ${ex.to}</span><small>Běžný zápis: ${ex.resultPlain} ${ex.to}</small>`
-      : `<span>${ex.resultPlain} ${ex.to}</span>`;
+    const resultText = settings.mode === 'ss' ? ex.resultExp : ex.resultPlain;
+    const taskResult = answersVisible
+      ? `${resultText} <span class="unit">${ex.to}</span>`
+      : `<span class="unit">${ex.to}</span>`;
     return `
       <article class="example">
         <div class="exampleTop">
           <span class="pill good">${ex.index}. ${ex.quantity}</span>
           <span class="pill">${settings.mode === 'ss' ? 'SŠ' : 'ZŠ'}</span>
         </div>
-        <div class="task">${ex.value} <span class="unit">${ex.from}</span> = <span class="unit">${ex.to}</span></div>
-        <div class="answer ${answersVisible ? 'show' : ''}">${ex.value} <span class="unit">${ex.from}</span> = ${answer}</div>
+        <div class="task">${ex.value} <span class="unit">${ex.from}</span> = ${taskResult}</div>
       </article>
     `;
   }).join('');
