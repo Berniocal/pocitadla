@@ -1,0 +1,60 @@
+name: Patch prevody results UI
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-prevody-results.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update results display
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('prevody.html')
+          text = path.read_text(encoding='utf-8')
+
+          old = '.btn:hover,.iconBtn:hover{background:#fff8e8}\n'
+          new = old + '.btn.resultsBtn{background:#dff4e8;border-color:#69b98d;color:#1f6b4a;box-shadow:0 2px 8px rgba(57,139,99,.14)}\n.btn.resultsBtn:hover{background:#cfeedd;border-color:#4fa978}\n'
+          assert old in text, 'CSS anchor not found'
+          text = text.replace(old, new, 1)
+
+          old = '<button class="btn" id="toggleAnswersBtn">Zobrazit výsledky</button>'
+          new = '<button class="btn resultsBtn" id="toggleAnswersBtn">Zobrazit výsledky</button>'
+          assert old in text, 'toggle button not found'
+          text = text.replace(old, new, 1)
+
+          old = '''    const answer = settings.mode === 'ss'
+            ? `<span class="exp">${ex.resultExp} ${ex.to}</span><small>Běžný zápis: ${ex.resultPlain} ${ex.to}</small>`
+            : `<span>${ex.resultPlain} ${ex.to}</span>`;'''
+          new = '''    const resultText = settings.mode === 'ss' ? ex.resultExp : ex.resultPlain;
+              const taskResult = answersVisible
+                ? `${resultText} <span class="unit">${ex.to}</span>`
+                : `<span class="unit">${ex.to}</span>`;'''
+          assert old in text, 'answer rendering block not found'
+          text = text.replace(old, new, 1)
+
+          old = '''        <div class="task">${ex.value} <span class="unit">${ex.from}</span> = <span class="unit">${ex.to}</span></div>
+                  <div class="answer ${answersVisible ? 'show' : ''}">${ex.value} <span class="unit">${ex.from}</span> = ${answer}</div>'''
+          new = '''        <div class="task">${ex.value} <span class="unit">${ex.from}</span> = ${taskResult}</div>'''
+          assert old in text, 'task/answer block not found'
+          text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prevody.html
+          git diff --cached --quiet || git commit -m "Show conversion results inline"
+          git push
