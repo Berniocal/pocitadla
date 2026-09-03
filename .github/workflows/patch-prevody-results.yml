@@ -32,21 +32,24 @@ jobs:
           assert old in text, 'toggle button not found'
           text = text.replace(old, new, 1)
 
-          old = '''    const answer = settings.mode === 'ss'
-            ? `<span class="exp">${ex.resultExp} ${ex.to}</span><small>Běžný zápis: ${ex.resultPlain} ${ex.to}</small>`
-            : `<span>${ex.resultPlain} ${ex.to}</span>`;'''
-          new = '''    const resultText = settings.mode === 'ss' ? ex.resultExp : ex.resultPlain;
-              const taskResult = answersVisible
-                ? `${resultText} <span class="unit">${ex.to}</span>`
-                : `<span class="unit">${ex.to}</span>`;'''
-          assert old in text, 'answer rendering block not found'
-          text = text.replace(old, new, 1)
+          start = text.index("    const answer = settings.mode === 'ss'")
+          end = text.index('    return `', start)
+          replacement = (
+              "    const resultText = settings.mode === 'ss' ? ex.resultExp : ex.resultPlain;\n"
+              "    const taskResult = answersVisible\n"
+              "      ? `${resultText} <span class=\"unit\">${ex.to}</span>`\n"
+              "      : `<span class=\"unit\">${ex.to}</span>`;\n"
+          )
+          text = text[:start] + replacement + text[end:]
 
-          old = '''        <div class="task">${ex.value} <span class="unit">${ex.from}</span> = <span class="unit">${ex.to}</span></div>
-                  <div class="answer ${answersVisible ? 'show' : ''}">${ex.value} <span class="unit">${ex.from}</span> = ${answer}</div>'''
-          new = '''        <div class="task">${ex.value} <span class="unit">${ex.from}</span> = ${taskResult}</div>'''
-          assert old in text, 'task/answer block not found'
-          text = text.replace(old, new, 1)
+          old_task = '        <div class="task">${ex.value} <span class="unit">${ex.from}</span> = <span class="unit">${ex.to}</span></div>'
+          new_task = '        <div class="task">${ex.value} <span class="unit">${ex.from}</span> = ${taskResult}</div>'
+          assert old_task in text, 'task line not found'
+          text = text.replace(old_task, new_task, 1)
+
+          old_answer = '        <div class="answer ${answersVisible ? \'show\' : \'\'}">${ex.value} <span class="unit">${ex.from}</span> = ${answer}</div>\n'
+          assert old_answer in text, 'answer line not found'
+          text = text.replace(old_answer, '', 1)
 
           path.write_text(text, encoding='utf-8')
           PY
