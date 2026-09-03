@@ -162,6 +162,14 @@ p{line-height:1.45}
           <label for="jumpInput">Nejmenší skok mezi běžnými jednotkami</label>
           <input id="jumpInput" type="number" min="1" max="8" step="1">
         </div>
+        <div class="settingField zsResultLimit">
+          <label for="zsResultMaxIntegerDigitsInput">Maximálně číslic před desetinnou čárkou ve výsledku (ZŠ)</label>
+          <input id="zsResultMaxIntegerDigitsInput" type="number" min="1" max="15" step="1">
+        </div>
+        <div class="settingField zsResultLimit">
+          <label for="zsResultMaxDecimalsInput">Maximálně desetinných míst ve výsledku (ZŠ)</label>
+          <input id="zsResultMaxDecimalsInput" type="number" min="0" max="20" step="1">
+        </div>
       </div>
       <div class="sep"></div>
       <label class="check">
@@ -224,6 +232,8 @@ const defaultSettings = {
   mediumDecimals:1,
   largeDecimals:0,
   minJump:2,
+  zsResultMaxIntegerDigits:7,
+  zsResultMaxDecimals:6,
   prefixes:['n','µ','m','c','d','','da','h','k','M','G'],
   quantitiesByMode:{
     zs:['delka','plocha','objem','hmotnost','sila','rychlost','hustota','tlak','energie','napeti'],
@@ -569,6 +579,7 @@ function makeExample(index, preferredQuantity, useExponentialInput = false){
     const x = randomVisibleNumber(useExponentialInput, pair);
     const result = x.value * pair.from.factor / pair.to.factor;
     if(!Number.isFinite(result) || result === 0) continue;
+    if(settings.mode === 'zs' && !zsResultFitsLimits(result)) continue;
     return {
       index,
       quantity:q.title,
@@ -578,7 +589,7 @@ function makeExample(index, preferredQuantity, useExponentialInput = false){
       from:pair.from.unit,
       to:pair.to.unit,
       result,
-      resultPlain:formatPlainNumber(result),
+      resultPlain:settings.mode === 'zs' ? formatZsResultNumber(result) : formatPlainNumber(result),
       resultExp:formatExpNumber(result)
     };
   }
@@ -626,6 +637,32 @@ function formatPlainNumber(value){
   if(abs >= 1) return trimCz(formatCz(value, 0, 8));
   const decimals = Math.min(20, Math.max(2, Math.ceil(-Math.log10(abs || 1)) + 4));
   return trimCz(formatCz(value, 0, decimals));
+}
+
+function groupFractionDigits(str){
+  const parts = String(str).split(',');
+  if(parts.length < 2 || !parts[1]) return str;
+  const groupedFraction = parts[1].replace(/(.{3})(?=.)/g, `$1${NBSP}`);
+  return `${parts[0]},${groupedFraction}`;
+}
+
+function formatZsResultNumber(value){
+  const maxDecimals = clampInt(settings.zsResultMaxDecimals ?? 6, 0, 20);
+  const formatted = trimCz(formatCz(value, 0, maxDecimals));
+  return groupFractionDigits(formatted);
+}
+
+function zsResultFitsLimits(value){
+  const abs = Math.abs(value);
+  const maxIntegerDigits = clampInt(settings.zsResultMaxIntegerDigits ?? 7, 1, 15);
+  const maxDecimals = clampInt(settings.zsResultMaxDecimals ?? 6, 0, 20);
+
+  if(abs >= Math.pow(10, maxIntegerDigits)) return false;
+  if(abs > 0 && abs < 1){
+    const rounded = Number(value.toFixed(maxDecimals));
+    if(rounded === 0) return false;
+  }
+  return true;
 }
 
 function formatExpNumber(value){
@@ -709,6 +746,7 @@ function renderSummary(){
     <span class="pill">${formatPlainNumber(numberSettings.minNumber)} až ${formatPlainNumber(numberSettings.maxNumber)}</span>
     <span class="pill">${settings.mode === 'ss' ? 'exp. tvar' : 'bez exp. tvaru'}</span>
     <span class="pill">${numberSettings.niceInputByUnitSize ? 'hezčí zadání zapnuto' : 'hezčí zadání vypnuto'}</span>
+    ${settings.mode === 'zs' ? `<span class="pill">výsledek: max ${settings.zsResultMaxIntegerDigits} číslic / ${settings.zsResultMaxDecimals} des. míst</span>` : ''}
     <p class="small">Předpony: ${prefixText || 'žádné'}</p>
     <p class="small">Desetinná místa v zadání: pod 1 → ${settings.smallDecimals}, pod 10 → ${settings.mediumDecimals}, jinak → ${settings.largeDecimals}.</p>
   `;
@@ -750,6 +788,11 @@ function fillSettingsForm(){
   $('mediumDecimalsInput').value = settings.mediumDecimals;
   $('largeDecimalsInput').value = settings.largeDecimals;
   $('jumpInput').value = settings.minJump;
+  $('zsResultMaxIntegerDigitsInput').value = settings.zsResultMaxIntegerDigits ?? 7;
+  $('zsResultMaxDecimalsInput').value = settings.zsResultMaxDecimals ?? 6;
+  document.querySelectorAll('.zsResultLimit').forEach(el => {
+    el.style.display = settings.mode === 'zs' ? 'flex' : 'none';
+  });
   $('niceInputRuleInput').checked = Boolean(numberSettings.niceInputByUnitSize);
 
   const selectedQ = new Set(settings.quantitiesByMode[settings.mode] || []);
@@ -781,6 +824,10 @@ function applySettingsFromForm(){
   settings.mediumDecimals = clampInt($('mediumDecimalsInput').value, 0, 8);
   settings.largeDecimals = clampInt($('largeDecimalsInput').value, 0, 8);
   settings.minJump = clampInt($('jumpInput').value, 1, 8);
+  if(settings.mode === 'zs'){
+    settings.zsResultMaxIntegerDigits = clampInt($('zsResultMaxIntegerDigitsInput').value, 1, 15);
+    settings.zsResultMaxDecimals = clampInt($('zsResultMaxDecimalsInput').value, 0, 20);
+  }
   numberSettings.niceInputByUnitSize = $('niceInputRuleInput').checked;
 
   const quantities = [...$('quantityChecks').querySelectorAll('input:checked')].map(i => i.value);
