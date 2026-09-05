@@ -162,13 +162,19 @@ p{line-height:1.45}
           <label for="jumpInput">Nejmenší skok mezi běžnými jednotkami</label>
           <input id="jumpInput" type="number" min="1" max="8" step="1">
         </div>
-        <div class="settingField zsResultLimit">
-          <label for="zsResultMaxIntegerDigitsInput">Maximálně číslic před desetinnou čárkou ve výsledku (ZŠ)</label>
-          <input id="zsResultMaxIntegerDigitsInput" type="number" min="1" max="15" step="1">
+        <div class="settingField">
+          <label class="check">
+            <input id="resultLimitEnabledInput" type="checkbox">
+            <span>Omezit délku výsledku</span>
+          </label>
         </div>
-        <div class="settingField zsResultLimit">
-          <label for="zsResultMaxDecimalsInput">Maximálně desetinných míst ve výsledku (ZŠ)</label>
-          <input id="zsResultMaxDecimalsInput" type="number" min="0" max="20" step="1">
+        <div class="settingField">
+          <label for="resultMaxIntegerDigitsInput">Maximálně číslic před desetinnou čárkou ve výsledku</label>
+          <input id="resultMaxIntegerDigitsInput" type="number" min="1" max="15" step="1">
+        </div>
+        <div class="settingField">
+          <label for="resultMaxDecimalsInput">Maximálně desetinných míst ve výsledku</label>
+          <input id="resultMaxDecimalsInput" type="number" min="0" max="20" step="1">
         </div>
       </div>
       <div class="sep"></div>
@@ -232,8 +238,10 @@ const defaultSettings = {
   mediumDecimals:1,
   largeDecimals:0,
   minJump:2,
-  zsResultMaxIntegerDigits:7,
-  zsResultMaxDecimals:6,
+  resultLimitsByMode:{
+    zs:{enabled:true, maxIntegerDigits:7, maxDecimals:6},
+    ss:{enabled:false, maxIntegerDigits:7, maxDecimals:6}
+  },
   prefixes:['n','µ','m','c','d','','da','h','k','M','G'],
   quantitiesByMode:{
     zs:['delka','plocha','objem','hmotnost','sila','rychlost','hustota','tlak','energie','napeti'],
@@ -466,6 +474,14 @@ function numberSettingsForMode(mode = settings.mode){
   return settings.numberSettingsByMode[mode];
 }
 
+function resultLimitsForMode(mode = settings.mode){
+  if(!settings.resultLimitsByMode) settings.resultLimitsByMode = structuredClone(defaultSettings.resultLimitsByMode);
+  if(!settings.resultLimitsByMode[mode]){
+    settings.resultLimitsByMode[mode] = structuredClone(defaultSettings.resultLimitsByMode[mode] || defaultSettings.resultLimitsByMode.zs);
+  }
+  return settings.resultLimitsByMode[mode];
+}
+
 function numberRange(pair = null){
   const numberSettings = numberSettingsForMode();
   let min = positiveNumber(numberSettings.minNumber, 0.01);
@@ -580,7 +596,8 @@ function makeExample(index, preferredQuantity, useExponentialInput = false){
     const result = x.value * pair.from.factor / pair.to.factor;
     if(!Number.isFinite(result) || result === 0) continue;
     const significantFigures = countVisibleSignificantFigures(x.visible);
-    if(settings.mode === 'zs' && !zsResultFitsLimits(result, significantFigures)) continue;
+    const resultLimits = resultLimitsForMode();
+    if(resultLimits.enabled && !resultFitsLimits(result, significantFigures, resultLimits)) continue;
     return {
       index,
       quantity:q.title,
@@ -691,7 +708,7 @@ function formatSignificantPlain(value, significantFigures){
   return groupPlainNumberString((negative ? '-' : '') + raw);
 }
 
-function zsResultFitsLimits(value, significantFigures){
+function resultFitsLimits(value, significantFigures, limits = resultLimitsForMode()){
   const formatted = formatSignificantPlain(value, significantFigures)
     .replace(/\u202f/g, '')
     .replace(/\s/g, '');
@@ -699,8 +716,8 @@ function zsResultFitsLimits(value, significantFigures){
   const parts = unsigned.split(',');
   const integerPart = parts[0] || '0';
   const fractionPart = parts[1] || '';
-  const maxIntegerDigits = clampInt(settings.zsResultMaxIntegerDigits ?? 7, 1, 15);
-  const maxDecimals = clampInt(settings.zsResultMaxDecimals ?? 6, 0, 20);
+  const maxIntegerDigits = clampInt(limits.maxIntegerDigits ?? 7, 1, 15);
+  const maxDecimals = clampInt(limits.maxDecimals ?? 6, 0, 20);
   return integerPart.length <= maxIntegerDigits && fractionPart.length <= maxDecimals;
 }
 
@@ -779,13 +796,14 @@ function renderSummary(){
   const qCount = selectedQuantities().length;
   const prefixText = selectedPrefixes().map(p => p.label).join(', ');
   const numberSettings = numberSettingsForMode();
+  const resultLimits = resultLimitsForMode();
   $('summary').innerHTML = `
     <span class="pill good">${settings.count} příkladů</span>
     <span class="pill">${qCount} veličin</span>
     <span class="pill">${formatPlainNumber(numberSettings.minNumber)} až ${formatPlainNumber(numberSettings.maxNumber)}</span>
     <span class="pill">${settings.mode === 'ss' ? 'exp. tvar' : 'bez exp. tvaru'}</span>
     <span class="pill">${numberSettings.niceInputByUnitSize ? 'hezčí zadání zapnuto' : 'hezčí zadání vypnuto'}</span>
-    ${settings.mode === 'zs' ? `<span class="pill">výsledek: max ${settings.zsResultMaxIntegerDigits} číslic / ${settings.zsResultMaxDecimals} des. míst</span>` : ''}
+    <span class="pill">${resultLimits.enabled ? `omezení výsledku: max ${resultLimits.maxIntegerDigits} číslic / ${resultLimits.maxDecimals} des. míst` : 'omezení výsledku vypnuto'}</span>
     <p class="small">Předpony: ${prefixText || 'žádné'}</p>
     <p class="small">Desetinná místa v zadání: pod 1 → ${settings.smallDecimals}, pod 10 → ${settings.mediumDecimals}, jinak → ${settings.largeDecimals}.</p>
   `;
@@ -820,6 +838,7 @@ function closeSettings(){
 
 function fillSettingsForm(){
   const numberSettings = numberSettingsForMode();
+  const resultLimits = resultLimitsForMode();
   $('countInput').value = settings.count;
   $('minNumberInput').value = numberSettings.minNumber;
   $('maxNumberInput').value = numberSettings.maxNumber;
@@ -827,11 +846,11 @@ function fillSettingsForm(){
   $('mediumDecimalsInput').value = settings.mediumDecimals;
   $('largeDecimalsInput').value = settings.largeDecimals;
   $('jumpInput').value = settings.minJump;
-  $('zsResultMaxIntegerDigitsInput').value = settings.zsResultMaxIntegerDigits ?? 7;
-  $('zsResultMaxDecimalsInput').value = settings.zsResultMaxDecimals ?? 6;
-  document.querySelectorAll('.zsResultLimit').forEach(el => {
-    el.style.display = settings.mode === 'zs' ? 'flex' : 'none';
-  });
+  $('resultLimitEnabledInput').checked = Boolean(resultLimits.enabled);
+  $('resultMaxIntegerDigitsInput').value = resultLimits.maxIntegerDigits ?? 7;
+  $('resultMaxDecimalsInput').value = resultLimits.maxDecimals ?? 6;
+  $('resultMaxIntegerDigitsInput').disabled = !resultLimits.enabled;
+  $('resultMaxDecimalsInput').disabled = !resultLimits.enabled;
   $('niceInputRuleInput').checked = Boolean(numberSettings.niceInputByUnitSize);
 
   const selectedQ = new Set(settings.quantitiesByMode[settings.mode] || []);
@@ -863,10 +882,10 @@ function applySettingsFromForm(){
   settings.mediumDecimals = clampInt($('mediumDecimalsInput').value, 0, 8);
   settings.largeDecimals = clampInt($('largeDecimalsInput').value, 0, 8);
   settings.minJump = clampInt($('jumpInput').value, 1, 8);
-  if(settings.mode === 'zs'){
-    settings.zsResultMaxIntegerDigits = clampInt($('zsResultMaxIntegerDigitsInput').value, 1, 15);
-    settings.zsResultMaxDecimals = clampInt($('zsResultMaxDecimalsInput').value, 0, 20);
-  }
+  const resultLimits = resultLimitsForMode();
+  resultLimits.enabled = $('resultLimitEnabledInput').checked;
+  resultLimits.maxIntegerDigits = clampInt($('resultMaxIntegerDigitsInput').value, 1, 15);
+  resultLimits.maxDecimals = clampInt($('resultMaxDecimalsInput').value, 0, 20);
   numberSettings.niceInputByUnitSize = $('niceInputRuleInput').checked;
 
   const quantities = [...$('quantityChecks').querySelectorAll('input:checked')].map(i => i.value);
@@ -916,6 +935,11 @@ function wireEvents(){
     if(e.target === $('settingsOverlay')) closeSettings();
   });
   $('applySettings').addEventListener('click', applySettingsFromForm);
+  $('resultLimitEnabledInput').addEventListener('change', () => {
+    const enabled = $('resultLimitEnabledInput').checked;
+    $('resultMaxIntegerDigitsInput').disabled = !enabled;
+    $('resultMaxDecimalsInput').disabled = !enabled;
+  });
   $('defaultsSettings').addEventListener('click', () => {
     const mode = settings.mode;
     settings = structuredClone(defaultSettings);
