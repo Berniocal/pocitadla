@@ -186,6 +186,11 @@ p{line-height:1.45}
 
     <div class="card">
       <h3>Veličiny</h3>
+      <label class="check" style="margin-bottom:10px">
+        <input id="ensureAllQuantitiesInput" type="checkbox">
+        <span>Každá vybraná veličina se má v sadě objevit alespoň jednou.</span>
+      </label>
+      <p class="small" style="margin-top:0">Když je volba zapnutá a je vybráno více veličin než příkladů, počet příkladů se automaticky zvýší.</p>
       <div id="quantityChecks" class="checks"></div>
     </div>
 
@@ -242,10 +247,11 @@ const defaultSettings = {
     zs:{enabled:true, maxIntegerDigits:7, maxDecimals:6},
     ss:{enabled:false, maxIntegerDigits:7, maxDecimals:6}
   },
+  ensureAllQuantitiesByMode:{zs:true, ss:true},
   prefixes:['n','µ','m','c','d','','da','h','k','M','G'],
   quantitiesByMode:{
     zs:['delka','plocha','objem','hmotnost','sila','rychlost','hustota','tlak','energie','napeti'],
-    ss:['delka','plocha','objem','hmotnost','sila','rychlost','hustota','tlak','energie','napeti','cas','vykon','naboj','kapacita','proud','odpor']
+    ss:['delka','plocha','objem','hmotnost','sila','rychlost','hustota','tlak','energie','napeti']
   }
 };
 
@@ -264,12 +270,20 @@ const quantityMeta = [
   {id:'tlak', title:'Tlak', modes:['zs','ss'], build:buildPressureUnits},
   {id:'energie', title:'Energie', modes:['zs','ss'], build:buildEnergyUnits},
   {id:'napeti', title:'Napětí', modes:['zs','ss'], build:buildVoltageUnits},
-  {id:'cas', title:'Čas', modes:['ss'], build:buildTimeUnits},
-  {id:'vykon', title:'Výkon', modes:['ss'], build:buildPowerUnits},
-  {id:'naboj', title:'Náboj', modes:['ss'], build:buildChargeUnits},
+  {id:'cas', title:'Čas', modes:['zs','ss'], build:buildTimeUnits},
+  {id:'vykon', title:'Výkon', modes:['zs','ss'], build:buildPowerUnits},
+  {id:'proud', title:'Elektrický proud', modes:['zs','ss'], build:buildCurrentUnits},
+  {id:'odpor', title:'Elektrický odpor', modes:['zs','ss'], build:buildResistanceUnits},
+  {id:'zrychleni', title:'Zrychlení', modes:['zs','ss'], build:buildAccelerationUnits},
+  {id:'frekvence', title:'Frekvence', modes:['zs','ss'], build:buildFrequencyUnits},
+  {id:'uhel', title:'Úhel', modes:['zs','ss'], build:buildAngleUnits},
+  {id:'naboj', title:'Elektrický náboj', modes:['ss'], build:buildChargeUnits},
   {id:'kapacita', title:'Kapacita', modes:['ss'], build:buildCapacitanceUnits},
-  {id:'proud', title:'Proud', modes:['ss'], build:buildCurrentUnits},
-  {id:'odpor', title:'Odpor', modes:['ss'], build:buildResistanceUnits}
+  {id:'vodivost', title:'Elektrická vodivost', modes:['ss'], build:buildConductanceUnits},
+  {id:'magindukce', title:'Magnetická indukce', modes:['ss'], build:buildMagneticInductionUnits},
+  {id:'magnetickytok', title:'Magnetický tok', modes:['ss'], build:buildMagneticFluxUnits},
+  {id:'indukcnost', title:'Indukčnost', modes:['ss'], build:buildInductanceUnits},
+  {id:'latkovemnozstvi', title:'Látkové množství', modes:['ss'], build:buildAmountUnits}
 ];
 
 const $ = id => document.getElementById(id);
@@ -441,6 +455,51 @@ function buildCurrentUnits(){
 
 function buildResistanceUnits(){
   return prefixedUnits('Ω', ['f','p','n','µ','m','','k','M','G','T','P']);
+}
+
+function buildAccelerationUnits(){
+  return prefixedUnits('m/s²', ['n','µ','m','c','d','','k']);
+}
+
+function buildFrequencyUnits(){
+  return prefixedUnits('Hz', ['f','p','n','µ','m','','k','M','G','T']);
+}
+
+function buildAngleUnits(){
+  return filterUnits([
+    unit('°', Math.PI / 180, -1.76, null),
+    unit('rad', 1, 0, ''),
+    unit('mrad', 1e-3, -3, 'm'),
+    unit('µrad', 1e-6, -6, 'µ')
+  ]);
+}
+
+function buildConductanceUnits(){
+  return prefixedUnits('S', ['f','p','n','µ','m','','k','M','G']);
+}
+
+function buildMagneticInductionUnits(){
+  return prefixedUnits('T', ['p','n','µ','m','','k','M']);
+}
+
+function buildMagneticFluxUnits(){
+  return prefixedUnits('Wb', ['f','p','n','µ','m','','k','M']);
+}
+
+function buildInductanceUnits(){
+  return prefixedUnits('H', ['f','p','n','µ','m','','k','M']);
+}
+
+function buildAmountUnits(){
+  return prefixedUnits('mol', ['n','µ','m','','k','M']);
+}
+
+function ensureAllQuantitiesForMode(mode = settings.mode){
+  if(!settings.ensureAllQuantitiesByMode) settings.ensureAllQuantitiesByMode = structuredClone(defaultSettings.ensureAllQuantitiesByMode);
+  if(typeof settings.ensureAllQuantitiesByMode[mode] !== 'boolean'){
+    settings.ensureAllQuantitiesByMode[mode] = Boolean(defaultSettings.ensureAllQuantitiesByMode[mode]);
+  }
+  return settings.ensureAllQuantitiesByMode[mode];
 }
 
 function availableQuantities(){
@@ -616,8 +675,12 @@ function makeExample(index, preferredQuantity, useExponentialInput = false){
 }
 
 function generateExamples(){
-  const count = clampInt(settings.count, 1, 60);
   const quantities = selectedQuantities();
+  let count = clampInt(settings.count, 1, 60);
+  if(ensureAllQuantitiesForMode() && quantities.length > count){
+    count = Math.min(60, quantities.length);
+    settings.count = count;
+  }
   let cycle = shuffle(quantities);
   let previousId = null;
   const expInputSlots = new Set();
@@ -800,6 +863,7 @@ function renderSummary(){
   $('summary').innerHTML = `
     <span class="pill good">${settings.count} příkladů</span>
     <span class="pill">${qCount} veličin</span>
+    <span class="pill">${ensureAllQuantitiesForMode() ? 'všechny vybrané veličiny v sadě' : 'veličiny náhodně'}</span>
     <span class="pill">${formatPlainNumber(numberSettings.minNumber)} až ${formatPlainNumber(numberSettings.maxNumber)}</span>
     <span class="pill">${settings.mode === 'ss' ? 'exp. tvar' : 'bez exp. tvaru'}</span>
     <span class="pill">${numberSettings.niceInputByUnitSize ? 'hezčí zadání zapnuto' : 'hezčí zadání vypnuto'}</span>
@@ -852,6 +916,7 @@ function fillSettingsForm(){
   $('resultMaxIntegerDigitsInput').disabled = !resultLimits.enabled;
   $('resultMaxDecimalsInput').disabled = !resultLimits.enabled;
   $('niceInputRuleInput').checked = Boolean(numberSettings.niceInputByUnitSize);
+  $('ensureAllQuantitiesInput').checked = ensureAllQuantitiesForMode();
 
   const selectedQ = new Set(settings.quantitiesByMode[settings.mode] || []);
   $('quantityChecks').innerHTML = availableQuantities().map(q => `
@@ -890,6 +955,10 @@ function applySettingsFromForm(){
 
   const quantities = [...$('quantityChecks').querySelectorAll('input:checked')].map(i => i.value);
   settings.quantitiesByMode[settings.mode] = quantities;
+  settings.ensureAllQuantitiesByMode[settings.mode] = $('ensureAllQuantitiesInput').checked;
+  if(settings.ensureAllQuantitiesByMode[settings.mode] && quantities.length > settings.count){
+    settings.count = Math.min(60, quantities.length);
+  }
   const chosenPrefixes = [...$('prefixChecks').querySelectorAll('input:checked')].map(i => i.value);
   settings.prefixes = chosenPrefixes.length ? chosenPrefixes : [''];
 
