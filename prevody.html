@@ -162,14 +162,6 @@ p{line-height:1.45}
           <label for="jumpInput">Nejmenší skok mezi běžnými jednotkami</label>
           <input id="jumpInput" type="number" min="1" max="8" step="1">
         </div>
-        <div class="settingField zsResultLimit">
-          <label for="zsResultMaxIntegerDigitsInput">Maximálně číslic před desetinnou čárkou ve výsledku (ZŠ)</label>
-          <input id="zsResultMaxIntegerDigitsInput" type="number" min="1" max="15" step="1">
-        </div>
-        <div class="settingField zsResultLimit">
-          <label for="zsResultMaxDecimalsInput">Maximálně desetinných míst ve výsledku (ZŠ)</label>
-          <input id="zsResultMaxDecimalsInput" type="number" min="0" max="20" step="1">
-        </div>
       </div>
       <div class="sep"></div>
       <label class="check">
@@ -232,8 +224,6 @@ const defaultSettings = {
   mediumDecimals:1,
   largeDecimals:0,
   minJump:2,
-  zsResultMaxIntegerDigits:7,
-  zsResultMaxDecimals:6,
   prefixes:['n','µ','m','c','d','','da','h','k','M','G'],
   quantitiesByMode:{
     zs:['delka','plocha','objem','hmotnost','sila','rychlost','hustota','tlak','energie','napeti'],
@@ -579,7 +569,7 @@ function makeExample(index, preferredQuantity, useExponentialInput = false){
     const x = randomVisibleNumber(useExponentialInput, pair);
     const result = x.value * pair.from.factor / pair.to.factor;
     if(!Number.isFinite(result) || result === 0) continue;
-    if(settings.mode === 'zs' && !zsResultFitsLimits(result)) continue;
+    const significantFigures = countVisibleSignificantFigures(x.visible);
     return {
       index,
       quantity:q.title,
@@ -589,8 +579,9 @@ function makeExample(index, preferredQuantity, useExponentialInput = false){
       from:pair.from.unit,
       to:pair.to.unit,
       result,
-      resultPlain:settings.mode === 'zs' ? formatZsResultNumber(result) : formatPlainNumber(result),
-      resultExp:formatExpNumber(result)
+      significantFigures,
+      resultPlain:formatSignificantPlain(result, significantFigures),
+      resultExp:formatExpNumber(result, significantFigures)
     };
   }
   return null;
@@ -639,36 +630,60 @@ function formatPlainNumber(value){
   return trimCz(formatCz(value, 0, decimals));
 }
 
-function groupFractionDigits(str){
-  const parts = String(str).split(',');
-  if(parts.length < 2 || !parts[1]) return str;
-  const groupedFraction = parts[1].replace(/(.{3})(?=.)/g, `$1${NBSP}`);
-  return `${parts[0]},${groupedFraction}`;
+function countVisibleSignificantFigures(visible){
+  let s = String(visible ?? '').replace(/\u202f/g, '').replace(/\s/g, '');
+  s = s.split('·10')[0].split('×10')[0];
+  s = s.replace(/^[+-]/, '').replace(/[,.]/g, '');
+  s = s.replace(/^0+/, '');
+  return clampInt(s.length || 1, 1, 15);
 }
 
-function formatZsResultNumber(value){
-  const maxDecimals = clampInt(settings.zsResultMaxDecimals ?? 6, 0, 20);
-  const formatted = trimCz(formatCz(value, 0, maxDecimals));
-  return groupFractionDigits(formatted);
-}
-
-function zsResultFitsLimits(value){
-  const abs = Math.abs(value);
-  const maxIntegerDigits = clampInt(settings.zsResultMaxIntegerDigits ?? 7, 1, 15);
-  const maxDecimals = clampInt(settings.zsResultMaxDecimals ?? 6, 0, 20);
-
-  if(abs >= Math.pow(10, maxIntegerDigits)) return false;
-  if(abs > 0 && abs < 1){
-    const rounded = Number(value.toFixed(maxDecimals));
-    if(rounded === 0) return false;
+function groupPlainNumberString(raw){
+  let s = String(raw);
+  let sign = '';
+  if(s.startsWith('-')){
+    sign = '-';
+    s = s.slice(1);
   }
-  return true;
+  const [integerPart, fractionPart = ''] = s.split('.');
+  const groupedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, NBSP);
+  const groupedFraction = fractionPart.replace(/(\d{3})(?=\d)/g, `$1${NBSP}`);
+  return sign + groupedInteger + (fractionPart ? `,${groupedFraction}` : '');
 }
 
-function formatExpNumber(value){
-  const exponent = value === 0 ? 0 : Math.floor(Math.log10(Math.abs(value)));
-  const mantissa = value === 0 ? 0 : value / Math.pow(10, exponent);
-  return `${trimCz(formatCz(mantissa, 0, 3))}·10${toSuperscript(exponent)}`;
+function significantExponentialParts(value, significantFigures){
+  const sig = clampInt(significantFigures, 1, 15);
+  const scientific = Number(value).toExponential(sig - 1);
+  const [mantissa, exponentText] = scientific.split('e');
+  return {mantissa, exponent:Number(exponentText)};
+}
+
+function formatSignificantPlain(value, significantFigures){
+  if(!Number.isFinite(value)) return '';
+  if(value === 0) return '0';
+
+  const {mantissa, exponent} = significantExponentialParts(value, significantFigures);
+  const negative = mantissa.startsWith('-');
+  const unsignedMantissa = negative ? mantissa.slice(1) : mantissa;
+  const digits = unsignedMantissa.replace('.', '');
+  const decimalIndex = 1 + exponent;
+
+  let raw;
+  if(decimalIndex <= 0){
+    raw = `0.${'0'.repeat(-decimalIndex)}${digits}`;
+  }else if(decimalIndex >= digits.length){
+    raw = `${digits}${'0'.repeat(decimalIndex - digits.length)}`;
+  }else{
+    raw = `${digits.slice(0, decimalIndex)}.${digits.slice(decimalIndex)}`;
+  }
+
+  return groupPlainNumberString((negative ? '-' : '') + raw);
+}
+
+function formatExpNumber(value, significantFigures = 3){
+  if(value === 0) return '0';
+  const {mantissa, exponent} = significantExponentialParts(value, significantFigures);
+  return `${mantissa.replace('.', ',')}·10${toSuperscript(exponent)}`;
 }
 
 function trimCz(str){
@@ -746,7 +761,6 @@ function renderSummary(){
     <span class="pill">${formatPlainNumber(numberSettings.minNumber)} až ${formatPlainNumber(numberSettings.maxNumber)}</span>
     <span class="pill">${settings.mode === 'ss' ? 'exp. tvar' : 'bez exp. tvaru'}</span>
     <span class="pill">${numberSettings.niceInputByUnitSize ? 'hezčí zadání zapnuto' : 'hezčí zadání vypnuto'}</span>
-    ${settings.mode === 'zs' ? `<span class="pill">výsledek: max ${settings.zsResultMaxIntegerDigits} číslic / ${settings.zsResultMaxDecimals} des. míst</span>` : ''}
     <p class="small">Předpony: ${prefixText || 'žádné'}</p>
     <p class="small">Desetinná místa v zadání: pod 1 → ${settings.smallDecimals}, pod 10 → ${settings.mediumDecimals}, jinak → ${settings.largeDecimals}.</p>
   `;
@@ -788,11 +802,6 @@ function fillSettingsForm(){
   $('mediumDecimalsInput').value = settings.mediumDecimals;
   $('largeDecimalsInput').value = settings.largeDecimals;
   $('jumpInput').value = settings.minJump;
-  $('zsResultMaxIntegerDigitsInput').value = settings.zsResultMaxIntegerDigits ?? 7;
-  $('zsResultMaxDecimalsInput').value = settings.zsResultMaxDecimals ?? 6;
-  document.querySelectorAll('.zsResultLimit').forEach(el => {
-    el.style.display = settings.mode === 'zs' ? 'flex' : 'none';
-  });
   $('niceInputRuleInput').checked = Boolean(numberSettings.niceInputByUnitSize);
 
   const selectedQ = new Set(settings.quantitiesByMode[settings.mode] || []);
@@ -824,10 +833,6 @@ function applySettingsFromForm(){
   settings.mediumDecimals = clampInt($('mediumDecimalsInput').value, 0, 8);
   settings.largeDecimals = clampInt($('largeDecimalsInput').value, 0, 8);
   settings.minJump = clampInt($('jumpInput').value, 1, 8);
-  if(settings.mode === 'zs'){
-    settings.zsResultMaxIntegerDigits = clampInt($('zsResultMaxIntegerDigitsInput').value, 1, 15);
-    settings.zsResultMaxDecimals = clampInt($('zsResultMaxDecimalsInput').value, 0, 20);
-  }
   numberSettings.niceInputByUnitSize = $('niceInputRuleInput').checked;
 
   const quantities = [...$('quantityChecks').querySelectorAll('input:checked')].map(i => i.value);
