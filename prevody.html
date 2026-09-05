@@ -610,22 +610,17 @@ function randomPlainNumber(range){
 }
 
 function randomExponentialNumber(range){
-  const minExp = Math.floor(Math.log10(range.min));
-  const maxExp = Math.floor(Math.log10(range.max));
+  const minExp = settings.mode === 'ss' ? -10 : Math.floor(Math.log10(range.min));
+  const maxExp = settings.mode === 'ss' ? 10 : Math.floor(Math.log10(range.max));
+  const exponents = [];
+  for(let e = minExp; e <= maxExp; e++) if(e !== 0) exponents.push(e);
+
   for(let attempt=0; attempt<400; attempt++){
-    let exponent = randomInt(minExp, maxExp);
-    if(exponent === 0 && (minExp < 0 || maxExp > 0)){
-      const nonZeroExponents = [];
-      for(let e = minExp; e <= maxExp; e++) if(e !== 0) nonZeroExponents.push(e);
-      if(nonZeroExponents.length) exponent = randomChoice(nonZeroExponents);
-    }
-    const lowMantissa = exponent === minExp ? range.min / Math.pow(10, exponent) : 1;
-    const highMantissa = exponent === maxExp ? range.max / Math.pow(10, exponent) : 9.99;
-    if(lowMantissa > highMantissa) continue;
-    const mantissaRaw = randomFloat(Math.max(1, lowMantissa), Math.min(9.99, highMantissa));
+    const exponent = randomChoice(exponents);
+    const mantissaRaw = randomFloat(1, 9.99);
     const mantissa = Number(trimCz(formatCz(mantissaRaw, 0, 2)).replace(',', '.'));
     const value = mantissa * Math.pow(10, exponent);
-    if(value >= range.min && value <= range.max){
+    if(Number.isFinite(value) && value > 0){
       const visible = `${trimCz(formatCz(mantissa, 0, 2))}·10${toSuperscript(exponent)}`;
       return {visible, value, exponential:true};
     }
