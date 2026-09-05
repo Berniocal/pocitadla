@@ -1,0 +1,50 @@
+name: Fix kcal and exponent zero
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-energy-kcal-exp-zero.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch prevody.html
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('prevody.html')
+          text = path.read_text(encoding='utf-8')
+
+          replacements = [
+            ("unit('cal', 4.184, Math.log10(4.184), null),\n    unit('kcal', 4184, Math.log10(4184), null)",
+             "unit('cal', 4.184, Math.log10(4.184), null)"),
+            ("* Energie* obsahuje i Wh, kWh, MWh, cal a kcal; na SŠ také eV, keV, MeV a GeV.",
+             "* Energie* obsahuje i Wh, kWh, MWh a cal; na SŠ také eV, keV, MeV a GeV."),
+            ("const exponent = randomInt(minExp, maxExp);\n    const lowMantissa",
+             "let exponent = randomInt(minExp, maxExp);\n    if(exponent === 0 && (minExp < 0 || maxExp > 0)){\n      const nonZeroExponents = [];\n      for(let e = minExp; e <= maxExp; e++) if(e !== 0) nonZeroExponents.push(e);\n      if(nonZeroExponents.length) exponent = randomChoice(nonZeroExponents);\n    }\n    const lowMantissa"),
+            ("const {mantissa, exponent} = significantExponentialParts(value, significantFigures);\n  return `${mantissa.replace('.', ',')}·10${toSuperscript(exponent)}`;",
+             "const {mantissa, exponent} = significantExponentialParts(value, significantFigures);\n  if(exponent === 0) return mantissa.replace('.', ',');\n  return `${mantissa.replace('.', ',')}·10${toSuperscript(exponent)}`;")
+          ]
+
+          for old, new in replacements:
+            if old not in text:
+              raise SystemExit(f'Expected text not found: {old[:90]}')
+            text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Commit fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prevody.html
+          git commit -m "Remove kcal and suppress exponent zero"
+          git push
