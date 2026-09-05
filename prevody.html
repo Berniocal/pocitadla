@@ -192,6 +192,7 @@ p{line-height:1.45}
       </label>
       <p class="small" style="margin-top:0">Když je volba zapnutá a je vybráno více veličin než příkladů, počet příkladů se automaticky zvýší.</p>
       <div id="quantityChecks" class="checks"></div>
+      <p class="small" style="margin-bottom:0">* Energie* obsahuje i Wh, kWh, MWh, cal a kcal; na SŠ také eV, keV, MeV a GeV.</p>
     </div>
 
     <div class="card">
@@ -250,8 +251,8 @@ const defaultSettings = {
   ensureAllQuantitiesByMode:{zs:true, ss:true},
   prefixes:['n','µ','m','c','d','','da','h','k','M','G'],
   quantitiesByMode:{
-    zs:['delka','plocha','objem','hmotnost','sila','rychlost','hustota','tlak','energie','napeti'],
-    ss:['delka','plocha','objem','hmotnost','sila','rychlost','hustota','tlak','energie','napeti']
+    zs:['delka','plocha','objem','hmotnost','sila','rychlost','hustota','tlak','energie','cas'],
+    ss:['delka','plocha','objem','hmotnost','sila','rychlost','hustota','tlak','energie','cas']
   }
 };
 
@@ -269,6 +270,7 @@ const quantityMeta = [
   {id:'hustota', title:'Hustota', modes:['zs','ss'], build:buildDensityUnits},
   {id:'tlak', title:'Tlak', modes:['zs','ss'], build:buildPressureUnits},
   {id:'energie', title:'Energie', modes:['zs','ss'], build:buildEnergyUnits},
+  {id:'energieplus', title:'Energie*', modes:['zs','ss'], build:buildExtendedEnergyUnits},
   {id:'napeti', title:'Napětí', modes:['zs','ss'], build:buildVoltageUnits},
   {id:'cas', title:'Čas', modes:['zs','ss'], build:buildTimeUnits},
   {id:'vykon', title:'Výkon', modes:['zs','ss'], build:buildPowerUnits},
@@ -414,6 +416,29 @@ function buildEnergyUnits(mode){
     ? ['f','p','n','µ','m','','k','M','G','T','P']
     : ['f','p','n','µ','m','','k','M','G','T','P'];
   return prefixedUnits('J', ids);
+}
+
+function buildExtendedEnergyUnits(mode){
+  const units = [
+    unit('J', 1, 0, null),
+    unit('kJ', 1e3, 3, null),
+    unit('MJ', 1e6, 6, null),
+    unit('GJ', 1e9, 9, null),
+    unit('Wh', 3600, Math.log10(3600), null),
+    unit('kWh', 3.6e6, Math.log10(3.6e6), null),
+    unit('MWh', 3.6e9, Math.log10(3.6e9), null),
+    unit('cal', 4.184, Math.log10(4.184), null),
+    unit('kcal', 4184, Math.log10(4184), null)
+  ];
+  if(mode === 'ss'){
+    units.push(
+      unit('eV', 1.602176634e-19, Math.log10(1.602176634e-19), null),
+      unit('keV', 1.602176634e-16, Math.log10(1.602176634e-16), null),
+      unit('MeV', 1.602176634e-13, Math.log10(1.602176634e-13), null),
+      unit('GeV', 1.602176634e-10, Math.log10(1.602176634e-10), null)
+    );
+  }
+  return units;
 }
 
 function buildVoltageUnits(mode){
