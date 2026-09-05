@@ -1,0 +1,155 @@
+from pathlib import Path
+
+p = Path("prevody.html")
+s = p.read_text(encoding="utf-8")
+
+def rep(old, new, count=1):
+    global s
+    if old not in s:
+        raise SystemExit("Missing snippet: " + old[:160])
+    s = s.replace(old, new, count)
+
+rep(
+    ".check input,.prefixCheck input{accent-color:var(--accent2);margin:0;flex:0 0 auto}\n",
+    ".check input,.prefixCheck input{accent-color:var(--accent2);margin:0;flex:0 0 auto}\n"
+    ".quantityRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:stretch}\n"
+    ".quantityRow .check{margin:0}\n"
+    ".expToggle{display:flex;align-items:center;justify-content:center;gap:6px;min-width:72px;background:#f8fffc;border:1px solid #aee1d1;border-radius:8px;padding:8px;font-size:13px;font-weight:800;color:#285f55;cursor:pointer}\n"
+    ".expToggle input{accent-color:var(--accent2);margin:0}\n"
+    ".expToggle.disabled{opacity:.45;cursor:not-allowed}\n"
+)
+
+rep(
+    "  ensureAllQuantitiesByMode:{zs:true, ss:true},\n  prefixes:",
+    "  ensureAllQuantitiesByMode:{zs:true, ss:true},\n"
+    "  expQuantitiesSS:['delka','plocha','objem','hmotnost','sila','rychlost','hustota','tlak','energie','cas'],\n"
+    "  prefixes:"
+)
+
+rep(
+    "function selectedQuantities(){\n"
+    "  const selected = new Set(settings.quantitiesByMode[settings.mode] || []);\n"
+    "  return availableQuantities().filter(q => selected.has(q.id));\n"
+    "}\n",
+    "function selectedQuantities(){\n"
+    "  const selected = new Set(settings.quantitiesByMode[settings.mode] || []);\n"
+    "  return availableQuantities().filter(q => selected.has(q.id));\n"
+    "}\n\n"
+    "function expEnabledForQuantity(quantityId){\n"
+    "  if(settings.mode !== 'ss') return false;\n"
+    "  if(!Array.isArray(settings.expQuantitiesSS)) settings.expQuantitiesSS = [...defaultSettings.expQuantitiesSS];\n"
+    "  return settings.expQuantitiesSS.includes(quantityId);\n"
+    "}\n"
+)
+
+rep(
+    "function makeExample(index, preferredQuantity, useExponentialInput = false){",
+    "function makeExample(index, preferredQuantity){"
+)
+rep(
+    "    const x = randomVisibleNumber(useExponentialInput, pair);",
+    "    const useExponential = expEnabledForQuantity(q.id);\n"
+    "    const x = randomVisibleNumber(useExponential, pair);"
+)
+rep(
+    "      exponentialInput:x.exponential,\n",
+    "      exponentialInput:x.exponential,\n"
+    "      useExponential,\n"
+)
+
+old_slots = """  const expInputSlots = new Set();
+  if(settings.mode === 'ss'){
+    const target = Math.round(count / 2);
+    const slots = shuffle(Array.from({length:count}, (_, i) => i + 1));
+    slots.slice(0, target).forEach(i => expInputSlots.add(i));
+  }
+"""
+rep(old_slots, "")
+rep(
+    "    const ex = makeExample(i, preferred, expInputSlots.has(i));",
+    "    const ex = makeExample(i, preferred);"
+)
+
+rep(
+    "    const resultText = settings.mode === 'ss' ? ex.resultExp : ex.resultPlain;",
+    "    const resultText = settings.mode === 'ss' && ex.useExponential ? ex.resultExp : ex.resultPlain;"
+)
+
+rep(
+    "  const resultLimits = resultLimitsForMode();\n  $('summary').innerHTML = `",
+    "  const resultLimits = resultLimitsForMode();\n"
+    "  const expCount = settings.mode === 'ss' ? selectedQuantities().filter(q => expEnabledForQuantity(q.id)).length : 0;\n"
+    "  $('summary').innerHTML = `"
+)
+rep(
+    "    <span class=\"pill\">${settings.mode === 'ss' ? 'exp. tvar' : 'bez exp. tvaru'}</span>",
+    "    <span class=\"pill\">${settings.mode === 'ss' ? `exp. tvar u ${expCount} veličin` : 'bez exp. tvaru'}</span>"
+)
+rep(
+    "    : 'SŠ režim: po zobrazení výsledků je hlavní výsledek v exponenciálním tvaru.';",
+    "    : 'SŠ režim: exponenciální tvar se řídí volbou exp. u jednotlivých veličin.';"
+)
+
+old_fill = """  const selectedQ = new Set(settings.quantitiesByMode[settings.mode] || []);
+  $('quantityChecks').innerHTML = availableQuantities().map(q => `
+    <label class="check">
+      <input type="checkbox" value="${q.id}" ${selectedQ.has(q.id) ? 'checked' : ''}>
+      <span>${q.title}</span>
+    </label>
+  `).join('');
+"""
+new_fill = """  const selectedQ = new Set(settings.quantitiesByMode[settings.mode] || []);
+  const expQ = new Set(Array.isArray(settings.expQuantitiesSS) ? settings.expQuantitiesSS : defaultSettings.expQuantitiesSS);
+  $('quantityChecks').innerHTML = availableQuantities().map(q => settings.mode === 'ss' ? `
+    <div class="quantityRow">
+      <label class="check">
+        <input class="quantity-enable" type="checkbox" value="${q.id}" ${selectedQ.has(q.id) ? 'checked' : ''}>
+        <span>${q.title}</span>
+      </label>
+      <label class="expToggle" title="Použít exponenciální tvar v zadání i výsledku">
+        <input class="quantity-exp" type="checkbox" value="${q.id}" ${expQ.has(q.id) ? 'checked' : ''}>
+        <span>exp.</span>
+      </label>
+    </div>
+  ` : `
+    <label class="check">
+      <input class="quantity-enable" type="checkbox" value="${q.id}" ${selectedQ.has(q.id) ? 'checked' : ''}>
+      <span>${q.title}</span>
+    </label>
+  `).join('');
+
+  if(settings.mode === 'ss'){
+    $('quantityChecks').querySelectorAll('.quantityRow').forEach(row => {
+      const enabled = row.querySelector('.quantity-enable');
+      const exp = row.querySelector('.quantity-exp');
+      const expLabel = row.querySelector('.expToggle');
+      const sync = () => {
+        exp.disabled = !enabled.checked;
+        expLabel.classList.toggle('disabled', !enabled.checked);
+      };
+      enabled.addEventListener('change', sync);
+      sync();
+    });
+  }
+"""
+rep(old_fill, new_fill)
+
+rep(
+    "  const quantities = [...$('quantityChecks').querySelectorAll('input:checked')].map(i => i.value);",
+    "  const quantities = [...$('quantityChecks').querySelectorAll('input.quantity-enable:checked')].map(i => i.value);\n"
+    "  if(settings.mode === 'ss'){\n"
+    "    settings.expQuantitiesSS = [...$('quantityChecks').querySelectorAll('input.quantity-exp:checked')].map(i => i.value);\n"
+    "  }"
+)
+
+rep(
+    "    if(settings.mode === 'ss') return `${ex.value} ${ex.from} =\\t${ex.resultExp} ${ex.to}`;",
+    "    if(settings.mode === 'ss') return `${ex.value} ${ex.from} =\\t${ex.useExponential ? ex.resultExp : ex.resultPlain} ${ex.to}`;"
+)
+
+rep(
+    "{id:'ss', name:'2) Převody pro SŠ', note:'výsledek povinně v exponenciálním tvaru'}",
+    "{id:'ss', name:'2) Převody pro SŠ', note:'exp. tvar podle nastavení veličin'}"
+)
+
+p.write_text(s, encoding="utf-8")
