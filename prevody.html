@@ -669,10 +669,15 @@ function shuffle(arr){
 }
 
 function makeExample(index, preferredQuantity, useExponentialInput = false){
-  const quantities = preferredQuantity ? [preferredQuantity, ...selectedQuantities().filter(q => q.id !== preferredQuantity.id)] : selectedQuantities();
+  const lockPreferred = Boolean(preferredQuantity && ensureAllQuantitiesForMode());
+  const quantities = lockPreferred
+    ? [preferredQuantity]
+    : preferredQuantity
+      ? [preferredQuantity, ...selectedQuantities().filter(q => q.id !== preferredQuantity.id)]
+      : selectedQuantities();
   if(!quantities.length) return null;
   for(let guard=0; guard<200; guard++){
-    const q = guard < quantities.length ? quantities[guard] : randomChoice(quantities);
+    const q = lockPreferred ? preferredQuantity : (guard < quantities.length ? quantities[guard] : randomChoice(quantities));
     const units = q.build(settings.mode).filter(u => Number.isFinite(u.factor) && u.factor !== 0);
     const pair = chooseUnitPair(units);
     if(!pair) continue;
