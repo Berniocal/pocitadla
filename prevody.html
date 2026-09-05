@@ -192,7 +192,7 @@ p{line-height:1.45}
       </label>
       <p class="small" style="margin-top:0">Když je volba zapnutá a je vybráno více veličin než příkladů, počet příkladů se automaticky zvýší.</p>
       <div id="quantityChecks" class="checks"></div>
-      <p class="small" style="margin-bottom:0">* Energie* obsahuje i Wh, kWh, MWh, cal a kcal; na SŠ také eV, keV, MeV a GeV.</p>
+      <p class="small" style="margin-bottom:0">* Energie* obsahuje i Wh, kWh, MWh a cal; na SŠ také eV, keV, MeV a GeV.</p>
     </div>
 
     <div class="card">
@@ -427,8 +427,7 @@ function buildExtendedEnergyUnits(mode){
     unit('Wh', 3600, Math.log10(3600), null),
     unit('kWh', 3.6e6, Math.log10(3.6e6), null),
     unit('MWh', 3.6e9, Math.log10(3.6e9), null),
-    unit('cal', 4.184, Math.log10(4.184), null),
-    unit('kcal', 4184, Math.log10(4184), null)
+    unit('cal', 4.184, Math.log10(4.184), null)
   ];
   if(mode === 'ss'){
     units.push(
@@ -614,7 +613,12 @@ function randomExponentialNumber(range){
   const minExp = Math.floor(Math.log10(range.min));
   const maxExp = Math.floor(Math.log10(range.max));
   for(let attempt=0; attempt<400; attempt++){
-    const exponent = randomInt(minExp, maxExp);
+    let exponent = randomInt(minExp, maxExp);
+    if(exponent === 0 && (minExp < 0 || maxExp > 0)){
+      const nonZeroExponents = [];
+      for(let e = minExp; e <= maxExp; e++) if(e !== 0) nonZeroExponents.push(e);
+      if(nonZeroExponents.length) exponent = randomChoice(nonZeroExponents);
+    }
     const lowMantissa = exponent === minExp ? range.min / Math.pow(10, exponent) : 1;
     const highMantissa = exponent === maxExp ? range.max / Math.pow(10, exponent) : 9.99;
     if(lowMantissa > highMantissa) continue;
@@ -817,6 +821,7 @@ function resultFitsLimits(value, significantFigures, limits = resultLimitsForMod
 function formatExpNumber(value, significantFigures = 3){
   if(value === 0) return '0';
   const {mantissa, exponent} = significantExponentialParts(value, significantFigures);
+  if(exponent === 0) return mantissa.replace('.', ',');
   return `${mantissa.replace('.', ',')}·10${toSuperscript(exponent)}`;
 }
 
