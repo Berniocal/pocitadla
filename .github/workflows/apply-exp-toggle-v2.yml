@@ -1,0 +1,28 @@
+name: Apply exp toggle v2
+
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-exp-toggle-v2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch prevody
+        run: python .github/scripts/patch_exp_toggle.py
+      - name: Commit and cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/add-per-quantity-exp-toggle.yml
+          rm -f .github/workflows/apply-per-quantity-exp-toggle.yml
+          rm -f .github/workflows/apply-exp-toggle-v2.yml
+          rm -f .github/scripts/patch_exp_toggle.py
+          git add prevody.html .github/
+          git commit -m "Add per-quantity exponential toggle for SS conversions"
+          git push
