@@ -139,11 +139,11 @@ p{line-height:1.45}
           <input id="countInput" type="number" min="1" max="60" step="1">
         </div>
         <div class="settingField">
-          <label for="minNumberInput">Nejmenší číslo v zadání</label>
+          <label for="minNumberInput">Nejmenší číslo v běžném zadání</label>
           <input id="minNumberInput" type="number" min="0" step="any">
         </div>
         <div class="settingField">
-          <label for="maxNumberInput">Největší číslo v zadání</label>
+          <label for="maxNumberInput">Největší číslo v běžném zadání</label>
           <input id="maxNumberInput" type="number" min="0" step="any">
         </div>
         <div class="settingField">
@@ -177,6 +177,7 @@ p{line-height:1.45}
           <input id="resultMaxDecimalsInput" type="number" min="0" max="20" step="1">
         </div>
       </div>
+      <p class="small" style="margin-bottom:0">Na SŠ se tento min/max rozsah vztahuje jen na běžná zadání bez exponenciálního tvaru. Exponenciální zadání mají vlastní rozsah řádů.</p>
       <div class="sep"></div>
       <label class="check">
         <input id="niceInputRuleInput" type="checkbox">
@@ -543,6 +544,14 @@ function randomChoice(arr){
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+function roundToSignificant(value, significantFigures = 2){
+  if(!Number.isFinite(value) || value === 0) return value;
+  const sig = clampInt(significantFigures, 1, 15);
+  const exponent = Math.floor(Math.log10(Math.abs(value)));
+  const scale = Math.pow(10, sig - 1 - exponent);
+  return Math.round(value * scale) / scale;
+}
+
 function decimalPlacesFor(x){
   if(Math.abs(x) < 1) return clampInt(settings.smallDecimals, 0, 8);
   if(Math.abs(x) < 10) return clampInt(settings.mediumDecimals, 0, 8);
@@ -565,7 +574,10 @@ function resultLimitsForMode(mode = settings.mode){
   return settings.resultLimitsByMode[mode];
 }
 
-function numberRange(pair = null){
+function numberRange(pair = null, useExponential = false){
+  if(settings.mode === 'ss' && useExponential){
+    return {min:1e-10, max:1e10};
+  }
   const numberSettings = numberSettingsForMode();
   let min = positiveNumber(numberSettings.minNumber, 0.01);
   let max = positiveNumber(numberSettings.maxNumber, 9999);
@@ -588,13 +600,14 @@ function numberRange(pair = null){
 }
 
 function randomVisibleNumber(useExponential = false, pair = null){
-  const range = numberRange(pair);
+  const range = numberRange(pair, useExponential);
   return useExponential ? randomExponentialNumber(range) : randomPlainNumber(range);
 }
 
 function randomPlainNumber(range){
   for(let attempt=0; attempt<200; attempt++){
-    const value = randomValueInRange(range.min, range.max);
+    const rawValue = randomValueInRange(range.min, range.max);
+    const value = roundToSignificant(rawValue, 2);
     const decimals = decimalPlacesFor(value);
     const visible = formatCz(value, decimals, decimals);
     const parsed = parseCzNumber(visible);
@@ -603,7 +616,8 @@ function randomPlainNumber(range){
     }
   }
 
-  const fallback = Math.min(range.max, Math.max(range.min, 1));
+  const fallbackRaw = Math.min(range.max, Math.max(range.min, 1));
+  const fallback = roundToSignificant(fallbackRaw, 2);
   const decimals = decimalPlacesFor(fallback);
   const visible = formatCz(fallback, decimals, decimals);
   return {visible, value:parseCzNumber(visible), exponential:false};
@@ -618,10 +632,11 @@ function randomExponentialNumber(range){
     const highMantissa = exponent === maxExp ? range.max / Math.pow(10, exponent) : 9.99;
     if(lowMantissa > highMantissa) continue;
     const mantissaRaw = randomFloat(Math.max(1, lowMantissa), Math.min(9.99, highMantissa));
-    const mantissa = Number(trimCz(formatCz(mantissaRaw, 0, 2)).replace(',', '.'));
+    const mantissa = roundToSignificant(mantissaRaw, 2);
+    if(mantissa < 1 || mantissa >= 10) continue;
     const value = mantissa * Math.pow(10, exponent);
     if(value >= range.min && value <= range.max){
-      const visible = `${trimCz(formatCz(mantissa, 0, 2))}·10${toSuperscript(exponent)}`;
+      const visible = `${trimCz(formatCz(mantissa, 0, 1))}·10${toSuperscript(exponent)}`;
       return {visible, value, exponential:true};
     }
   }
@@ -751,10 +766,11 @@ function formatPlainNumber(value){
 }
 
 function countVisibleSignificantFigures(visible){
-  let s = String(visible ?? '').replace(/\u202f/g, '').replace(/\s/g, '');
-  s = s.split('·10')[0].split('×10')[0];
-  s = s.replace(/^[+-]/, '').replace(/[,.]/g, '');
-  s = s.replace(/^0+/, '');
+  let raw = String(visible ?? '').replace(/\u202f/g, '').replace(/\s/g, '');
+  raw = raw.split('·10')[0].split('×10')[0].replace(/^[+-]/, '');
+  const hasDecimalSeparator = /[,.]/.test(raw);
+  let s = raw.replace(/[,.]/g, '').replace(/^0+/, '');
+  if(!hasDecimalSeparator) s = s.replace(/0+$/, '');
   return clampInt(s.length || 1, 1, 15);
 }
 

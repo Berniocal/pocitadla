@@ -112,8 +112,14 @@ for(const mode of ['zs','ss']){
 
       const input = visibleNumberToNumber(ex.value);
       assert(Number.isFinite(input) && input > 0, `Neplatné číslo v zadání: ${ex.value}`);
-      assert(input >= range.minNumber - 1e-12, `Zadání ${ex.value} je pod minimem ${range.minNumber} (${quantityId}, ${mode}).`);
-      assert(input <= range.maxNumber + 1e-12, `Zadání ${ex.value} překročilo maximum ${range.maxNumber} (${quantityId}, ${mode}).`);
+      assert(api.countVisibleSignificantFigures(ex.value) <= 2, `Zadání má více než dvě platné číslice: ${ex.value}.`);
+      if(mode === 'ss' && ex.exponentialInput){
+        assert(input >= 1e-10 - 1e-24, `Exponenciální zadání ${ex.value} je pod 10^-10.`);
+        assert(input <= 1e10 + 1e-2, `Exponenciální zadání ${ex.value} je nad 10^10.`);
+      }else{
+        assert(input >= range.minNumber - 1e-12, `Zadání ${ex.value} je pod minimem ${range.minNumber} (${quantityId}, ${mode}).`);
+        assert(input <= range.maxNumber + 1e-12, `Zadání ${ex.value} překročilo maximum ${range.maxNumber} (${quantityId}, ${mode}).`);
+      }
 
       const fromFactor = unitFactor(q, mode, ex.from);
       const toFactor = unitFactor(q, mode, ex.to);
@@ -142,10 +148,11 @@ for(const mode of ['zs','ss']){
       const ex = api.makeExample(i + 1, q, mode === 'ss' && (i % 2 === 1));
       assert(ex, `Veličina ${q.id} (${mode}) není generovatelná ani po opakovaných pokusech.`);
       assert.equal(ex.quantityId, q.id, `Veličina ${q.id} (${mode}) byla nahrazena za ${ex.quantityId}.`);
+      assert(api.countVisibleSignificantFigures(ex.value) <= 2, `Veličina ${q.id} (${mode}) vygenerovala více než dvě platné číslice: ${ex.value}.`);
       generated++;
     }
   }
 }
 
 console.log(`OK: ${generated} náhodně vygenerovaných příkladů prošlo kontrolami.`);
-console.log('Kontrolováno: povinná veličina, globální min/max zadání, převod z viditelného čísla, platné číslice, limit výsledku a Energie* bez kalorií.');
+console.log('Kontrolováno: povinná veličina, max. 2 platné číslice, min/max jen pro běžná zadání, exp. rozsah 10^-10 až 10^10, převod z viditelného čísla, limit výsledku a Energie* bez kalorií.');
