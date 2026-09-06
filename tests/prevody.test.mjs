@@ -189,7 +189,7 @@ for(const mode of ['zs','ss']){
   }
 }
 
-// Čas odstup v řádech ignoruje a výrazně preferuje běžné jednotky den/h/min/s/ms.
+// Čas odstup v řádech ignoruje, nepoužívá sousední jednotky a výrazně preferuje den/h/min/s/ms.
 {
   const cfg = structuredClone(defaults);
   cfg.mode = 'ss';
@@ -197,10 +197,13 @@ for(const mode of ['zs','ss']){
   api.setSettings(cfg);
   const time = quantityById('cas');
   const common = new Set(['den','h','min','s','ms']);
+  const order = ['den','h','min','s','ms','µs','ns','ps','fs'];
   let commonCount = 0;
   for(let i=0; i<1000; i++){
     const pair = api.chooseUnitPair(time.build('ss'), 'cas');
     assert(pair, 'Čas musí být generovatelný i při vysokém odstupu.');
+    const distance = Math.abs(order.indexOf(pair.from.unit) - order.indexOf(pair.to.unit));
+    assert(distance !== 1, `Čas nesmí použít sousední jednotky: ${pair.from.unit} → ${pair.to.unit}.`);
     if(common.has(pair.from.unit) && common.has(pair.to.unit)) commonCount++;
   }
   assert(commonCount >= 700, `Běžné časové dvojice mají výrazně převažovat; bylo jich ${commonCount}/1000.`);

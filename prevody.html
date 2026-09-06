@@ -177,7 +177,7 @@ p{line-height:1.45}
             <option value="5">5 řádů (alespoň 100 000×)</option>
             <option value="6">6 řádů (alespoň 1 000 000×)</option>
           </select>
-          <span class="small">Výchozí jsou 3 řády = alespoň 1 000×. Toto pravidlo se nepoužívá pro složené jednotky ani pro čas. U času se naopak upřednostňují běžné dvojice den, h, min, s a ms; velmi malé jednotky se mohou objevit jen občas.</span>
+          <span class="small">Výchozí jsou 3 řády = alespoň 1 000×. Toto pravidlo se nepoužívá pro složené jednotky ani pro čas. U času se nepoužívají bezprostředně sousední jednotky (např. h ↔ min nebo min ↔ s); upřednostňují se běžné jednotky den, h, min, s a ms a velmi malé jednotky se mohou objevit jen občas.</span>
         </div>
         <div class="settingField">
           <label class="check">
@@ -817,10 +817,18 @@ function randomFloat(min, max){
   return min + Math.random() * (max - min);
 }
 
+const timeUnitOrder = ['den','h','min','s','ms','µs','ns','ps','fs'];
 const commonTimeUnits = new Set(['den','h','min','s','ms']);
 
 function isCommonTimePair(pair){
   return commonTimeUnits.has(pair.from.unit) && commonTimeUnits.has(pair.to.unit);
+}
+
+function isAdjacentTimePair(pair){
+  const fromIndex = timeUnitOrder.indexOf(pair.from.unit);
+  const toIndex = timeUnitOrder.indexOf(pair.to.unit);
+  if(fromIndex < 0 || toIndex < 0) return false;
+  return Math.abs(fromIndex - toIndex) === 1;
 }
 
 function chooseUnitPair(units, quantityId = null){
@@ -849,11 +857,13 @@ function chooseUnitPair(units, quantityId = null){
 
   if(!candidates.length) return null;
 
-  // Čas má vlastní logiku: většinu příkladů skládáme z běžných jednotek,
-  // aby negeneroval hlavně dvojice typu ns ↔ ms. Velmi malé jednotky zůstávají možné.
+  // Čas má vlastní logiku: sousední jednotky (např. h ↔ min, min ↔ s) nepoužíváme.
+  // Většinu příkladů skládáme z běžných jednotek den/h/min/s/ms; velmi malé jednotky zůstávají možné jen občas.
   if(quantityId === 'cas'){
-    const common = candidates.filter(isCommonTimePair);
-    const pool = common.length && Math.random() < 0.85 ? common : candidates;
+    const nonAdjacent = candidates.filter(pair => !isAdjacentTimePair(pair));
+    const available = nonAdjacent.length ? nonAdjacent : candidates;
+    const common = available.filter(isCommonTimePair);
+    const pool = common.length && Math.random() < 0.85 ? common : available;
     const chosen = randomChoice(pool);
     return chosen ? {from:chosen.from, to:chosen.to} : null;
   }
