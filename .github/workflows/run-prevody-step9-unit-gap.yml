@@ -1,0 +1,23 @@
+name: Run prevody step 9 unit gap
+
+on:
+  push:
+    paths:
+      - '.github/workflows/run-prevody-step9-unit-gap.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python .github/scripts/prevody_step9_unit_gap.py
+      - run: node tests/prevody.test.mjs
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prevody.html tests/prevody.test.mjs
+          git diff --cached --quiet || git commit -m "Clarify unit-gap control"
+          git push
