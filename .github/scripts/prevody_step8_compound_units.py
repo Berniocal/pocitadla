@@ -3,11 +3,15 @@ from pathlib import Path
 html_path = Path('prevody.html')
 text = html_path.read_text(encoding='utf-8')
 
+# CSS už může obsahovat select z předchozí úpravy mobilního layoutu.
+old_css = ".settingField > input{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px;background:white;color:var(--ink)}"
+new_css = ".settingField > input,.settingField > select{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px;background:white;color:var(--ink)}"
+if old_css in text:
+    text = text.replace(old_css, new_css, 1)
+elif new_css not in text:
+    raise SystemExit('Expected settingField input/select CSS not found')
+
 repls = [
-    (
-        ".settingField > input{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px;background:white;color:var(--ink)}",
-        ".settingField > input,.settingField > select{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px;background:white;color:var(--ink)}"
-    ),
     (
         "  minJump:2,\n  resultLimitsByMode:{",
         "  minJump:2,\n  compoundUnitChangeByMode:{ss:'both'},\n  resultLimitsByMode:{"
