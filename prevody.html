@@ -55,6 +55,16 @@ p{line-height:1.45}
 .settingsOverlay.open{display:block}
 .settingsPanel{position:absolute;right:0;top:0;bottom:0;width:min(540px,100%);background:#fffaf1;border-left:1px solid var(--line);padding:18px;overflow:auto;box-shadow:-12px 0 28px rgba(70,50,20,.14)}
 .settingsHeader{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.settingsGroups{display:grid;gap:10px;margin:14px 0}
+.settingsGroup{background:white;border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:0 2px 10px rgba(70,50,20,.04)}
+.settingsGroup summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;cursor:pointer;font-weight:800;list-style:none;user-select:none;background:#fffdf9}
+.settingsGroup summary::-webkit-details-marker{display:none}
+.settingsGroup summary::after{content:'＋';font-size:18px;font-weight:500;color:var(--muted);line-height:1}
+.settingsGroup[open] summary{background:#fff8e8}
+.settingsGroup[open] summary::after{content:'−'}
+.settingsGroupBody{padding:14px;border-top:1px solid var(--line)}
+.settingsGroupBody>.small:first-child{margin-top:0}
+.settingsGroupBody>.small:last-child{margin-bottom:0}
 .settingsGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .settingField{display:flex;flex-direction:column;gap:5px}
 .settingField label{font-size:13px;color:var(--muted)}
@@ -143,90 +153,124 @@ p{line-height:1.45}
     </div>
     <p class="small">Tužkou můžeš změnit typy veličin, povolené předpony, počet příkladů i velikost a zaokrouhlení čísel v zadání.</p>
 
-    <div class="card">
-      <h3>Základ</h3>
-      <div class="settingsGrid">
-        <div class="settingField">
-          <label for="countInput">Počet příkladů</label>
-          <input id="countInput" type="number" min="1" max="60" step="1">
+    <div class="settingsGroups">
+      <details class="settingsGroup">
+        <summary>Počet příkladů</summary>
+        <div class="settingsGroupBody">
+          <div class="settingField">
+            <label for="countInput">Počet příkladů</label>
+            <input id="countInput" type="number" min="1" max="60" step="1">
+          </div>
         </div>
-        <div class="settingField">
-          <label for="minNumberInput">Nejmenší číslo v běžném zadání</label>
-          <input id="minNumberInput" type="number" min="0" step="any">
+      </details>
+
+      <details class="settingsGroup">
+        <summary>Čísla v zadání – minimum a maximum</summary>
+        <div class="settingsGroupBody">
+          <div class="settingsGrid">
+            <div class="settingField">
+              <label for="minNumberInput">Nejmenší číslo v běžném zadání</label>
+              <input id="minNumberInput" type="number" min="0" step="any">
+            </div>
+            <div class="settingField">
+              <label for="maxNumberInput">Největší číslo v běžném zadání</label>
+              <input id="maxNumberInput" type="number" min="0" step="any">
+            </div>
+          </div>
+          <p class="small">Na SŠ se tento min/max rozsah vztahuje jen na běžná zadání bez exponenciálního tvaru. Exponenciální zadání mají vlastní rozsah řádů.</p>
         </div>
-        <div class="settingField">
-          <label for="maxNumberInput">Největší číslo v běžném zadání</label>
-          <input id="maxNumberInput" type="number" min="0" step="any">
+      </details>
+
+      <details class="settingsGroup">
+        <summary>Desetinná místa v zadání</summary>
+        <div class="settingsGroupBody">
+          <div class="settingsGrid">
+            <div class="settingField">
+              <label for="smallDecimalsInput">Pro čísla menší než 1</label>
+              <input id="smallDecimalsInput" type="number" min="0" max="8" step="1">
+            </div>
+            <div class="settingField">
+              <label for="mediumDecimalsInput">Pro čísla menší než 10</label>
+              <input id="mediumDecimalsInput" type="number" min="0" max="8" step="1">
+            </div>
+            <div class="settingField">
+              <label for="largeDecimalsInput">Pro čísla od 10 výš</label>
+              <input id="largeDecimalsInput" type="number" min="0" max="8" step="1">
+            </div>
+          </div>
         </div>
-        <div class="settingField">
-          <label for="smallDecimalsInput">Desetinná místa pro čísla menší než 1</label>
-          <input id="smallDecimalsInput" type="number" min="0" max="8" step="1">
-        </div>
-        <div class="settingField">
-          <label for="mediumDecimalsInput">Desetinná místa pro čísla menší než 10</label>
-          <input id="mediumDecimalsInput" type="number" min="0" max="8" step="1">
-        </div>
-        <div class="settingField">
-          <label for="largeDecimalsInput">Desetinná místa pro čísla od 10 výš</label>
-          <input id="largeDecimalsInput" type="number" min="0" max="8" step="1">
-        </div>
-        <div class="settingField">
-          <label for="jumpInput">Preferovaný minimální rozdíl velikosti jednoduchých jednotek</label>
-          <select id="jumpInput">
-            <option value="1">1 řád (alespoň 10×)</option>
-            <option value="2">2 řády (alespoň 100×)</option>
-            <option value="3">3 řády (alespoň 1 000×)</option>
-            <option value="4">4 řády (alespoň 10 000×)</option>
-            <option value="5">5 řádů (alespoň 100 000×)</option>
-            <option value="6">6 řádů (alespoň 1 000 000×)</option>
-          </select>
-          <span class="small">Výchozí jsou 3 řády = alespoň 1 000×. Toto pravidlo se nepoužívá pro složené jednotky ani pro čas. U času se nepoužívají bezprostředně sousední jednotky (např. h ↔ min nebo min ↔ s); upřednostňují se běžné jednotky den, h, min, s a ms a velmi malé jednotky se mohou objevit jen občas.</span>
-        </div>
-        <div class="settingField">
+      </details>
+
+      <details class="settingsGroup">
+        <summary>Jednotky a směr převodu</summary>
+        <div class="settingsGroupBody">
+          <div class="settingField">
+            <label for="jumpInput">Preferovaný minimální rozdíl velikosti jednoduchých jednotek</label>
+            <select id="jumpInput">
+              <option value="1">1 řád (alespoň 10×)</option>
+              <option value="2">2 řády (alespoň 100×)</option>
+              <option value="3">3 řády (alespoň 1 000×)</option>
+              <option value="4">4 řády (alespoň 10 000×)</option>
+              <option value="5">5 řádů (alespoň 100 000×)</option>
+              <option value="6">6 řádů (alespoň 1 000 000×)</option>
+            </select>
+            <span class="small">Výchozí jsou 3 řády = alespoň 1 000×. Toto pravidlo se nepoužívá pro složené jednotky ani pro čas. U času se nepoužívají bezprostředně sousední jednotky a upřednostňují se den, h, min, s a ms.</span>
+          </div>
+          <div class="sep"></div>
           <label class="check">
+            <input id="niceInputRuleInput" type="checkbox">
+            <span>Podle směru převodu volit hezčí zadání: z menší jednotky číslo větší než 10, z větší jednotky číslo menší než 1.</span>
+          </label>
+          <div class="settingField" id="compoundConversionSetting" style="margin-top:12px">
+            <label for="compoundConversionInput">SŠ – u složených jednotek měnit</label>
+            <select id="compoundConversionInput">
+              <option value="both">obě části jednotky</option>
+              <option value="one">jen jednu část jednotky</option>
+            </select>
+            <span class="small">Např. m/s → km/h mění obě části; m/s → m/min jen jmenovatel a m/min → km/min jen čitatel.</span>
+          </div>
+        </div>
+      </details>
+
+      <details class="settingsGroup">
+        <summary>Výsledek</summary>
+        <div class="settingsGroupBody">
+          <label class="check" style="margin-bottom:10px">
             <input id="resultLimitEnabledInput" type="checkbox">
             <span>Omezit délku výsledku</span>
           </label>
+          <div class="settingsGrid">
+            <div class="settingField">
+              <label for="resultMaxIntegerDigitsInput">Maximálně číslic před desetinnou čárkou</label>
+              <input id="resultMaxIntegerDigitsInput" type="number" min="1" max="15" step="1">
+            </div>
+            <div class="settingField">
+              <label for="resultMaxDecimalsInput">Maximálně desetinných míst</label>
+              <input id="resultMaxDecimalsInput" type="number" min="0" max="20" step="1">
+            </div>
+          </div>
         </div>
-        <div class="settingField">
-          <label for="resultMaxIntegerDigitsInput">Maximálně číslic před desetinnou čárkou ve výsledku</label>
-          <input id="resultMaxIntegerDigitsInput" type="number" min="1" max="15" step="1">
-        </div>
-        <div class="settingField">
-          <label for="resultMaxDecimalsInput">Maximálně desetinných míst ve výsledku</label>
-          <input id="resultMaxDecimalsInput" type="number" min="0" max="20" step="1">
-        </div>
-      </div>
-      <p class="small" style="margin-bottom:0">Na SŠ se tento min/max rozsah vztahuje jen na běžná zadání bez exponenciálního tvaru. Exponenciální zadání mají vlastní rozsah řádů.</p>
-      <div class="sep"></div>
-      <label class="check">
-        <input id="niceInputRuleInput" type="checkbox">
-        <span>Podle směru převodu volit hezčí zadání: z menší jednotky číslo větší než 10, z větší jednotky číslo menší než 1.</span>
-      </label>
-      <div class="settingField" id="compoundConversionSetting" style="margin-top:12px">
-        <label for="compoundConversionInput">SŠ – u složených jednotek měnit</label>
-        <select id="compoundConversionInput">
-          <option value="both">obě části jednotky</option>
-          <option value="one">jen jednu část jednotky</option>
-        </select>
-        <span class="small">Platí pro veličiny jako rychlost, hustota a zrychlení. Např. m/s → km/h mění obě části; m/s → m/min mění jen jmenovatel a m/min → km/min jen čitatel.</span>
-      </div>
-    </div>
+      </details>
 
-    <div class="card">
-      <h3>Veličiny</h3>
-      <label class="check" style="margin-bottom:10px">
-        <input id="ensureAllQuantitiesInput" type="checkbox">
-        <span>Každá vybraná veličina se má v sadě objevit alespoň jednou.</span>
-      </label>
-      <p class="small" style="margin-top:0">Když je volba zapnutá a je vybráno více veličin než příkladů, počet příkladů se automaticky zvýší.</p>
-      <div id="quantityChecks" class="checks"></div>
-      <p class="small" style="margin-bottom:0">* Energie* obsahuje i Wh, kWh a MWh; na SŠ také eV, keV, MeV a GeV.</p>
-    </div>
+      <details class="settingsGroup">
+        <summary>Veličiny</summary>
+        <div class="settingsGroupBody">
+          <label class="check" style="margin-bottom:10px">
+            <input id="ensureAllQuantitiesInput" type="checkbox">
+            <span>Každá vybraná veličina se má v sadě objevit alespoň jednou.</span>
+          </label>
+          <p class="small">Když je volba zapnutá a je vybráno více veličin než příkladů, počet příkladů se automaticky zvýší. Na SŠ se exponenciální tvar nastavuje u každé veličiny zvlášť.</p>
+          <div id="quantityChecks" class="checks"></div>
+          <p class="small">* Energie* obsahuje i Wh, kWh a MWh; na SŠ také eV, keV, MeV a GeV.</p>
+        </div>
+      </details>
 
-    <div class="card">
-      <h3>Předpony</h3>
-      <div id="prefixChecks" class="prefixes"></div>
+      <details class="settingsGroup">
+        <summary>Předpony</summary>
+        <div class="settingsGroupBody">
+          <div id="prefixChecks" class="prefixes"></div>
+        </div>
+      </details>
     </div>
 
     <div class="btnrow">

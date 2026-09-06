@@ -3,6 +3,12 @@ import vm from 'node:vm';
 import assert from 'node:assert/strict';
 
 const html = fs.readFileSync('prevody.html', 'utf8');
+const settingsGroupCount = (html.match(/<details class="settingsGroup">/g) || []).length;
+assert.equal(settingsGroupCount, 7, 'Nastavení má být rozdělené do 7 samostatných sbalených balíků.');
+for(const title of ['Počet příkladů','Čísla v zadání – minimum a maximum','Desetinná místa v zadání','Jednotky a směr převodu','Výsledek','Veličiny','Předpony']){
+  assert(html.includes(`<summary>${title}</summary>`), `Chybí sbalitelný balík nastavení: ${title}.`);
+}
+assert(!/<details class="settingsGroup"[^>]*\sopen(?:\s|>|=)/.test(html), 'Balíky nastavení mají být po otevření panelu výchozí sbalené.');
 const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/);
 assert(scriptMatch, 'Nepodařilo se najít hlavní <script> v prevody.html.');
 
