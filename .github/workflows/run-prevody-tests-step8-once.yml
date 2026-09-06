@@ -19,3 +19,4 @@ jobs:
       - run: node tests/prevody.test.mjs
 # rerun after ZŠ speed fix
 # rerun after exp value-bound fix
+# rerun after SŠ one-part speed fix
