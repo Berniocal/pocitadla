@@ -16,7 +16,9 @@ code += `\nglobalThis.__prevodyTestApi = {
   makeExample,
   countVisibleSignificantFigures,
   resultFitsLimits,
-  usesExponentialForQuantity
+  usesExponentialForQuantity,
+  formatExponentialText,
+  numberRange
 };`;
 
 const sandbox = {
@@ -81,6 +83,20 @@ function unitFactor(quantity, mode, unitName){
 }
 
 const defaults = api.getDefaultSettings();
+
+// Exponent 0 se nesmí zobrazovat jako zbytečné ·10⁰.
+assert.equal(api.formatExponentialText('3,5', 0), '3,5', 'Exponent 0 se má zobrazit běžně.');
+assert.equal(api.formatExponentialText('3.5', 0), '3,5', 'Exponent 0 musí používat desetinnou čárku.');
+assert.equal(api.formatExponentialText('3.5', -10), '3,5·10⁻¹⁰', 'Dolní okraj exp. rozsahu se formátuje chybně.');
+assert.equal(api.formatExponentialText('9.6', 10), '9,6·10¹⁰', 'Horní okraj exp. rozsahu se formátuje chybně.');
+
+const ssRangeCfg = structuredClone(defaults);
+ssRangeCfg.mode = 'ss';
+api.setSettings(ssRangeCfg);
+const ssExpRange = api.numberRange(null, true);
+assert.equal(ssExpRange.min, 1e-10, 'SŠ exp. rozsah má začínat na 10^-10.');
+assert.equal(ssExpRange.max, 1e10, 'SŠ exp. rozsah má končit na 10^10.');
+
 const expectedDefaults = ['delka','plocha','objem','hmotnost','sila','rychlost','hustota','tlak','energie','cas'];
 assert.equal(JSON.stringify(defaults.quantitiesByMode.zs), JSON.stringify(expectedDefaults), 'Výchozí ZŠ veličiny se změnily.');
 assert.equal(JSON.stringify(defaults.quantitiesByMode.ss), JSON.stringify(expectedDefaults), 'Výchozí SŠ veličiny se změnily.');
@@ -172,4 +188,4 @@ for(const mode of ['zs','ss']){
 }
 
 console.log(`OK: ${generated} náhodně vygenerovaných příkladů prošlo kontrolami.`);
-console.log('Kontrolováno: povinná veličina, max. 2 platné číslice, exp. tvar po veličinách (default Délka/Hmotnost/Síla/Energie), min/max jen pro běžná zadání, exp. rozsah 10^-10 až 10^10, převod z viditelného čísla, limit výsledku a Energie* bez kalorií.');
+console.log('Kontrolováno: povinná veličina, max. 2 platné číslice, exp. tvar po veličinách, bez zbytečného 10^0, exp. rozsah 10^-10 až 10^10, min/max jen pro běžná zadání, převod z viditelného čísla, limit výsledku a Energie* bez kalorií.');

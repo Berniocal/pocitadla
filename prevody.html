@@ -654,7 +654,7 @@ function randomExponentialNumber(range){
     if(mantissa < 1 || mantissa >= 10) continue;
     const value = mantissa * Math.pow(10, exponent);
     if(value >= range.min && value <= range.max){
-      const visible = `${trimCz(formatCz(mantissa, 0, 1))}·10${toSuperscript(exponent)}`;
+      const visible = formatExponentialText(trimCz(formatCz(mantissa, 0, 1)), exponent);
       return {visible, value, exponential:true};
     }
   }
@@ -843,10 +843,15 @@ function resultFitsLimits(value, significantFigures, limits = resultLimitsForMod
   return integerPart.length <= maxIntegerDigits && fractionPart.length <= maxDecimals;
 }
 
+function formatExponentialText(mantissaText, exponent){
+  const mantissa = String(mantissaText).replace('.', ',');
+  return exponent === 0 ? mantissa : `${mantissa}·10${toSuperscript(exponent)}`;
+}
+
 function formatExpNumber(value, significantFigures = 3){
   if(value === 0) return '0';
   const {mantissa, exponent} = significantExponentialParts(value, significantFigures);
-  return `${mantissa.replace('.', ',')}·10${toSuperscript(exponent)}`;
+  return formatExponentialText(mantissa, exponent);
 }
 
 function trimCz(str){
