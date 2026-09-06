@@ -24,7 +24,8 @@ code += `\nglobalThis.__prevodyTestApi = {
   compoundDifferenceCount,
   chooseUnitPair,
   resultNeedsTenths,
-  formattedResultForPair
+  formattedResultForPair,
+  replacementExampleFor
 };`;
 
 const sandbox = {
@@ -156,6 +157,22 @@ for(const mode of ['zs','ss']){
   }
 }
 
+// Přegenerování jednoho příkladu musí zachovat jeho veličinu, pořadové číslo a aktuální exp. režim veličiny.
+{
+  const cfg = structuredClone(defaults);
+  cfg.mode = 'ss';
+  api.setSettings(cfg);
+  const q = quantityById('delka');
+  const original = api.makeExample(7, q, true);
+  assert(original, 'Nelze vytvořit výchozí příklad pro test přegenerování.');
+  const replacement = api.replacementExampleFor(original);
+  assert(replacement, 'Přegenerování jednoho příkladu selhalo.');
+  assert.equal(replacement.index, 7, 'Přegenerování musí zachovat pořadové číslo.');
+  assert.equal(replacement.quantityId, 'delka', 'Přegenerování musí zachovat veličinu.');
+  assert.equal(replacement.exponentialInput, true, 'Přegenerování musí zachovat aktuální exp. režim veličiny.');
+  assert(Math.abs(visibleExponent(replacement.value)) >= 3, 'Přegenerovaný exp. příklad musí mít |exponent| alespoň 3.');
+}
+
 // Ovladač odstupu znamená řády převodního poměru u jednoduchých jednotek: 2 = alespoň 100×.
 {
   const cfg = structuredClone(defaults);
@@ -258,10 +275,11 @@ for(const mode of ['zs','ss']){
         const fromFactorForSign = unitFactor(q, mode, ex.from);
         const toFactorForSign = unitFactor(q, mode, ex.to);
         const exponent = visibleExponent(ex.value);
+        assert(Math.abs(exponent) >= 3, `Exponenciální zadání musí mít |exponent| alespoň 3, ale je ${ex.value}.`);
         if(fromFactorForSign < toFactorForSign){
-          assert(exponent > 0, `Při převodu z menší jednotky ${ex.from} na větší ${ex.to} musí být exponent kladný, ale je ${ex.value}.`);
+          assert(exponent >= 3, `Při převodu z menší jednotky ${ex.from} na větší ${ex.to} musí být exponent alespoň +3, ale je ${ex.value}.`);
         }else if(fromFactorForSign > toFactorForSign){
-          assert(exponent < 0, `Při převodu z větší jednotky ${ex.from} na menší ${ex.to} musí být exponent záporný, ale je ${ex.value}.`);
+          assert(exponent <= -3, `Při převodu z větší jednotky ${ex.from} na menší ${ex.to} musí být exponent nejvýše -3, ale je ${ex.value}.`);
         }
       }else{
         assert(input >= range.minNumber - 1e-12, `Zadání ${ex.value} je pod minimem ${range.minNumber} (${quantityId}, ${mode}).`);
@@ -300,8 +318,9 @@ for(const mode of ['zs','ss']){
         const fromFactorForSign = unitFactor(q, mode, ex.from);
         const toFactorForSign = unitFactor(q, mode, ex.to);
         const exponent = visibleExponent(ex.value);
-        if(fromFactorForSign < toFactorForSign) assert(exponent > 0, `${q.id}: menší → větší musí mít kladný exponent (${ex.value}).`);
-        if(fromFactorForSign > toFactorForSign) assert(exponent < 0, `${q.id}: větší → menší musí mít záporný exponent (${ex.value}).`);
+        assert(Math.abs(exponent) >= 3, `${q.id}: exp. zadání musí mít |exponent| alespoň 3 (${ex.value}).`);
+        if(fromFactorForSign < toFactorForSign) assert(exponent >= 3, `${q.id}: menší → větší musí mít exponent alespoň +3 (${ex.value}).`);
+        if(fromFactorForSign > toFactorForSign) assert(exponent <= -3, `${q.id}: větší → menší musí mít exponent nejvýše -3 (${ex.value}).`);
       }
       generated++;
     }
@@ -369,4 +388,4 @@ for(const compoundMode of ['both','one']){
 }
 
 console.log(`OK: ${generated} náhodně vygenerovaných příkladů prošlo kontrolami.`);
-console.log('Kontrolováno: povinná veličina, realistické SI profily, rychlost 3–45 m/s, max. 2 platné číslice, SŠ složené jednotky jedna/obě části, exp. tvar zadání po veličinách, dva výsledky na SŠ (běžný + exp.), znaménko exponentu podle směru převodu, bez zbytečného 10^0, exp. rozsah 10^-10 až 10^10, min/max jen pro běžná zadání, převod z viditelného čísla, limit výsledku, rozumné jednotky náboje a Energie* bez kalorií.');
+console.log('Kontrolováno: povinná veličina, realistické SI profily, rychlost 3–45 m/s, max. 2 platné číslice, SŠ složené jednotky jedna/obě části, exp. tvar zadání po veličinách, dva výsledky na SŠ (běžný + exp.), znaménko exponentu podle směru převodu a |exponent| ≥ 3, bez zbytečného 10^0, exp. rozsah 10^-10 až 10^10, min/max jen pro běžná zadání, převod z viditelného čísla, limit výsledku, rozumné jednotky náboje a Energie* bez kalorií.');

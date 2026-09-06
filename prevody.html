@@ -38,6 +38,9 @@ p{line-height:1.45}
 .examples{display:grid;gap:12px}
 .example{background:white;border:1px solid var(--line);border-left:7px solid var(--accent);border-radius:8px;padding:14px;display:grid;gap:10px}
 .exampleTop{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.exampleActions{display:flex;align-items:center;gap:6px}
+.regenBtn{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-size:18px;line-height:1;color:var(--ink);padding:0}
+.regenBtn:hover{background:#fff8e8;border-color:var(--accent)}
 .task{font-size:22px;font-weight:780;line-height:1.3}
 .unit{white-space:nowrap}
 .ssResults{display:inline-flex;flex-direction:column;gap:2px;vertical-align:middle;margin-left:4px}
@@ -756,16 +759,24 @@ function randomExponentialNumber(range, pair = null){
   let allowedMinExp = minExp;
   let allowedMaxExp = maxExp;
   if(fromIsSmaller){
-    allowedMinExp = Math.max(1, minExp);
+    allowedMinExp = Math.max(3, minExp);
   }else if(fromIsLarger){
-    allowedMaxExp = Math.min(-1, maxExp);
+    allowedMaxExp = Math.min(-3, maxExp);
   }
   if(allowedMinExp > allowedMaxExp) return randomPlainNumber(range);
 
   for(let attempt=0; attempt<400; attempt++){
     let exponent = randomInt(allowedMinExp, allowedMaxExp);
-    if(!fromIsSmaller && !fromIsLarger && exponent === 0){
-      exponent = maxExp >= 1 ? 1 : (minExp <= -1 ? -1 : 0);
+    if(!fromIsSmaller && !fromIsLarger && Math.abs(exponent) < 3){
+      if(maxExp >= 3 && minExp <= -3){
+        exponent = Math.random() < 0.5 ? randomInt(3, maxExp) : randomInt(minExp, -3);
+      }else if(maxExp >= 3){
+        exponent = randomInt(3, maxExp);
+      }else if(minExp <= -3){
+        exponent = randomInt(minExp, -3);
+      }else{
+        return randomPlainNumber(range);
+      }
     }
     const lowMantissa = exponent === minExp ? range.min / Math.pow(10, exponent) : 1;
     const highMantissa = exponent === maxExp ? range.max / Math.pow(10, exponent) : 9.99;
@@ -792,8 +803,9 @@ function visibleNumberFromPhysicalSi(siValue, pair, useExponential = false){
     if(rounded < 1e-10 || rounded > 1e10) return null;
     const exponent = Math.floor(Math.log10(rounded));
     if(exponent < -10 || exponent > 10) return null;
-    if(pair.from.factor < pair.to.factor && exponent <= 0) return null;
-    if(pair.from.factor > pair.to.factor && exponent >= 0) return null;
+    if(Math.abs(exponent) < 3) return null;
+    if(pair.from.factor < pair.to.factor && exponent < 3) return null;
+    if(pair.from.factor > pair.to.factor && exponent > -3) return null;
     const mantissa = rounded / Math.pow(10, exponent);
     const visible = formatExponentialText(trimCz(formatCz(mantissa, 0, 1)), exponent);
     return {visible, value:rounded, exponential:true};
@@ -970,6 +982,29 @@ function makeExample(index, preferredQuantity, useExponentialInput = false){
     };
   }
   return null;
+}
+
+function replacementExampleFor(ex){
+  if(!ex) return null;
+  const q = quantityMeta.find(item => item.id === ex.quantityId && item.modes.includes(settings.mode));
+  if(!q) return null;
+  return makeExample(ex.index, q, usesExponentialForQuantity(q.id));
+}
+
+function regenerateExampleAt(index){
+  const position = examples.findIndex(ex => ex.index === index);
+  if(position < 0) return false;
+  const oldExample = examples[position];
+  const replacement = replacementExampleFor(oldExample);
+  if(!replacement){
+    $('copyState').textContent = `Příklad ${index} se nepodařilo přegenerovat bez porušení nastavení.`;
+    return false;
+  }
+  examples[position] = replacement;
+  generationFailures = generationFailures.filter(name => name !== oldExample.quantity);
+  $('copyState').textContent = `Příklad ${index} byl přegenerován.`;
+  renderExamples();
+  return true;
 }
 
 function generateExamples(){
@@ -1164,7 +1199,10 @@ function renderExamples(){
       <article class="example">
         <div class="exampleTop">
           <span class="pill good">${ex.index}. ${ex.quantity}</span>
-          <span class="pill">${settings.mode === 'ss' ? 'SŠ' : 'ZŠ'}</span>
+          <span class="exampleActions">
+            <span class="pill">${settings.mode === 'ss' ? 'SŠ' : 'ZŠ'}</span>
+            <button type="button" class="regenBtn" data-regenerate-index="${ex.index}" title="Přegenerovat tento příklad stejné veličiny" aria-label="Přegenerovat příklad ${ex.index}">↻</button>
+          </span>
         </div>
         <div class="task">${ex.value} <span class="unit">${ex.from}</span> = ${taskResult}</div>
       </article>
@@ -1198,7 +1236,7 @@ function renderStatus(){
   $('status').textContent = current ? current.name.replace(/^\d\)\s*/,'') : 'Převody jednotek';
   $('meta').innerHTML = settings.mode === 'zs'
     ? 'Výchozí ZŠ režim: běžný zápis bez exponenciálního tvaru.'
-    : 'SŠ režim: exponenciální tvar zadání se nastavuje samostatně u každé veličiny. Výsledek se vždy zobrazí dvakrát – běžně i v exponenciálním tvaru. V zadání je při převodu z menší jednotky na větší exponent kladný, opačným směrem záporný.';
+    : 'SŠ režim: exponenciální tvar zadání se nastavuje samostatně u každé veličiny. V exponenciálním zadání má mocnina absolutní hodnotu alespoň 3. Výsledek se vždy zobrazí dvakrát – běžně i v exponenciálním tvaru. Při převodu z menší jednotky na větší je exponent alespoň +3, opačným směrem nejvýše −3.';
   $('toggleAnswersBtn').textContent = answersVisible ? 'Skrýt výsledky' : 'Zobrazit výsledky';
 }
 
@@ -1345,6 +1383,11 @@ function fallbackCopy(text){
 
 function wireEvents(){
   $('generateBtn').addEventListener('click', generateExamples);
+  $('examples').addEventListener('click', event => {
+    const button = event.target.closest('[data-regenerate-index]');
+    if(!button) return;
+    regenerateExampleAt(Number(button.dataset.regenerateIndex));
+  });
   $('toggleAnswersBtn').addEventListener('click', () => {
     answersVisible = !answersVisible;
     renderAll();
