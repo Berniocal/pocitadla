@@ -70,6 +70,13 @@ function nearlyEqual(a, b, rel = 1e-12){
   return Math.abs(a - b) <= rel * scale;
 }
 
+function visibleExponent(visible){
+  const compact = String(visible).replace(/\u202f/g, '').replace(/\s/g, '');
+  const parts = compact.split('·10');
+  if(parts.length === 1) return 0;
+  return Number([...parts[1]].map(ch => superscriptDigits[ch] ?? ch).join(''));
+}
+
 function quantityById(id){
   const q = api.quantityMeta.find(item => item.id === id);
   assert(q, `Chybí veličina ${id}.`);
@@ -149,6 +156,14 @@ for(const mode of ['zs','ss']){
       if(mode === 'ss' && ex.exponentialInput){
         assert(input >= 1e-10 - 1e-24, `Exponenciální zadání ${ex.value} je pod 10^-10.`);
         assert(input <= 1e10 + 1e-2, `Exponenciální zadání ${ex.value} je nad 10^10.`);
+        const fromFactorForSign = unitFactor(q, mode, ex.from);
+        const toFactorForSign = unitFactor(q, mode, ex.to);
+        const exponent = visibleExponent(ex.value);
+        if(fromFactorForSign < toFactorForSign){
+          assert(exponent > 0, `Při převodu z menší jednotky ${ex.from} na větší ${ex.to} musí být exponent kladný, ale je ${ex.value}.`);
+        }else if(fromFactorForSign > toFactorForSign){
+          assert(exponent < 0, `Při převodu z větší jednotky ${ex.from} na menší ${ex.to} musí být exponent záporný, ale je ${ex.value}.`);
+        }
       }else{
         assert(input >= range.minNumber - 1e-12, `Zadání ${ex.value} je pod minimem ${range.minNumber} (${quantityId}, ${mode}).`);
         assert(input <= range.maxNumber + 1e-12, `Zadání ${ex.value} překročilo maximum ${range.maxNumber} (${quantityId}, ${mode}).`);
@@ -182,10 +197,17 @@ for(const mode of ['zs','ss']){
       assert(ex, `Veličina ${q.id} (${mode}) není generovatelná ani po opakovaných pokusech.`);
       assert.equal(ex.quantityId, q.id, `Veličina ${q.id} (${mode}) byla nahrazena za ${ex.quantityId}.`);
       assert(api.countVisibleSignificantFigures(ex.value) <= 2, `Veličina ${q.id} (${mode}) vygenerovala více než dvě platné číslice: ${ex.value}.`);
+      if(mode === 'ss' && ex.exponentialInput){
+        const fromFactorForSign = unitFactor(q, mode, ex.from);
+        const toFactorForSign = unitFactor(q, mode, ex.to);
+        const exponent = visibleExponent(ex.value);
+        if(fromFactorForSign < toFactorForSign) assert(exponent > 0, `${q.id}: menší → větší musí mít kladný exponent (${ex.value}).`);
+        if(fromFactorForSign > toFactorForSign) assert(exponent < 0, `${q.id}: větší → menší musí mít záporný exponent (${ex.value}).`);
+      }
       generated++;
     }
   }
 }
 
 console.log(`OK: ${generated} náhodně vygenerovaných příkladů prošlo kontrolami.`);
-console.log('Kontrolováno: povinná veličina, max. 2 platné číslice, exp. tvar po veličinách, bez zbytečného 10^0, exp. rozsah 10^-10 až 10^10, min/max jen pro běžná zadání, převod z viditelného čísla, limit výsledku a Energie* bez kalorií.');
+console.log('Kontrolováno: povinná veličina, max. 2 platné číslice, exp. tvar po veličinách, znaménko exponentu podle směru převodu, bez zbytečného 10^0, exp. rozsah 10^-10 až 10^10, min/max jen pro běžná zadání, převod z viditelného čísla, limit výsledku a Energie* bez kalorií.');

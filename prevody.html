@@ -619,7 +619,7 @@ function numberRange(pair = null, useExponential = false){
 
 function randomVisibleNumber(useExponential = false, pair = null){
   const range = numberRange(pair, useExponential);
-  return useExponential ? randomExponentialNumber(range) : randomPlainNumber(range);
+  return useExponential ? randomExponentialNumber(range, pair) : randomPlainNumber(range);
 }
 
 function randomPlainNumber(range){
@@ -641,11 +641,25 @@ function randomPlainNumber(range){
   return {visible, value:parseCzNumber(visible), exponential:false};
 }
 
-function randomExponentialNumber(range){
+function randomExponentialNumber(range, pair = null){
   const minExp = Math.floor(Math.log10(range.min));
   const maxExp = Math.floor(Math.log10(range.max));
+  const fromIsSmaller = Boolean(pair && pair.from.factor < pair.to.factor);
+  const fromIsLarger = Boolean(pair && pair.from.factor > pair.to.factor);
+  let allowedMinExp = minExp;
+  let allowedMaxExp = maxExp;
+  if(fromIsSmaller){
+    allowedMinExp = Math.max(1, minExp);
+  }else if(fromIsLarger){
+    allowedMaxExp = Math.min(-1, maxExp);
+  }
+  if(allowedMinExp > allowedMaxExp) return randomPlainNumber(range);
+
   for(let attempt=0; attempt<400; attempt++){
-    const exponent = randomInt(minExp, maxExp);
+    let exponent = randomInt(allowedMinExp, allowedMaxExp);
+    if(!fromIsSmaller && !fromIsLarger && exponent === 0){
+      exponent = maxExp >= 1 ? 1 : (minExp <= -1 ? -1 : 0);
+    }
     const lowMantissa = exponent === minExp ? range.min / Math.pow(10, exponent) : 1;
     const highMantissa = exponent === maxExp ? range.max / Math.pow(10, exponent) : 9.99;
     if(lowMantissa > highMantissa) continue;
@@ -947,7 +961,7 @@ function renderStatus(){
   $('status').textContent = current ? current.name.replace(/^\d\)\s*/,'') : 'Převody jednotek';
   $('meta').innerHTML = settings.mode === 'zs'
     ? 'Výchozí ZŠ režim: běžný zápis bez exponenciálního tvaru.'
-    : 'SŠ režim: exponenciální tvar zadání i výsledku se nastavuje samostatně u každé veličiny.';
+    : 'SŠ režim: exponenciální tvar zadání i výsledku se nastavuje samostatně u každé veličiny. V zadání je při převodu z menší jednotky na větší exponent kladný, opačným směrem záporný.';
   $('toggleAnswersBtn').textContent = answersVisible ? 'Skrýt výsledky' : 'Zobrazit výsledky';
 }
 
