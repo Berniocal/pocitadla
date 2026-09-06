@@ -18,7 +18,8 @@ code += `\nglobalThis.__prevodyTestApi = {
   resultFitsLimits,
   usesExponentialForQuantity,
   formatExponentialText,
-  numberRange
+  numberRange,
+  resultTextsForExample
 };`;
 
 const sandbox = {
@@ -103,6 +104,18 @@ api.setSettings(ssRangeCfg);
 const ssExpRange = api.numberRange(null, true);
 assert.equal(ssExpRange.min, 1e-10, 'SŠ exp. rozsah má začínat na 10^-10.');
 assert.equal(ssExpRange.max, 1e10, 'SŠ exp. rozsah má končit na 10^10.');
+
+const dualResultProbe = {resultPlain:'12 000', resultExp:'1,2·10⁴'};
+assert.deepEqual(
+  JSON.parse(JSON.stringify(api.resultTextsForExample(dualResultProbe, 'ss'))),
+  {plain:'12 000', exponential:'1,2·10⁴'},
+  'Na SŠ musí být dostupný běžný i exponenciální výsledek.'
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(api.resultTextsForExample(dualResultProbe, 'zs'))),
+  {plain:'12 000', exponential:null},
+  'Na ZŠ se má zobrazovat jen běžný výsledek.'
+);
 
 const expectedDefaults = ['delka','plocha','objem','hmotnost','sila','rychlost','hustota','tlak','energie','cas'];
 assert.equal(JSON.stringify(defaults.quantitiesByMode.zs), JSON.stringify(expectedDefaults), 'Výchozí ZŠ veličiny se změnily.');
@@ -210,4 +223,4 @@ for(const mode of ['zs','ss']){
 }
 
 console.log(`OK: ${generated} náhodně vygenerovaných příkladů prošlo kontrolami.`);
-console.log('Kontrolováno: povinná veličina, max. 2 platné číslice, exp. tvar po veličinách, znaménko exponentu podle směru převodu, bez zbytečného 10^0, exp. rozsah 10^-10 až 10^10, min/max jen pro běžná zadání, převod z viditelného čísla, limit výsledku a Energie* bez kalorií.');
+console.log('Kontrolováno: povinná veličina, max. 2 platné číslice, exp. tvar zadání po veličinách, dva výsledky na SŠ (běžný + exp.), znaménko exponentu podle směru převodu, bez zbytečného 10^0, exp. rozsah 10^-10 až 10^10, min/max jen pro běžná zadání, převod z viditelného čísla, limit výsledku a Energie* bez kalorií.');
