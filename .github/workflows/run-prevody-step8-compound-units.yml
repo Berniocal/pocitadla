@@ -1,0 +1,23 @@
+name: Run prevody step 8 compound units
+
+on:
+  push:
+    paths:
+      - '.github/workflows/run-prevody-step8-compound-units.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python .github/scripts/prevody_step8_compound_units.py
+      - run: node tests/prevody.test.mjs
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prevody.html tests/prevody.test.mjs
+          git diff --cached --quiet || git commit -m "Add SŠ compound-unit change mode"
+          git push
