@@ -56,11 +56,6 @@ p{line-height:1.45}
 .checks{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px}
 .check,.prefixCheck{display:flex;align-items:center;gap:8px;background:white;border:1px solid var(--line);border-radius:8px;padding:8px;line-height:1.2}
 .check input,.prefixCheck input{accent-color:var(--accent2);margin:0;flex:0 0 auto}
-.quantityRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:stretch}
-.quantityRow .check{margin:0}
-.expToggle{display:flex;align-items:center;justify-content:center;gap:6px;min-width:72px;background:#f8fffc;border:1px solid #aee1d1;border-radius:8px;padding:8px;font-size:13px;font-weight:800;color:#285f55;cursor:pointer}
-.expToggle input{accent-color:var(--accent2);margin:0}
-.expToggle.disabled{opacity:.45;cursor:not-allowed}
 .prefixes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
 .prefixCheck{justify-content:center;font-weight:700}
 .sep{height:1px;background:var(--line);margin:16px 0}
@@ -144,12 +139,6 @@ p{line-height:1.45}
           <input id="countInput" type="number" min="1" max="60" step="1">
         </div>
         <div class="settingField">
-          <label class="check">
-            <input id="numberLimitEnabledInput" type="checkbox">
-            <span>Omezit nejmenší a největší číslo v zadání</span>
-          </label>
-        </div>
-        <div class="settingField">
           <label for="minNumberInput">Nejmenší číslo v zadání</label>
           <input id="minNumberInput" type="number" min="0" step="any">
         </div>
@@ -203,8 +192,7 @@ p{line-height:1.45}
       </label>
       <p class="small" style="margin-top:0">Když je volba zapnutá a je vybráno více veličin než příkladů, počet příkladů se automaticky zvýší.</p>
       <div id="quantityChecks" class="checks"></div>
-      <p class="small" style="margin-bottom:6px">* Energie* obsahuje i Wh, kWh, MWh a cal; na SŠ také eV, keV, MeV a GeV.</p>
-      <p class="small" style="margin-bottom:0">U veličin, kde je to fyzikálně důležité, generátor používá realistický výchozí rozsah v SI. Například rychlost na ZŠ odpovídá hlavně cyklistům a autům, na SŠ se přidávají družice a vysoké rychlosti; hustota zůstává v rozsahu běžných pozemských látek a elektrický náboj v pC–mC. U širokých veličin jako délka, hmotnost, napětí nebo energie zůstává obecný rozsah.</p>
+      <p class="small" style="margin-bottom:0">* Energie* obsahuje i Wh, kWh, MWh, cal a kcal; na SŠ také eV, keV, MeV a GeV.</p>
     </div>
 
     <div class="card">
@@ -224,7 +212,7 @@ const NBSP = '\u202f';
 
 const modes = [
   {id:'zs', name:'1) Převody pro ZŠ', note:'bez exponenciálního tvaru'},
-  {id:'ss', name:'2) Převody pro SŠ', note:'exp. tvar podle nastavení veličin'}
+  {id:'ss', name:'2) Převody pro SŠ', note:'výsledek povinně v exponenciálním tvaru'}
 ];
 
 const prefixes = [
@@ -249,8 +237,8 @@ const defaultSettings = {
   mode:'zs',
   count:10,
   numberSettingsByMode:{
-    zs:{inputLimitEnabled:true, minNumber:0.1, maxNumber:100, niceInputByUnitSize:true},
-    ss:{inputLimitEnabled:false, minNumber:0.01, maxNumber:9999, niceInputByUnitSize:false}
+    zs:{minNumber:0.1, maxNumber:100, niceInputByUnitSize:true},
+    ss:{minNumber:0.01, maxNumber:9999, niceInputByUnitSize:false}
   },
   smallDecimals:2,
   mediumDecimals:1,
@@ -261,7 +249,6 @@ const defaultSettings = {
     ss:{enabled:false, maxIntegerDigits:7, maxDecimals:6}
   },
   ensureAllQuantitiesByMode:{zs:true, ss:true},
-  expQuantitiesSS:['delka','hmotnost','sila','energie'],
   prefixes:['n','µ','m','c','d','','da','h','k','M','G'],
   quantitiesByMode:{
     zs:['delka','plocha','objem','hmotnost','sila','rychlost','hustota','tlak','energie','cas'],
@@ -300,89 +287,6 @@ const quantityMeta = [
   {id:'indukcnost', title:'Indukčnost', modes:['ss'], build:buildInductanceUnits},
   {id:'latkovemnozstvi', title:'Látkové množství', modes:['ss'], build:buildAmountUnits}
 ];
-
-// Realistické výchozí fyzikální rozsahy jsou zadány v SI.
-// U širokých veličin (délka, hmotnost, napětí, energie...) zůstává původní
-// obecný generátor. Omezení používáme hlavně tam, kde by náhodné hodnoty
-// snadno přestaly dávat fyzikální nebo školní smysl.
-const quantityValueProfiles = {
-  rychlost:{
-    zs:{bands:[
-      {min:3, max:15, weight:.45},              // cyklista
-      {min:15, max:45, weight:.55}              // běžné auto
-    ]},
-    ss:{bands:[
-      {min:1, max:70, weight:.60},               // běžné pozemské rychlosti
-      {min:1000, max:8000, weight:.25},          // rakety a družice
-      {min:2e8, max:2.99792458e8, weight:.15}    // relativistické rychlosti blízko rychlosti světla
-    ]}
-  },
-  hustota:{
-    zs:{bands:[
-      {min:.8, max:2, weight:.10},               // plyny kolem běžných podmínek
-      {min:500, max:1500, weight:.45},           // kapaliny a lehké materiály
-      {min:1500, max:20000, weight:.45, log:true}// běžné pevné látky a kovy
-    ]},
-    ss:{bands:[
-      {min:.05, max:10, weight:.15, log:true},
-      {min:500, max:2000, weight:.35},
-      {min:2000, max:23000, weight:.50, log:true}// zhruba do hustoty nejtěžších běžných prvků
-    ]}
-  },
-  tlak:{
-    zs:{min:1e3, max:2e5, log:true},
-    ss:{min:1, max:1e9, log:true}
-  },
-  vykon:{
-    zs:{min:1, max:2e5, log:true},
-    ss:{min:1e-6, max:1e9, log:true}
-  },
-  proud:{
-    zs:{min:1e-3, max:20, log:true},
-    ss:{min:1e-9, max:1e4, log:true}
-  },
-  odpor:{
-    zs:{min:1, max:1e6, log:true},
-    ss:{min:1e-3, max:1e9, log:true}
-  },
-  zrychleni:{
-    zs:{min:.5, max:20},
-    ss:{min:1e-3, max:1e4, log:true}
-  },
-  frekvence:{
-    zs:{min:1, max:2e4, log:true},
-    ss:{min:1e-3, max:1e12, log:true}
-  },
-  uhel:{
-    zs:{min:Math.PI/180, max:2*Math.PI},
-    ss:{min:Math.PI/180, max:2*Math.PI}
-  },
-  naboj:{
-    ss:{bands:[
-      {min:1e-9, max:1e-5, weight:.70, log:true},// hlavně nC až µC
-      {min:1e-12, max:1e-9, weight:.15, log:true},
-      {min:1e-5, max:1e-3, weight:.15, log:true}
-    ]}
-  },
-  kapacita:{
-    ss:{min:1e-12, max:1e-2, log:true}           // pF až mF
-  },
-  vodivost:{
-    ss:{min:1e-6, max:10, log:true}
-  },
-  magindukce:{
-    ss:{min:1e-6, max:10, log:true}              // µT až jednotky T
-  },
-  magnetickytok:{
-    ss:{min:1e-9, max:1, log:true}
-  },
-  indukcnost:{
-    ss:{min:1e-6, max:10, log:true}
-  },
-  latkovemnozstvi:{
-    ss:{min:1e-6, max:1e3, log:true}
-  }
-};
 
 const $ = id => document.getElementById(id);
 const prefixById = Object.fromEntries(prefixes.map(p => [p.id, p]));
@@ -523,7 +427,8 @@ function buildExtendedEnergyUnits(mode){
     unit('Wh', 3600, Math.log10(3600), null),
     unit('kWh', 3.6e6, Math.log10(3.6e6), null),
     unit('MWh', 3.6e9, Math.log10(3.6e9), null),
-    unit('cal', 4.184, Math.log10(4.184), null)
+    unit('cal', 4.184, Math.log10(4.184), null),
+    unit('kcal', 4184, Math.log10(4184), null)
   ];
   if(mode === 'ss'){
     units.push(
@@ -562,7 +467,7 @@ function buildPowerUnits(){
 }
 
 function buildChargeUnits(){
-  return prefixedUnits('C', ['p','n','µ','m']);
+  return prefixedUnits('C', ['f','p','n','µ','m','','k','M','G','T','P']);
 }
 
 function buildCapacitanceUnits(){
@@ -631,83 +536,6 @@ function selectedQuantities(){
   return availableQuantities().filter(q => selected.has(q.id));
 }
 
-function expEnabledForQuantity(quantityId){
-  if(settings.mode !== 'ss') return false;
-  if(!Array.isArray(settings.expQuantitiesSS)) settings.expQuantitiesSS = [...defaultSettings.expQuantitiesSS];
-  return settings.expQuantitiesSS.includes(quantityId);
-}
-
-function valueProfileForQuantity(quantityId){
-  const profile = quantityValueProfiles[quantityId];
-  return profile ? (profile[settings.mode] || null) : null;
-}
-
-function sampleProfileValue(profile){
-  let range = profile;
-  if(Array.isArray(profile.bands) && profile.bands.length){
-    const total = profile.bands.reduce((sum, band) => sum + (Number(band.weight) || 0), 0) || profile.bands.length;
-    let pick = Math.random() * total;
-    range = profile.bands[profile.bands.length - 1];
-    for(const band of profile.bands){
-      pick -= (Number(band.weight) || (total === profile.bands.length ? 1 : 0));
-      if(pick <= 0){ range = band; break; }
-    }
-  }
-  const min = Number(range.min);
-  const max = Number(range.max);
-  if(!(min > 0) || !(max > min)) return null;
-  return range.log
-    ? Math.pow(10, randomFloat(Math.log10(min), Math.log10(max)))
-    : randomFloat(min, max);
-}
-
-function visibleNumberFromFixedValue(value, useExponential){
-  if(!Number.isFinite(value) || value <= 0) return null;
-
-  if(useExponential){
-    const exponent = Math.floor(Math.log10(Math.abs(value)));
-    const mantissa = value / Math.pow(10, exponent);
-    const mantissaVisible = trimCz(formatCz(mantissa, 0, 2));
-    const parsedMantissa = parseCzNumber(mantissaVisible);
-    if(exponent === 0){
-      return {visible:mantissaVisible, value:parsedMantissa, exponential:false};
-    }
-    return {
-      visible:`${mantissaVisible}·10${toSuperscript(exponent)}`,
-      value:parsedMantissa * Math.pow(10, exponent),
-      exponential:true
-    };
-  }
-
-  let decimals = decimalPlacesFor(value);
-  const abs = Math.abs(value);
-  if(abs > 0 && abs < Math.pow(10, -decimals)){
-    decimals = Math.min(12, Math.ceil(-Math.log10(abs)) + 2);
-  }
-  const visible = formatCz(value, decimals, decimals);
-  const parsed = parseCzNumber(visible);
-  if(!(parsed > 0)) return null;
-  return {visible, value:parsed, exponential:false};
-}
-
-function randomVisibleNumberForQuantity(quantity, useExponential, pair){
-  const profile = valueProfileForQuantity(quantity.id);
-  if(!profile) return randomVisibleNumber(useExponential, pair);
-
-  for(let attempt=0; attempt<200; attempt++){
-    const siValue = sampleProfileValue(profile);
-    if(!(siValue > 0)) continue;
-    const inputValue = siValue / pair.from.factor;
-    if(useExponential){
-      const exponent = Math.floor(Math.log10(Math.abs(inputValue)));
-      if(exponent < -10 || exponent > 10) continue;
-    }
-    const formatted = visibleNumberFromFixedValue(inputValue, useExponential);
-    if(formatted) return formatted;
-  }
-  return null;
-}
-
 function randomInt(min, max){
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -740,11 +568,6 @@ function resultLimitsForMode(mode = settings.mode){
 
 function numberRange(pair = null){
   const numberSettings = numberSettingsForMode();
-  if(numberSettings.inputLimitEnabled === false){
-    // U SŠ bez globálního omezení mají přednost fyzikální profily jednotlivých veličin.
-    // Široké veličiny bez profilu dostanou pouze technický rozsah, aby generátor zůstal numericky stabilní.
-    return settings.mode === 'ss' ? {min:1e-10, max:1e10} : {min:0.1, max:100};
-  }
   let min = positiveNumber(numberSettings.minNumber, 0.01);
   let max = positiveNumber(numberSettings.maxNumber, 9999);
   if(min > max) [min, max] = [max, min];
@@ -788,17 +611,17 @@ function randomPlainNumber(range){
 }
 
 function randomExponentialNumber(range){
-  const minExp = settings.mode === 'ss' ? -10 : Math.floor(Math.log10(range.min));
-  const maxExp = settings.mode === 'ss' ? 10 : Math.floor(Math.log10(range.max));
-  const exponents = [];
-  for(let e = minExp; e <= maxExp; e++) if(e !== 0) exponents.push(e);
-
+  const minExp = Math.floor(Math.log10(range.min));
+  const maxExp = Math.floor(Math.log10(range.max));
   for(let attempt=0; attempt<400; attempt++){
-    const exponent = randomChoice(exponents);
-    const mantissaRaw = randomFloat(1, 9.99);
+    const exponent = randomInt(minExp, maxExp);
+    const lowMantissa = exponent === minExp ? range.min / Math.pow(10, exponent) : 1;
+    const highMantissa = exponent === maxExp ? range.max / Math.pow(10, exponent) : 9.99;
+    if(lowMantissa > highMantissa) continue;
+    const mantissaRaw = randomFloat(Math.max(1, lowMantissa), Math.min(9.99, highMantissa));
     const mantissa = Number(trimCz(formatCz(mantissaRaw, 0, 2)).replace(',', '.'));
     const value = mantissa * Math.pow(10, exponent);
-    if(Number.isFinite(value) && value > 0){
+    if(value >= range.min && value <= range.max){
       const visible = `${trimCz(formatCz(mantissa, 0, 2))}·10${toSuperscript(exponent)}`;
       return {visible, value, exponential:true};
     }
@@ -845,22 +668,15 @@ function shuffle(arr){
   return out;
 }
 
-function makeExample(index, preferredQuantity){
-  const lockPreferred = Boolean(preferredQuantity && ensureAllQuantitiesForMode());
-  const quantities = lockPreferred
-    ? [preferredQuantity]
-    : preferredQuantity
-      ? [preferredQuantity, ...selectedQuantities().filter(q => q.id !== preferredQuantity.id)]
-      : selectedQuantities();
+function makeExample(index, preferredQuantity, useExponentialInput = false){
+  const quantities = preferredQuantity ? [preferredQuantity, ...selectedQuantities().filter(q => q.id !== preferredQuantity.id)] : selectedQuantities();
   if(!quantities.length) return null;
   for(let guard=0; guard<200; guard++){
-    const q = lockPreferred ? preferredQuantity : (guard < quantities.length ? quantities[guard] : randomChoice(quantities));
+    const q = guard < quantities.length ? quantities[guard] : randomChoice(quantities);
     const units = q.build(settings.mode).filter(u => Number.isFinite(u.factor) && u.factor !== 0);
     const pair = chooseUnitPair(units);
     if(!pair) continue;
-    const useExponential = expEnabledForQuantity(q.id);
-    const x = randomVisibleNumberForQuantity(q, useExponential, pair);
-    if(!x) continue;
+    const x = randomVisibleNumber(useExponentialInput, pair);
     const result = x.value * pair.from.factor / pair.to.factor;
     if(!Number.isFinite(result) || result === 0) continue;
     const significantFigures = countVisibleSignificantFigures(x.visible);
@@ -872,7 +688,6 @@ function makeExample(index, preferredQuantity){
       quantityId:q.id,
       value:x.visible,
       exponentialInput:x.exponential,
-      useExponential,
       from:pair.from.unit,
       to:pair.to.unit,
       result,
@@ -893,6 +708,12 @@ function generateExamples(){
   }
   let cycle = shuffle(quantities);
   let previousId = null;
+  const expInputSlots = new Set();
+  if(settings.mode === 'ss'){
+    const target = Math.round(count / 2);
+    const slots = shuffle(Array.from({length:count}, (_, i) => i + 1));
+    slots.slice(0, target).forEach(i => expInputSlots.add(i));
+  }
   examples = [];
   for(let i=1; i<=count; i++){
     if(cycle.length === 0) cycle = shuffle(quantities);
@@ -900,7 +721,7 @@ function generateExamples(){
       cycle.push(cycle.shift());
     }
     const preferred = cycle.shift();
-    const ex = makeExample(i, preferred);
+    const ex = makeExample(i, preferred, expInputSlots.has(i));
     if(ex) examples.push(ex);
     previousId = ex ? ex.quantityId : previousId;
   }
@@ -991,7 +812,6 @@ function resultFitsLimits(value, significantFigures, limits = resultLimitsForMod
 function formatExpNumber(value, significantFigures = 3){
   if(value === 0) return '0';
   const {mantissa, exponent} = significantExponentialParts(value, significantFigures);
-  if(exponent === 0) return mantissa.replace('.', ',');
   return `${mantissa.replace('.', ',')}·10${toSuperscript(exponent)}`;
 }
 
@@ -1044,7 +864,7 @@ function renderExamples(){
     return;
   }
   $('examples').innerHTML = examples.map(ex => {
-    const resultText = settings.mode === 'ss' && ex.useExponential ? ex.resultExp : ex.resultPlain;
+    const resultText = settings.mode === 'ss' ? ex.resultExp : ex.resultPlain;
     const taskResult = answersVisible
       ? `${resultText} <span class="unit">${ex.to}</span>`
       : `<span class="unit">${ex.to}</span>`;
@@ -1065,13 +885,12 @@ function renderSummary(){
   const prefixText = selectedPrefixes().map(p => p.label).join(', ');
   const numberSettings = numberSettingsForMode();
   const resultLimits = resultLimitsForMode();
-  const expCount = settings.mode === 'ss' ? selectedQuantities().filter(q => expEnabledForQuantity(q.id)).length : 0;
   $('summary').innerHTML = `
     <span class="pill good">${settings.count} příkladů</span>
     <span class="pill">${qCount} veličin</span>
     <span class="pill">${ensureAllQuantitiesForMode() ? 'všechny vybrané veličiny v sadě' : 'veličiny náhodně'}</span>
-    <span class="pill">${numberSettings.inputLimitEnabled === false ? 'omezení čísla v zadání vypnuto' : `${formatPlainNumber(numberSettings.minNumber)} až ${formatPlainNumber(numberSettings.maxNumber)}`}</span>
-    <span class="pill">${settings.mode === 'ss' ? `exp. tvar u ${expCount} veličin` : 'bez exp. tvaru'}</span>
+    <span class="pill">${formatPlainNumber(numberSettings.minNumber)} až ${formatPlainNumber(numberSettings.maxNumber)}</span>
+    <span class="pill">${settings.mode === 'ss' ? 'exp. tvar' : 'bez exp. tvaru'}</span>
     <span class="pill">${numberSettings.niceInputByUnitSize ? 'hezčí zadání zapnuto' : 'hezčí zadání vypnuto'}</span>
     <span class="pill">${resultLimits.enabled ? `omezení výsledku: max ${resultLimits.maxIntegerDigits} číslic / ${resultLimits.maxDecimals} des. míst` : 'omezení výsledku vypnuto'}</span>
     <p class="small">Předpony: ${prefixText || 'žádné'}</p>
@@ -1084,7 +903,7 @@ function renderStatus(){
   $('status').textContent = current ? current.name.replace(/^\d\)\s*/,'') : 'Převody jednotek';
   $('meta').innerHTML = settings.mode === 'zs'
     ? 'Výchozí ZŠ režim: běžný zápis bez exponenciálního tvaru.'
-    : 'SŠ režim: exponenciální tvar se řídí volbou exp. u jednotlivých veličin.';
+    : 'SŠ režim: po zobrazení výsledků je hlavní výsledek v exponenciálním tvaru.';
   $('toggleAnswersBtn').textContent = answersVisible ? 'Skrýt výsledky' : 'Zobrazit výsledky';
 }
 
@@ -1110,14 +929,8 @@ function fillSettingsForm(){
   const numberSettings = numberSettingsForMode();
   const resultLimits = resultLimitsForMode();
   $('countInput').value = settings.count;
-  if(typeof numberSettings.inputLimitEnabled !== 'boolean'){
-    numberSettings.inputLimitEnabled = settings.mode === 'zs';
-  }
-  $('numberLimitEnabledInput').checked = numberSettings.inputLimitEnabled;
   $('minNumberInput').value = numberSettings.minNumber;
   $('maxNumberInput').value = numberSettings.maxNumber;
-  $('minNumberInput').disabled = !numberSettings.inputLimitEnabled;
-  $('maxNumberInput').disabled = !numberSettings.inputLimitEnabled;
   $('smallDecimalsInput').value = settings.smallDecimals;
   $('mediumDecimalsInput').value = settings.mediumDecimals;
   $('largeDecimalsInput').value = settings.largeDecimals;
@@ -1131,38 +944,12 @@ function fillSettingsForm(){
   $('ensureAllQuantitiesInput').checked = ensureAllQuantitiesForMode();
 
   const selectedQ = new Set(settings.quantitiesByMode[settings.mode] || []);
-  const expQ = new Set(Array.isArray(settings.expQuantitiesSS) ? settings.expQuantitiesSS : defaultSettings.expQuantitiesSS);
-  $('quantityChecks').innerHTML = availableQuantities().map(q => settings.mode === 'ss' ? `
-    <div class="quantityRow">
-      <label class="check">
-        <input class="quantity-enable" type="checkbox" value="${q.id}" ${selectedQ.has(q.id) ? 'checked' : ''}>
-        <span>${q.title}</span>
-      </label>
-      <label class="expToggle" title="Použít exponenciální tvar v zadání i výsledku">
-        <input class="quantity-exp" type="checkbox" value="${q.id}" ${expQ.has(q.id) ? 'checked' : ''}>
-        <span>exp.</span>
-      </label>
-    </div>
-  ` : `
+  $('quantityChecks').innerHTML = availableQuantities().map(q => `
     <label class="check">
-      <input class="quantity-enable" type="checkbox" value="${q.id}" ${selectedQ.has(q.id) ? 'checked' : ''}>
+      <input type="checkbox" value="${q.id}" ${selectedQ.has(q.id) ? 'checked' : ''}>
       <span>${q.title}</span>
     </label>
   `).join('');
-
-  if(settings.mode === 'ss'){
-    $('quantityChecks').querySelectorAll('.quantityRow').forEach(row => {
-      const enabled = row.querySelector('.quantity-enable');
-      const exp = row.querySelector('.quantity-exp');
-      const expLabel = row.querySelector('.expToggle');
-      const sync = () => {
-        exp.disabled = !enabled.checked;
-        expLabel.classList.toggle('disabled', !enabled.checked);
-      };
-      enabled.addEventListener('change', sync);
-      sync();
-    });
-  }
 
   const selectedP = new Set(settings.prefixes);
   $('prefixChecks').innerHTML = prefixes.map(p => `
@@ -1176,7 +963,6 @@ function fillSettingsForm(){
 function applySettingsFromForm(){
   settings.count = clampInt($('countInput').value, 1, 60);
   const numberSettings = numberSettingsForMode();
-  numberSettings.inputLimitEnabled = $('numberLimitEnabledInput').checked;
   numberSettings.minNumber = positiveNumber($('minNumberInput').value, 0.01);
   numberSettings.maxNumber = positiveNumber($('maxNumberInput').value, 9999);
   if(numberSettings.minNumber > numberSettings.maxNumber){
@@ -1192,10 +978,7 @@ function applySettingsFromForm(){
   resultLimits.maxDecimals = clampInt($('resultMaxDecimalsInput').value, 0, 20);
   numberSettings.niceInputByUnitSize = $('niceInputRuleInput').checked;
 
-  const quantities = [...$('quantityChecks').querySelectorAll('input.quantity-enable:checked')].map(i => i.value);
-  if(settings.mode === 'ss'){
-    settings.expQuantitiesSS = [...$('quantityChecks').querySelectorAll('input.quantity-exp:checked')].map(i => i.value);
-  }
+  const quantities = [...$('quantityChecks').querySelectorAll('input:checked')].map(i => i.value);
   settings.quantitiesByMode[settings.mode] = quantities;
   settings.ensureAllQuantitiesByMode[settings.mode] = $('ensureAllQuantitiesInput').checked;
   if(settings.ensureAllQuantitiesByMode[settings.mode] && quantities.length > settings.count){
@@ -1211,7 +994,7 @@ function applySettingsFromForm(){
 function copyText(kind){
   const lines = examples.map(ex => {
     if(kind === 'tasks') return `${ex.value} ${ex.from} =\t${ex.to}`;
-    if(settings.mode === 'ss') return `${ex.value} ${ex.from} =\t${ex.useExponential ? ex.resultExp : ex.resultPlain} ${ex.to}`;
+    if(settings.mode === 'ss') return `${ex.value} ${ex.from} =\t${ex.resultExp} ${ex.to}`;
     return `${ex.value} ${ex.from} =\t${ex.resultPlain} ${ex.to}`;
   }).join('\n');
   navigator.clipboard?.writeText(lines).then(() => {
@@ -1246,11 +1029,6 @@ function wireEvents(){
     if(e.target === $('settingsOverlay')) closeSettings();
   });
   $('applySettings').addEventListener('click', applySettingsFromForm);
-  $('numberLimitEnabledInput').addEventListener('change', () => {
-    const enabled = $('numberLimitEnabledInput').checked;
-    $('minNumberInput').disabled = !enabled;
-    $('maxNumberInput').disabled = !enabled;
-  });
   $('resultLimitEnabledInput').addEventListener('change', () => {
     const enabled = $('resultLimitEnabledInput').checked;
     $('resultMaxIntegerDigitsInput').disabled = !enabled;
