@@ -1,0 +1,22 @@
+name: Run prevody step 6 dual SŠ results
+
+on:
+  push:
+    paths:
+      - '.github/workflows/run-prevody-step6-dual-ss-results.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python .github/scripts/prevody_step6_dual_ss_results.py
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prevody.html tests/prevody.test.mjs
+          git diff --cached --quiet || git commit -m "Show both plain and exponential SŠ results"
+          git push
