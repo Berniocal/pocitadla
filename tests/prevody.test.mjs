@@ -15,7 +15,8 @@ code += `\nglobalThis.__prevodyTestApi = {
   quantityMeta,
   makeExample,
   countVisibleSignificantFigures,
-  resultFitsLimits
+  resultFitsLimits,
+  usesExponentialForQuantity
 };`;
 
 const sandbox = {
@@ -83,6 +84,7 @@ const defaults = api.getDefaultSettings();
 const expectedDefaults = ['delka','plocha','objem','hmotnost','sila','rychlost','hustota','tlak','energie','cas'];
 assert.equal(JSON.stringify(defaults.quantitiesByMode.zs), JSON.stringify(expectedDefaults), 'Výchozí ZŠ veličiny se změnily.');
 assert.equal(JSON.stringify(defaults.quantitiesByMode.ss), JSON.stringify(expectedDefaults), 'Výchozí SŠ veličiny se změnily.');
+assert.equal(JSON.stringify(defaults.exponentialQuantitiesByMode.ss), JSON.stringify(['delka','hmotnost','sila','energie']), 'Výchozí SŠ exp. veličiny se změnily.');
 
 for(const mode of ['zs','ss']){
   const cfg = structuredClone(defaults);
@@ -92,6 +94,21 @@ for(const mode of ['zs','ss']){
   const energyUnits = energyPlus.build(mode).map(u => u.unit);
   assert(!energyUnits.includes('cal'), 'Energie* nesmí obsahovat cal.');
   assert(!energyUnits.includes('kcal'), 'Energie* nesmí obsahovat kcal.');
+}
+
+
+{
+  const cfg = structuredClone(defaults);
+  cfg.mode = 'ss';
+  api.setSettings(cfg);
+  for(const q of api.quantityMeta.filter(item => item.modes.includes('ss'))){
+    const shouldExp = ['delka','hmotnost','sila','energie'].includes(q.id);
+    assert.equal(api.usesExponentialForQuantity(q.id), shouldExp, `Chybné výchozí exp. nastavení pro ${q.id}.`);
+    const ex = api.makeExample(1, q, shouldExp);
+    assert(ex, `Nelze vytvořit kontrolní SŠ příklad pro ${q.id}.`);
+    assert.equal(ex.exponentialFormat, shouldExp, `Výsledek ${q.id} nemá správný exp. režim.`);
+    assert.equal(ex.exponentialInput, shouldExp, `Zadání ${q.id} nemá správný exp. režim.`);
+  }
 }
 
 let generated = 0;
@@ -155,4 +172,4 @@ for(const mode of ['zs','ss']){
 }
 
 console.log(`OK: ${generated} náhodně vygenerovaných příkladů prošlo kontrolami.`);
-console.log('Kontrolováno: povinná veličina, max. 2 platné číslice, min/max jen pro běžná zadání, exp. rozsah 10^-10 až 10^10, převod z viditelného čísla, limit výsledku a Energie* bez kalorií.');
+console.log('Kontrolováno: povinná veličina, max. 2 platné číslice, exp. tvar po veličinách (default Délka/Hmotnost/Síla/Energie), min/max jen pro běžná zadání, exp. rozsah 10^-10 až 10^10, převod z viditelného čísla, limit výsledku a Energie* bez kalorií.');

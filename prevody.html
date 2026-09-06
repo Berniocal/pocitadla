@@ -54,6 +54,11 @@ p{line-height:1.45}
 .settingField label{font-size:13px;color:var(--muted)}
 .settingField input{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px;background:white;color:var(--ink)}
 .checks{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px}
+.quantityRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:stretch}
+.quantityRow>.check{min-width:0}
+.expCheck{display:flex;align-items:center;gap:5px;background:#f8fffc;border:1px solid #aee1d1;border-radius:8px;padding:8px;font-size:12px;font-weight:700;white-space:nowrap}
+.expCheck input{accent-color:var(--accent2);margin:0}
+.expCheck.disabled{opacity:.42;background:#f4f4f4;border-color:#ddd}
 .check,.prefixCheck{display:flex;align-items:center;gap:8px;background:white;border:1px solid var(--line);border-radius:8px;padding:8px;line-height:1.2}
 .check input,.prefixCheck input{accent-color:var(--accent2);margin:0;flex:0 0 auto}
 .prefixes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
@@ -213,7 +218,7 @@ const NBSP = '\u202f';
 
 const modes = [
   {id:'zs', name:'1) Převody pro ZŠ', note:'bez exponenciálního tvaru'},
-  {id:'ss', name:'2) Převody pro SŠ', note:'výsledek povinně v exponenciálním tvaru'}
+  {id:'ss', name:'2) Převody pro SŠ', note:'exponenciální tvar podle zvolené veličiny'}
 ];
 
 const prefixes = [
@@ -250,6 +255,7 @@ const defaultSettings = {
     ss:{enabled:false, maxIntegerDigits:7, maxDecimals:6}
   },
   ensureAllQuantitiesByMode:{zs:true, ss:true},
+  exponentialQuantitiesByMode:{ss:['delka','hmotnost','sila','energie']},
   prefixes:['n','µ','m','c','d','','da','h','k','M','G'],
   quantitiesByMode:{
     zs:['delka','plocha','objem','hmotnost','sila','rychlost','hustota','tlak','energie','cas'],
@@ -527,6 +533,18 @@ function ensureAllQuantitiesForMode(mode = settings.mode){
   return settings.ensureAllQuantitiesByMode[mode];
 }
 
+function exponentialQuantitiesForMode(mode = settings.mode){
+  if(!settings.exponentialQuantitiesByMode) settings.exponentialQuantitiesByMode = structuredClone(defaultSettings.exponentialQuantitiesByMode);
+  if(!Array.isArray(settings.exponentialQuantitiesByMode[mode])){
+    settings.exponentialQuantitiesByMode[mode] = structuredClone(defaultSettings.exponentialQuantitiesByMode[mode] || []);
+  }
+  return settings.exponentialQuantitiesByMode[mode];
+}
+
+function usesExponentialForQuantity(quantityId, mode = settings.mode){
+  return mode === 'ss' && exponentialQuantitiesForMode(mode).includes(quantityId);
+}
+
 function availableQuantities(){
   return quantityMeta.filter(q => q.modes.includes(settings.mode));
 }
@@ -702,6 +720,7 @@ function makeExample(index, preferredQuantity, useExponentialInput = false){
       quantityId:q.id,
       value:x.visible,
       exponentialInput:x.exponential,
+      exponentialFormat:Boolean(useExponentialInput),
       from:pair.from.unit,
       to:pair.to.unit,
       result,
@@ -722,12 +741,6 @@ function generateExamples(){
   }
   let cycle = shuffle(quantities);
   let previousId = null;
-  const expInputSlots = new Set();
-  if(settings.mode === 'ss'){
-    const target = Math.round(count / 2);
-    const slots = shuffle(Array.from({length:count}, (_, i) => i + 1));
-    slots.slice(0, target).forEach(i => expInputSlots.add(i));
-  }
   examples = [];
   generationFailures = [];
   for(let i=1; i<=count; i++){
@@ -736,7 +749,8 @@ function generateExamples(){
       cycle.push(cycle.shift());
     }
     const preferred = cycle.shift();
-    const ex = makeExample(i, preferred, expInputSlots.has(i));
+    const useExponential = Boolean(preferred && usesExponentialForQuantity(preferred.id));
+    const ex = makeExample(i, preferred, useExponential);
     if(ex){
       examples.push(ex);
       previousId = ex.quantityId;
@@ -888,7 +902,7 @@ function renderExamples(){
     return;
   }
   $('examples').innerHTML = warningHtml + examples.map(ex => {
-    const resultText = settings.mode === 'ss' ? ex.resultExp : ex.resultPlain;
+    const resultText = settings.mode === 'ss' && ex.exponentialFormat ? ex.resultExp : ex.resultPlain;
     const taskResult = answersVisible
       ? `${resultText} <span class="unit">${ex.to}</span>`
       : `<span class="unit">${ex.to}</span>`;
@@ -909,12 +923,13 @@ function renderSummary(){
   const prefixText = selectedPrefixes().map(p => p.label).join(', ');
   const numberSettings = numberSettingsForMode();
   const resultLimits = resultLimitsForMode();
+  const expCount = settings.mode === 'ss' ? selectedQuantities().filter(q => usesExponentialForQuantity(q.id)).length : 0;
   $('summary').innerHTML = `
     <span class="pill good">${settings.count} příkladů</span>
     <span class="pill">${qCount} veličin</span>
     <span class="pill">${ensureAllQuantitiesForMode() ? 'všechny vybrané veličiny v sadě' : 'veličiny náhodně'}</span>
     <span class="pill">${formatPlainNumber(numberSettings.minNumber)} až ${formatPlainNumber(numberSettings.maxNumber)}</span>
-    <span class="pill">${settings.mode === 'ss' ? 'exp. tvar' : 'bez exp. tvaru'}</span>
+    <span class="pill">${settings.mode === 'ss' ? `exp. tvar: ${expCount} veličin` : 'bez exp. tvaru'}</span>
     <span class="pill">${numberSettings.niceInputByUnitSize ? 'hezčí zadání zapnuto' : 'hezčí zadání vypnuto'}</span>
     <span class="pill">${resultLimits.enabled ? `omezení výsledku: max ${resultLimits.maxIntegerDigits} číslic / ${resultLimits.maxDecimals} des. míst` : 'omezení výsledku vypnuto'}</span>
     <p class="small">Předpony: ${prefixText || 'žádné'}</p>
@@ -927,7 +942,7 @@ function renderStatus(){
   $('status').textContent = current ? current.name.replace(/^\d\)\s*/,'') : 'Převody jednotek';
   $('meta').innerHTML = settings.mode === 'zs'
     ? 'Výchozí ZŠ režim: běžný zápis bez exponenciálního tvaru.'
-    : 'SŠ režim: po zobrazení výsledků je hlavní výsledek v exponenciálním tvaru.';
+    : 'SŠ režim: exponenciální tvar zadání i výsledku se nastavuje samostatně u každé veličiny.';
   $('toggleAnswersBtn').textContent = answersVisible ? 'Skrýt výsledky' : 'Zobrazit výsledky';
 }
 
@@ -968,12 +983,39 @@ function fillSettingsForm(){
   $('ensureAllQuantitiesInput').checked = ensureAllQuantitiesForMode();
 
   const selectedQ = new Set(settings.quantitiesByMode[settings.mode] || []);
-  $('quantityChecks').innerHTML = availableQuantities().map(q => `
-    <label class="check">
-      <input type="checkbox" value="${q.id}" ${selectedQ.has(q.id) ? 'checked' : ''}>
-      <span>${q.title}</span>
-    </label>
-  `).join('');
+  const selectedExp = new Set(exponentialQuantitiesForMode());
+  $('quantityChecks').innerHTML = availableQuantities().map(q => {
+    const checked = selectedQ.has(q.id);
+    if(settings.mode !== 'ss'){
+      return `
+        <label class="check">
+          <input type="checkbox" data-role="quantity" value="${q.id}" ${checked ? 'checked' : ''}>
+          <span>${q.title}</span>
+        </label>`;
+    }
+    return `
+      <div class="quantityRow">
+        <label class="check">
+          <input type="checkbox" data-role="quantity" value="${q.id}" ${checked ? 'checked' : ''}>
+          <span>${q.title}</span>
+        </label>
+        <label class="expCheck ${checked ? '' : 'disabled'}" title="Exponenciální tvar v zadání i výsledku">
+          <input type="checkbox" data-role="exp" data-qid="${q.id}" ${selectedExp.has(q.id) ? 'checked' : ''} ${checked ? '' : 'disabled'}>
+          <span>exp.</span>
+        </label>
+      </div>`;
+  }).join('');
+
+  if(settings.mode === 'ss'){
+    $('quantityChecks').querySelectorAll('input[data-role="quantity"]').forEach(input => {
+      input.addEventListener('change', () => {
+        const exp = $('quantityChecks').querySelector(`input[data-role="exp"][data-qid="${input.value}"]`);
+        if(!exp) return;
+        exp.disabled = !input.checked;
+        exp.closest('.expCheck')?.classList.toggle('disabled', !input.checked);
+      });
+    });
+  }
 
   const selectedP = new Set(settings.prefixes);
   $('prefixChecks').innerHTML = prefixes.map(p => `
@@ -1002,8 +1044,11 @@ function applySettingsFromForm(){
   resultLimits.maxDecimals = clampInt($('resultMaxDecimalsInput').value, 0, 20);
   numberSettings.niceInputByUnitSize = $('niceInputRuleInput').checked;
 
-  const quantities = [...$('quantityChecks').querySelectorAll('input:checked')].map(i => i.value);
+  const quantities = [...$('quantityChecks').querySelectorAll('input[data-role="quantity"]:checked')].map(i => i.value);
   settings.quantitiesByMode[settings.mode] = quantities;
+  if(settings.mode === 'ss'){
+    settings.exponentialQuantitiesByMode.ss = [...$('quantityChecks').querySelectorAll('input[data-role="exp"]:checked')].map(i => i.dataset.qid);
+  }
   settings.ensureAllQuantitiesByMode[settings.mode] = $('ensureAllQuantitiesInput').checked;
   if(settings.ensureAllQuantitiesByMode[settings.mode] && quantities.length > settings.count){
     settings.count = Math.min(60, quantities.length);
@@ -1018,7 +1063,7 @@ function applySettingsFromForm(){
 function copyText(kind){
   const lines = examples.map(ex => {
     if(kind === 'tasks') return `${ex.value} ${ex.from} =\t${ex.to}`;
-    if(settings.mode === 'ss') return `${ex.value} ${ex.from} =\t${ex.resultExp} ${ex.to}`;
+    if(settings.mode === 'ss' && ex.exponentialFormat) return `${ex.value} ${ex.from} =\t${ex.resultExp} ${ex.to}`;
     return `${ex.value} ${ex.from} =\t${ex.resultPlain} ${ex.to}`;
   }).join('\n');
   navigator.clipboard?.writeText(lines).then(() => {
