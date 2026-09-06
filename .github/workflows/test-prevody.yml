@@ -1,0 +1,27 @@
+name: Test převody
+
+on:
+  push:
+    paths:
+      - 'prevody.html'
+      - 'tests/prevody.test.mjs'
+      - '.github/workflows/test-prevody.yml'
+  pull_request:
+    paths:
+      - 'prevody.html'
+      - 'tests/prevody.test.mjs'
+      - '.github/workflows/test-prevody.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Test conversion generator
+        run: node tests/prevody.test.mjs
