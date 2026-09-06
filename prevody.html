@@ -55,7 +55,8 @@ p{line-height:1.45}
 .settingsGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .settingField{display:flex;flex-direction:column;gap:5px}
 .settingField label{font-size:13px;color:var(--muted)}
-.settingField input{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px;background:white;color:var(--ink)}
+.settingField > input{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px;background:white;color:var(--ink)}
+.settingField .check input{width:auto}
 .checks{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px}
 .quantityRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:stretch}
 .quantityRow>.check{min-width:0}
@@ -247,7 +248,7 @@ const defaultSettings = {
   count:10,
   numberSettingsByMode:{
     zs:{minNumber:0.1, maxNumber:100, niceInputByUnitSize:true},
-    ss:{minNumber:0.01, maxNumber:9999, niceInputByUnitSize:false}
+    ss:{minNumber:0.01, maxNumber:9999, niceInputByUnitSize:true}
   },
   smallDecimals:2,
   mediumDecimals:1,
@@ -255,7 +256,7 @@ const defaultSettings = {
   minJump:2,
   resultLimitsByMode:{
     zs:{enabled:true, maxIntegerDigits:7, maxDecimals:6},
-    ss:{enabled:false, maxIntegerDigits:7, maxDecimals:6}
+    ss:{enabled:true, maxIntegerDigits:7, maxDecimals:6}
   },
   ensureAllQuantitiesByMode:{zs:true, ss:true},
   exponentialQuantitiesByMode:{ss:['delka','hmotnost','sila','energie']},
