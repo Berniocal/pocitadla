@@ -21,7 +21,8 @@ code += `\nglobalThis.__prevodyTestApi = {
   numberRange,
   resultTextsForExample,
   physicalValueFitsProfile,
-  compoundDifferenceCount
+  compoundDifferenceCount,
+  chooseUnitPair
 };`;
 
 const sandbox = {
@@ -149,6 +150,45 @@ for(const mode of ['zs','ss']){
     assert(ex, `Nelze vytvořit kontrolní SŠ příklad pro ${q.id}.`);
     assert.equal(ex.exponentialFormat, shouldExp, `Výsledek ${q.id} nemá správný exp. režim.`);
     assert.equal(ex.exponentialInput, shouldExp, `Zadání ${q.id} nemá správný exp. režim.`);
+  }
+}
+
+// Ovladač odstupu znamená řády převodního poměru: 2 = alespoň 100×, ne dvě sousední předpony.
+{
+  const cfg = structuredClone(defaults);
+  cfg.mode = 'ss';
+  cfg.minJump = 2;
+  cfg.compoundConversionByMode.ss = 'both';
+  api.setSettings(cfg);
+  const synthetic = [
+    {unit:'u0', factor:1, order:0, parts:null},
+    {unit:'u1', factor:10, order:1, parts:null},
+    {unit:'u2', factor:100, order:2, parts:null},
+    {unit:'u3', factor:1000, order:3, parts:null}
+  ];
+  for(let i=0; i<100; i++){
+    const pair = api.chooseUnitPair(synthetic);
+    assert(pair, 'Nelze vybrat kontrolní dvojici jednotek.');
+    const ratio = Math.max(pair.from.factor, pair.to.factor) / Math.min(pair.from.factor, pair.to.factor);
+    assert(ratio >= 100 - 1e-12, `Při minJump=2 musí být preferovaná dvojice alespoň 100× od sebe, ale je ${ratio}×.`);
+  }
+}
+
+// Když požadovaný odstup v nabídce neexistuje, musí se použít opravdu nejvzdálenější dostupná dvojice.
+{
+  const cfg = structuredClone(defaults);
+  cfg.mode = 'ss';
+  cfg.minJump = 6;
+  api.setSettings(cfg);
+  const synthetic = [
+    {unit:'u0', factor:1, order:0, parts:null},
+    {unit:'u1', factor:10, order:1, parts:null},
+    {unit:'u2', factor:100, order:2, parts:null}
+  ];
+  for(let i=0; i<50; i++){
+    const pair = api.chooseUnitPair(synthetic);
+    const ratio = Math.max(pair.from.factor, pair.to.factor) / Math.min(pair.from.factor, pair.to.factor);
+    assert.equal(ratio, 100, 'Fallback má použít nejvzdálenější dostupnou dvojici.');
   }
 }
 

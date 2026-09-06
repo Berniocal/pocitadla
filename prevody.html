@@ -168,8 +168,16 @@ p{line-height:1.45}
           <input id="largeDecimalsInput" type="number" min="0" max="8" step="1">
         </div>
         <div class="settingField">
-          <label for="jumpInput">Nejmenší skok mezi běžnými jednotkami</label>
-          <input id="jumpInput" type="number" min="1" max="8" step="1">
+          <label for="jumpInput">Preferovaný minimální rozdíl velikosti jednotek</label>
+          <select id="jumpInput">
+            <option value="1">1 řád (alespoň 10×)</option>
+            <option value="2">2 řády (alespoň 100×)</option>
+            <option value="3">3 řády (alespoň 1 000×)</option>
+            <option value="4">4 řády (alespoň 10 000×)</option>
+            <option value="5">5 řádů (alespoň 100 000×)</option>
+            <option value="6">6 řádů (alespoň 1 000 000×)</option>
+          </select>
+          <span class="small">Počítá se podle převodního poměru, ne podle počtu sousedních předpon. Např. 2 řády znamenají rozdíl alespoň 100×. Pokud taková dvojice u dané veličiny neexistuje, použije se nejvzdálenější dostupná.</span>
         </div>
         <div class="settingField">
           <label class="check">
@@ -811,28 +819,39 @@ function randomFloat(min, max){
 
 function chooseUnitPair(units){
   if(units.length < 2) return null;
-  let best = null;
   const compoundMode = compoundConversionMode();
-  for(let i=0; i<600; i++){
-    const from = randomChoice(units);
-    const to = randomChoice(units);
-    if(from.unit === to.unit) continue;
-    if(Math.abs(from.factor - to.factor) <= Math.max(Math.abs(from.factor), Math.abs(to.factor), 1) * 1e-15) continue;
+  const candidates = [];
 
-    const diffCount = compoundDifferenceCount(from, to);
-    if(compoundMode && diffCount !== null){
-      if(compoundMode === 'one' && diffCount !== 1) continue;
-      if(compoundMode === 'both' && diffCount !== 2) continue;
-    }
+  for(let i=0; i<units.length; i++){
+    for(let j=0; j<units.length; j++){
+      if(i === j) continue;
+      const from = units[i];
+      const to = units[j];
+      if(from.unit === to.unit) continue;
+      if(Math.abs(from.factor - to.factor) <= Math.max(Math.abs(from.factor), Math.abs(to.factor), 1) * 1e-15) continue;
 
-    const jump = Math.abs((from.order ?? Math.log10(from.factor)) - (to.order ?? Math.log10(to.factor)));
-    if(jump < settings.minJump && units.length > 2) {
-      best = best || {from, to};
-      continue;
+      const diffCount = compoundDifferenceCount(from, to);
+      if(compoundMode && diffCount !== null){
+        if(compoundMode === 'one' && diffCount !== 1) continue;
+        if(compoundMode === 'both' && diffCount !== 2) continue;
+      }
+
+      const jump = Math.abs((from.order ?? Math.log10(Math.abs(from.factor))) - (to.order ?? Math.log10(Math.abs(to.factor))));
+      candidates.push({from, to, jump});
     }
-    return {from, to};
   }
-  return best;
+
+  if(!candidates.length) return null;
+  const minJump = clampInt(settings.minJump, 1, 6);
+  const preferred = candidates.filter(pair => pair.jump + 1e-12 >= minJump);
+  const pool = preferred.length
+    ? preferred
+    : (() => {
+        const maxJump = Math.max(...candidates.map(pair => pair.jump));
+        return candidates.filter(pair => Math.abs(pair.jump - maxJump) <= 1e-12);
+      })();
+  const chosen = randomChoice(pool);
+  return chosen ? {from:chosen.from, to:chosen.to} : null;
 }
 
 function shuffle(arr){
@@ -1093,6 +1112,7 @@ function renderSummary(){
   $('summary').innerHTML = `
     <span class="pill good">${settings.count} příkladů</span>
     <span class="pill">${qCount} veličin</span>
+    <span class="pill">preferovaný odstup jednotek: ≥ ${formatPlainNumber(Math.pow(10, settings.minJump))}×</span>
     <span class="pill">${ensureAllQuantitiesForMode() ? 'všechny vybrané veličiny v sadě' : 'veličiny náhodně'}</span>
     <span class="pill">${formatPlainNumber(numberSettings.minNumber)} až ${formatPlainNumber(numberSettings.maxNumber)}</span>
     <span class="pill">${settings.mode === 'ss' ? `exp. tvar: ${expCount} veličin` : 'bez exp. tvaru'}</span>
@@ -1206,7 +1226,7 @@ function applySettingsFromForm(){
   settings.smallDecimals = clampInt($('smallDecimalsInput').value, 0, 8);
   settings.mediumDecimals = clampInt($('mediumDecimalsInput').value, 0, 8);
   settings.largeDecimals = clampInt($('largeDecimalsInput').value, 0, 8);
-  settings.minJump = clampInt($('jumpInput').value, 1, 8);
+  settings.minJump = clampInt($('jumpInput').value, 1, 6);
   const resultLimits = resultLimitsForMode();
   resultLimits.enabled = $('resultLimitEnabledInput').checked;
   resultLimits.maxIntegerDigits = clampInt($('resultMaxIntegerDigitsInput').value, 1, 15);
