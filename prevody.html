@@ -55,7 +55,7 @@ p{line-height:1.45}
 .settingsGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .settingField{display:flex;flex-direction:column;gap:5px}
 .settingField label{font-size:13px;color:var(--muted)}
-.settingField > input{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px;background:white;color:var(--ink)}
+.settingField > input,.settingField > select{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px;background:white;color:var(--ink)}
 .settingField .check input{width:auto}
 .checks{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px}
 .quantityRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:stretch}
@@ -192,6 +192,14 @@ p{line-height:1.45}
         <input id="niceInputRuleInput" type="checkbox">
         <span>Podle směru převodu volit hezčí zadání: z menší jednotky číslo větší než 10, z větší jednotky číslo menší než 1.</span>
       </label>
+      <div class="settingField" id="compoundConversionSetting" style="margin-top:12px">
+        <label for="compoundConversionInput">SŠ – u složených jednotek měnit</label>
+        <select id="compoundConversionInput">
+          <option value="both">obě části jednotky</option>
+          <option value="one">jen jednu část jednotky</option>
+        </select>
+        <span class="small">Platí pro veličiny jako rychlost, hustota a zrychlení. Např. m/s → km/h mění obě části, m/s → m/h jen jednu.</span>
+      </div>
     </div>
 
     <div class="card">
@@ -259,6 +267,7 @@ const defaultSettings = {
     ss:{enabled:true, maxIntegerDigits:7, maxDecimals:6}
   },
   ensureAllQuantitiesByMode:{zs:true, ss:true},
+  compoundConversionByMode:{ss:'both'},
   exponentialQuantitiesByMode:{ss:['delka','hmotnost','sila','energie']},
   prefixes:['n','µ','m','c','d','','da','h','k','M','G'],
   quantitiesByMode:{
@@ -308,8 +317,12 @@ function selectedPrefixes(){
   return prefixes.filter(p => allowed.has(p.id));
 }
 
-function unit(unitName, factor, order, prefixId = null){
-  return {unit:unitName, factor, order, prefixId};
+function unit(unitName, factor, order, prefixId = null, parts = null){
+  return {unit:unitName, factor, order, prefixId, parts};
+}
+
+function compoundUnit(unitName, factor, order, numerator, denominator, prefixId = null){
+  return unit(unitName, factor, order, prefixId, {numerator, denominator});
 }
 
 function filterUnits(units){
@@ -379,40 +392,29 @@ function buildForceUnits(mode){
   return prefixedUnits('N', ids);
 }
 
-function buildSpeedUnits(mode){
-  if(mode === 'zs'){
-    return filterUnits([
-      unit('m/s', 1, 0, ''),
-      unit('km/h', 1 / 3.6, .55, 'k')
-    ]);
-  }
+function buildSpeedUnits(){
   return filterUnits([
-    unit('km/s', 1000, 3, 'k'),
-    unit('m/s', 1, 0, ''),
-    unit('dm/s', .1, -1, 'd'),
-    unit('cm/s', .01, -2, 'c'),
-    unit('mm/s', .001, -3, 'm'),
-    unit('µm/s', 1e-6, -6, 'µ'),
-    unit('nm/s', 1e-9, -9, 'n'),
-    unit('km/h', 1 / 3.6, .55, 'k')
+    compoundUnit('m/s', 1, 0, 'm', 's', ''),
+    compoundUnit('km/h', 1 / 3.6, .55, 'km', 'h', 'k'),
+    compoundUnit('m/h', 1 / 3600, Math.log10(1 / 3600), 'm', 'h', '')
   ]);
 }
 
 function buildDensityUnits(mode){
   if(mode === 'zs'){
     return filterUnits([
-      unit('kg/m³', 1, 0, 'k'),
-      unit('g/cm³', 1000, 3, 'c')
+      compoundUnit('kg/m³', 1, 0, 'kg', 'm³', 'k'),
+      compoundUnit('g/cm³', 1000, 3, 'g', 'cm³', 'c')
     ]);
   }
   return filterUnits([
-    unit('kg/m³', 1, 0, 'k'),
-    unit('g/cm³', 1000, 3, 'c'),
-    unit('mg/mm³', 1000, 3.1, 'm'),
-    unit('kg/dm³', 1000, 3.2, 'd'),
-    unit('g/dm³', 1, .1, 'd'),
-    unit('kg/l', 1000, 3.3, 'k'),
-    unit('g/l', 1, .2, null)
+    compoundUnit('kg/m³', 1, 0, 'kg', 'm³', 'k'),
+    compoundUnit('g/cm³', 1000, 3, 'g', 'cm³', 'c'),
+    compoundUnit('mg/mm³', 1000, 3.1, 'mg', 'mm³', 'm'),
+    compoundUnit('kg/dm³', 1000, 3.2, 'kg', 'dm³', 'd'),
+    compoundUnit('g/dm³', 1, .1, 'g', 'dm³', 'd'),
+    compoundUnit('kg/l', 1000, 3.3, 'kg', 'l', 'k'),
+    compoundUnit('g/l', 1, .2, 'g', 'l', null)
   ]);
 }
 
@@ -477,7 +479,7 @@ function buildPowerUnits(){
 }
 
 function buildChargeUnits(){
-  return prefixedUnits('C', ['f','p','n','µ','m','','k','M','G','T','P']);
+  return prefixedUnits('C', ['p','n','µ','m','']);
 }
 
 function buildCapacitanceUnits(){
@@ -493,7 +495,14 @@ function buildResistanceUnits(){
 }
 
 function buildAccelerationUnits(){
-  return prefixedUnits('m/s²', ['n','µ','m','c','d','','k']);
+  return filterUnits([
+    compoundUnit('mm/s²', 1e-3, -3, 'mm', 's²', 'm'),
+    compoundUnit('cm/s²', 1e-2, -2, 'cm', 's²', 'c'),
+    compoundUnit('m/s²', 1, 0, 'm', 's²', ''),
+    compoundUnit('km/s²', 1e3, 3, 'km', 's²', 'k'),
+    compoundUnit('m/min²', 1 / 3600, Math.log10(1 / 3600), 'm', 'min²', ''),
+    compoundUnit('km/min²', 1000 / 3600, Math.log10(1000 / 3600), 'km', 'min²', 'k')
+  ]);
 }
 
 function buildFrequencyUnits(){
@@ -527,6 +536,84 @@ function buildInductanceUnits(){
 
 function buildAmountUnits(){
   return prefixedUnits('mol', ['n','µ','m','','k','M']);
+}
+
+const physicalProfiles = {
+  delka:{zs:[{min:1e-3,max:1e4}],ss:[{min:1e-9,max:1e6}]},
+  plocha:{zs:[{min:1e-4,max:1e6}],ss:[{min:1e-10,max:1e8}]},
+  objem:{zs:[{min:1e-6,max:1e3}],ss:[{min:1e-12,max:1e5}]},
+  hmotnost:{zs:[{min:1e-3,max:1e5}],ss:[{min:1e-9,max:1e6}]},
+  sila:{zs:[{min:1e-1,max:1e5}],ss:[{min:1e-6,max:1e7}]},
+  rychlost:{zs:[{min:3,max:45,scale:'linear'}],ss:[{min:3,max:45,scale:'linear'}]},
+  hustota:{
+    zs:[{min:.5,max:10,weight:.1},{min:500,max:1500,weight:.5,scale:'linear'},{min:1500,max:23000,weight:.4}],
+    ss:[{min:.5,max:10,weight:.1},{min:500,max:1500,weight:.5,scale:'linear'},{min:1500,max:23000,weight:.4}]
+  },
+  tlak:{zs:[{min:1e3,max:5e6}],ss:[{min:1,max:1e9}]},
+  energie:{zs:[{min:1e-3,max:1e9}],ss:[{min:1e-19,max:1e12}]},
+  energieplus:{zs:[{min:1e-3,max:1e9}],ss:[{min:1e-19,max:1e12}]},
+  napeti:{zs:[{min:.1,max:2e4}],ss:[{min:1e-6,max:1e6}]},
+  cas:{zs:[{min:1e-3,max:1e6}],ss:[{min:1e-12,max:1e7}]},
+  vykon:{zs:[{min:1,max:1e7}],ss:[{min:1e-6,max:1e9}]},
+  proud:{zs:[{min:1e-3,max:100}],ss:[{min:1e-9,max:1e4}]},
+  odpor:{zs:[{min:1,max:1e7}],ss:[{min:1e-3,max:1e9}]},
+  zrychleni:{zs:[{min:.1,max:30,scale:'linear'}],ss:[{min:1e-3,max:1e3}]},
+  frekvence:{zs:[{min:.1,max:2e4}],ss:[{min:1e-3,max:1e10}]},
+  uhel:{zs:[{min:Math.PI/180,max:2*Math.PI,scale:'linear'}],ss:[{min:1e-6,max:2*Math.PI}]},
+  naboj:{ss:[
+    {min:1e-12,max:1e-9,weight:.1},
+    {min:1e-9,max:1e-6,weight:.45},
+    {min:1e-6,max:1e-3,weight:.4},
+    {min:1e-3,max:1e-2,weight:.05}
+  ]},
+  kapacita:{ss:[{min:1e-12,max:1e-2}]},
+  vodivost:{ss:[{min:1e-6,max:10}]},
+  magindukce:{ss:[{min:1e-9,max:10}]},
+  magnetickytok:{ss:[{min:1e-12,max:10}]},
+  indukcnost:{ss:[{min:1e-9,max:10}]},
+  latkovemnozstvi:{ss:[{min:1e-6,max:1e4}]}
+};
+
+function physicalProfileBands(quantityId, mode = settings.mode){
+  const profile = physicalProfiles[quantityId];
+  return profile ? (profile[mode] || profile.ss || profile.zs || []) : [];
+}
+
+function chooseWeightedBand(bands){
+  if(!bands.length) return null;
+  const total = bands.reduce((sum, band) => sum + (band.weight ?? 1), 0);
+  let r = Math.random() * total;
+  for(const band of bands){
+    r -= band.weight ?? 1;
+    if(r <= 0) return band;
+  }
+  return bands[bands.length - 1];
+}
+
+function samplePhysicalSiValue(quantityId, mode = settings.mode){
+  const band = chooseWeightedBand(physicalProfileBands(quantityId, mode));
+  if(!band) return null;
+  if(band.scale === 'linear') return randomFloat(band.min, band.max);
+  return Math.pow(10, randomFloat(Math.log10(band.min), Math.log10(band.max)));
+}
+
+function physicalValueFitsProfile(quantityId, value, mode = settings.mode){
+  if(!Number.isFinite(value) || value <= 0) return false;
+  const bands = physicalProfileBands(quantityId, mode);
+  if(!bands.length) return true;
+  return bands.some(b => value >= b.min * (1 - 1e-12) && value <= b.max * (1 + 1e-12));
+}
+
+function compoundConversionMode(mode = settings.mode){
+  if(mode !== 'ss') return null;
+  if(!settings.compoundConversionByMode) settings.compoundConversionByMode = structuredClone(defaultSettings.compoundConversionByMode);
+  return settings.compoundConversionByMode.ss === 'one' ? 'one' : 'both';
+}
+
+function compoundDifferenceCount(from, to){
+  if(!from?.parts || !to?.parts) return null;
+  const keys = ['numerator','denominator'];
+  return keys.reduce((n, key) => n + (from.parts[key] !== to.parts[key] ? 1 : 0), 0);
 }
 
 function ensureAllQuantitiesForMode(mode = settings.mode){
@@ -679,6 +766,31 @@ function randomExponentialNumber(range, pair = null){
   return randomPlainNumber(range);
 }
 
+function visibleNumberFromPhysicalSi(siValue, pair, useExponential = false){
+  const raw = siValue / pair.from.factor;
+  if(!Number.isFinite(raw) || raw <= 0) return null;
+
+  if(useExponential){
+    const rounded = roundToSignificant(raw, 2);
+    if(!Number.isFinite(rounded) || rounded <= 0) return null;
+    const exponent = Math.floor(Math.log10(rounded));
+    if(exponent < -10 || exponent > 10) return null;
+    if(pair.from.factor < pair.to.factor && exponent <= 0) return null;
+    if(pair.from.factor > pair.to.factor && exponent >= 0) return null;
+    const mantissa = rounded / Math.pow(10, exponent);
+    const visible = formatExponentialText(trimCz(formatCz(mantissa, 0, 1)), exponent);
+    return {visible, value:rounded, exponential:true};
+  }
+
+  const range = numberRange(pair, false);
+  const rounded = roundToSignificant(raw, 2);
+  const decimals = decimalPlacesFor(rounded);
+  const visible = formatCz(rounded, decimals, decimals);
+  const parsed = parseCzNumber(visible);
+  if(!Number.isFinite(parsed) || parsed <= 0 || parsed < range.min || parsed > range.max) return null;
+  return {visible, value:parsed, exponential:false};
+}
+
 function randomValueInRange(min, max){
   if(max / min > 1000){
     const logMin = Math.log10(min);
@@ -695,10 +807,19 @@ function randomFloat(min, max){
 function chooseUnitPair(units){
   if(units.length < 2) return null;
   let best = null;
-  for(let i=0; i<400; i++){
+  const compoundMode = compoundConversionMode();
+  for(let i=0; i<600; i++){
     const from = randomChoice(units);
     const to = randomChoice(units);
     if(from.unit === to.unit) continue;
+    if(Math.abs(from.factor - to.factor) <= Math.max(Math.abs(from.factor), Math.abs(to.factor), 1) * 1e-15) continue;
+
+    const diffCount = compoundDifferenceCount(from, to);
+    if(compoundMode && diffCount !== null){
+      if(compoundMode === 'one' && diffCount !== 1) continue;
+      if(compoundMode === 'both' && diffCount !== 2) continue;
+    }
+
     const jump = Math.abs((from.order ?? Math.log10(from.factor)) - (to.order ?? Math.log10(to.factor)));
     if(jump < settings.minJump && units.length > 2) {
       best = best || {from, to};
@@ -706,7 +827,7 @@ function chooseUnitPair(units){
     }
     return {from, to};
   }
-  return best || {from:units[0], to:units[units.length - 1]};
+  return best;
 }
 
 function shuffle(arr){
@@ -721,13 +842,20 @@ function shuffle(arr){
 function makeExample(index, preferredQuantity, useExponentialInput = false){
   const quantities = preferredQuantity ? [preferredQuantity] : selectedQuantities();
   if(!quantities.length) return null;
-  for(let guard=0; guard<500; guard++){
+  for(let guard=0; guard<900; guard++){
     const q = preferredQuantity || randomChoice(quantities);
     const units = q.build(settings.mode).filter(u => Number.isFinite(u.factor) && u.factor !== 0);
     const pair = chooseUnitPair(units);
     if(!pair) continue;
-    const x = randomVisibleNumber(useExponentialInput, pair);
-    const result = x.value * pair.from.factor / pair.to.factor;
+
+    const sampledSi = samplePhysicalSiValue(q.id, settings.mode);
+    if(!sampledSi) continue;
+    const x = visibleNumberFromPhysicalSi(sampledSi, pair, useExponentialInput);
+    if(!x) continue;
+
+    const displayedSi = x.value * pair.from.factor;
+    if(!physicalValueFitsProfile(q.id, displayedSi, settings.mode)) continue;
+    const result = displayedSi / pair.to.factor;
     if(!Number.isFinite(result) || result === 0) continue;
     const significantFigures = countVisibleSignificantFigures(x.visible);
     const resultLimits = resultLimitsForMode();
@@ -742,6 +870,7 @@ function makeExample(index, preferredQuantity, useExponentialInput = false){
       from:pair.from.unit,
       to:pair.to.unit,
       result,
+      siValue:displayedSi,
       significantFigures,
       resultPlain:formatSignificantPlain(result, significantFigures),
       resultExp:formatExpNumber(result, significantFigures)
@@ -962,6 +1091,7 @@ function renderSummary(){
     <span class="pill">${ensureAllQuantitiesForMode() ? 'všechny vybrané veličiny v sadě' : 'veličiny náhodně'}</span>
     <span class="pill">${formatPlainNumber(numberSettings.minNumber)} až ${formatPlainNumber(numberSettings.maxNumber)}</span>
     <span class="pill">${settings.mode === 'ss' ? `exp. tvar: ${expCount} veličin` : 'bez exp. tvaru'}</span>
+    ${settings.mode === 'ss' ? `<span class="pill">složené jednotky: ${compoundConversionMode() === 'one' ? 'měnit jednu část' : 'měnit obě části'}</span>` : ''}
     <span class="pill">${numberSettings.niceInputByUnitSize ? 'hezčí zadání zapnuto' : 'hezčí zadání vypnuto'}</span>
     <span class="pill">${resultLimits.enabled ? `omezení výsledku: max ${resultLimits.maxIntegerDigits} číslic / ${resultLimits.maxDecimals} des. míst` : 'omezení výsledku vypnuto'}</span>
     <p class="small">Předpony: ${prefixText || 'žádné'}</p>
@@ -1012,6 +1142,8 @@ function fillSettingsForm(){
   $('resultMaxIntegerDigitsInput').disabled = !resultLimits.enabled;
   $('resultMaxDecimalsInput').disabled = !resultLimits.enabled;
   $('niceInputRuleInput').checked = Boolean(numberSettings.niceInputByUnitSize);
+  $('compoundConversionSetting').style.display = settings.mode === 'ss' ? 'flex' : 'none';
+  $('compoundConversionInput').value = compoundConversionMode() || 'both';
   $('ensureAllQuantitiesInput').checked = ensureAllQuantitiesForMode();
 
   const selectedQ = new Set(settings.quantitiesByMode[settings.mode] || []);
@@ -1075,6 +1207,7 @@ function applySettingsFromForm(){
   resultLimits.maxIntegerDigits = clampInt($('resultMaxIntegerDigitsInput').value, 1, 15);
   resultLimits.maxDecimals = clampInt($('resultMaxDecimalsInput').value, 0, 20);
   numberSettings.niceInputByUnitSize = $('niceInputRuleInput').checked;
+  if(settings.mode === 'ss') settings.compoundConversionByMode.ss = $('compoundConversionInput').value === 'one' ? 'one' : 'both';
 
   const quantities = [...$('quantityChecks').querySelectorAll('input[data-role="quantity"]:checked')].map(i => i.value);
   settings.quantitiesByMode[settings.mode] = quantities;

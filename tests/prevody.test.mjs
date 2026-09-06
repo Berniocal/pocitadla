@@ -19,7 +19,9 @@ code += `\nglobalThis.__prevodyTestApi = {
   usesExponentialForQuantity,
   formatExponentialText,
   numberRange,
-  resultTextsForExample
+  resultTextsForExample,
+  physicalValueFitsProfile,
+  compoundDifferenceCount
 };`;
 
 const sandbox = {
@@ -121,6 +123,9 @@ const expectedDefaults = ['delka','plocha','objem','hmotnost','sila','rychlost',
 assert.equal(JSON.stringify(defaults.quantitiesByMode.zs), JSON.stringify(expectedDefaults), 'Výchozí ZŠ veličiny se změnily.');
 assert.equal(JSON.stringify(defaults.quantitiesByMode.ss), JSON.stringify(expectedDefaults), 'Výchozí SŠ veličiny se změnily.');
 assert.equal(JSON.stringify(defaults.exponentialQuantitiesByMode.ss), JSON.stringify(['delka','hmotnost','sila','energie']), 'Výchozí SŠ exp. veličiny se změnily.');
+assert.equal(defaults.compoundConversionByMode.ss, 'both', 'Výchozí SŠ složené jednotky mají měnit obě části.');
+assert.equal(defaults.numberSettingsByMode.ss.niceInputByUnitSize, true, 'SŠ má mít výchozí hezčí zadání zapnuté.');
+assert.equal(defaults.resultLimitsByMode.ss.enabled, true, 'SŠ má mít výchozí omezení délky výsledku zapnuté.');
 
 for(const mode of ['zs','ss']){
   const cfg = structuredClone(defaults);
@@ -165,6 +170,10 @@ for(const mode of ['zs','ss']){
 
       const input = visibleNumberToNumber(ex.value);
       assert(Number.isFinite(input) && input > 0, `Neplatné číslo v zadání: ${ex.value}`);
+      const fromFactorPhysical = unitFactor(q, mode, ex.from);
+      const siValue = input * fromFactorPhysical;
+      assert(api.physicalValueFitsProfile(quantityId, siValue, mode), `Fyzikální hodnota mimo profil: ${ex.value} ${ex.from} (${quantityId}, ${mode}).`);
+      if(quantityId === 'rychlost') assert(siValue >= 3 - 1e-12 && siValue <= 45 + 1e-12, `Rychlost není cyklistická/automobilní: ${siValue} m/s.`);
       assert(api.countVisibleSignificantFigures(ex.value) <= 2, `Zadání má více než dvě platné číslice: ${ex.value}.`);
       if(mode === 'ss' && ex.exponentialInput){
         assert(input >= 1e-10 - 1e-24, `Exponenciální zadání ${ex.value} je pod 10^-10.`);
@@ -222,5 +231,36 @@ for(const mode of ['zs','ss']){
   }
 }
 
+// SŠ: u složených jednotek musí jít vynutit změnu obou částí i jen jedné části.
+for(const compoundMode of ['both','one']){
+  const cfg = structuredClone(defaults);
+  cfg.mode = 'ss';
+  cfg.compoundConversionByMode.ss = compoundMode;
+  cfg.resultLimitsByMode.ss.enabled = false;
+  cfg.minJump = 1;
+  api.setSettings(cfg);
+  for(const quantityId of ['rychlost','hustota','zrychleni']){
+    const q = quantityById(quantityId);
+    for(let i=0; i<120; i++){
+      const ex = api.makeExample(i + 1, q, false);
+      assert(ex, `${quantityId}: nelze vytvořit SŠ složený převod v režimu ${compoundMode}.`);
+      const fromUnit = q.build('ss').find(u => u.unit === ex.from);
+      const toUnit = q.build('ss').find(u => u.unit === ex.to);
+      const diff = api.compoundDifferenceCount(fromUnit, toUnit);
+      assert.equal(diff, compoundMode === 'one' ? 1 : 2, `${quantityId}: režim ${compoundMode} změnil ${diff} částí (${ex.from} → ${ex.to}).`);
+      generated++;
+    }
+  }
+}
+
+// Elektrický náboj nesmí používat absurdně velké předpony.
+{
+  const cfg = structuredClone(defaults);
+  cfg.mode = 'ss';
+  api.setSettings(cfg);
+  const chargeUnits = quantityById('naboj').build('ss').map(u => u.unit);
+  for(const forbidden of ['kC','MC','GC','TC','PC']) assert(!chargeUnits.includes(forbidden), `Náboj nesmí obsahovat ${forbidden}.`);
+}
+
 console.log(`OK: ${generated} náhodně vygenerovaných příkladů prošlo kontrolami.`);
-console.log('Kontrolováno: povinná veličina, max. 2 platné číslice, exp. tvar zadání po veličinách, dva výsledky na SŠ (běžný + exp.), znaménko exponentu podle směru převodu, bez zbytečného 10^0, exp. rozsah 10^-10 až 10^10, min/max jen pro běžná zadání, převod z viditelného čísla, limit výsledku a Energie* bez kalorií.');
+console.log('Kontrolováno: povinná veličina, realistické SI profily, rychlost 3–45 m/s, max. 2 platné číslice, SŠ složené jednotky jedna/obě části, exp. tvar zadání po veličinách, dva výsledky na SŠ (běžný + exp.), znaménko exponentu podle směru převodu, bez zbytečného 10^0, exp. rozsah 10^-10 až 10^10, min/max jen pro běžná zadání, převod z viditelného čísla, limit výsledku, rozumné jednotky náboje a Energie* bez kalorií.');
