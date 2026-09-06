@@ -192,7 +192,7 @@ p{line-height:1.45}
       </label>
       <p class="small" style="margin-top:0">Když je volba zapnutá a je vybráno více veličin než příkladů, počet příkladů se automaticky zvýší.</p>
       <div id="quantityChecks" class="checks"></div>
-      <p class="small" style="margin-bottom:0">* Energie* obsahuje i Wh, kWh, MWh, cal a kcal; na SŠ také eV, keV, MeV a GeV.</p>
+      <p class="small" style="margin-bottom:0">* Energie* obsahuje i Wh, kWh a MWh; na SŠ také eV, keV, MeV a GeV.</p>
     </div>
 
     <div class="card">
@@ -259,6 +259,7 @@ const defaultSettings = {
 let settings = structuredClone(defaultSettings);
 let examples = [];
 let answersVisible = false;
+let generationFailures = [];
 
 const quantityMeta = [
   {id:'delka', title:'Délka', modes:['zs','ss'], build:buildLengthUnits},
@@ -426,9 +427,7 @@ function buildExtendedEnergyUnits(mode){
     unit('GJ', 1e9, 9, null),
     unit('Wh', 3600, Math.log10(3600), null),
     unit('kWh', 3.6e6, Math.log10(3.6e6), null),
-    unit('MWh', 3.6e9, Math.log10(3.6e9), null),
-    unit('cal', 4.184, Math.log10(4.184), null),
-    unit('kcal', 4184, Math.log10(4184), null)
+    unit('MWh', 3.6e9, Math.log10(3.6e9), null)
   ];
   if(mode === 'ss'){
     units.push(
@@ -669,10 +668,10 @@ function shuffle(arr){
 }
 
 function makeExample(index, preferredQuantity, useExponentialInput = false){
-  const quantities = preferredQuantity ? [preferredQuantity, ...selectedQuantities().filter(q => q.id !== preferredQuantity.id)] : selectedQuantities();
+  const quantities = preferredQuantity ? [preferredQuantity] : selectedQuantities();
   if(!quantities.length) return null;
-  for(let guard=0; guard<200; guard++){
-    const q = guard < quantities.length ? quantities[guard] : randomChoice(quantities);
+  for(let guard=0; guard<500; guard++){
+    const q = preferredQuantity || randomChoice(quantities);
     const units = q.build(settings.mode).filter(u => Number.isFinite(u.factor) && u.factor !== 0);
     const pair = chooseUnitPair(units);
     if(!pair) continue;
@@ -715,6 +714,7 @@ function generateExamples(){
     slots.slice(0, target).forEach(i => expInputSlots.add(i));
   }
   examples = [];
+  generationFailures = [];
   for(let i=1; i<=count; i++){
     if(cycle.length === 0) cycle = shuffle(quantities);
     if(cycle.length > 1 && cycle[0].id === previousId){
@@ -722,8 +722,12 @@ function generateExamples(){
     }
     const preferred = cycle.shift();
     const ex = makeExample(i, preferred, expInputSlots.has(i));
-    if(ex) examples.push(ex);
-    previousId = ex ? ex.quantityId : previousId;
+    if(ex){
+      examples.push(ex);
+      previousId = ex.quantityId;
+    }else if(preferred){
+      generationFailures.push(preferred.title);
+    }
   }
   answersVisible = false;
   renderAll();
@@ -859,11 +863,15 @@ function renderModes(){
 }
 
 function renderExamples(){
+  const failureNames = [...new Set(generationFailures)];
+  const warningHtml = failureNames.length
+    ? `<div class="empty"><strong>Některé požadované příklady nešlo vytvořit bez porušení nastavení.</strong><br><span class="small">Nevynechal jsem je ani nenahradil jinou veličinou. Zkontroluj omezení pro: ${failureNames.join(', ')}.</span></div>`
+    : '';
   if(!examples.length){
-    $('examples').innerHTML = '<div class="empty">Vyber aspoň jednu veličinu a jednu dvojici jednotek v nastavení.</div>';
+    $('examples').innerHTML = warningHtml || '<div class="empty">Vyber aspoň jednu veličinu a jednu dvojici jednotek v nastavení.</div>';
     return;
   }
-  $('examples').innerHTML = examples.map(ex => {
+  $('examples').innerHTML = warningHtml + examples.map(ex => {
     const resultText = settings.mode === 'ss' ? ex.resultExp : ex.resultPlain;
     const taskResult = answersVisible
       ? `${resultText} <span class="unit">${ex.to}</span>`
