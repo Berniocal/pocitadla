@@ -1,0 +1,23 @@
+name: Run prevody step 10 gap exceptions
+
+on:
+  push:
+    paths:
+      - '.github/workflows/run-prevody-step10-gap-exceptions.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python .github/scripts/prevody_step10_gap_exceptions.py
+      - run: node tests/prevody.test.mjs
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prevody.html tests/prevody.test.mjs
+          git diff --cached --quiet || git commit -m "Set 3-order gap and exempt time and compound units"
+          git push
