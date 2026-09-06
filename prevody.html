@@ -168,7 +168,7 @@ p{line-height:1.45}
           <input id="largeDecimalsInput" type="number" min="0" max="8" step="1">
         </div>
         <div class="settingField">
-          <label for="jumpInput">Preferovaný minimální rozdíl velikosti jednotek</label>
+          <label for="jumpInput">Preferovaný minimální rozdíl velikosti jednoduchých jednotek</label>
           <select id="jumpInput">
             <option value="1">1 řád (alespoň 10×)</option>
             <option value="2">2 řády (alespoň 100×)</option>
@@ -177,7 +177,7 @@ p{line-height:1.45}
             <option value="5">5 řádů (alespoň 100 000×)</option>
             <option value="6">6 řádů (alespoň 1 000 000×)</option>
           </select>
-          <span class="small">Počítá se podle převodního poměru, ne podle počtu sousedních předpon. Např. 2 řády znamenají rozdíl alespoň 100×. Pokud taková dvojice u dané veličiny neexistuje, použije se nejvzdálenější dostupná.</span>
+          <span class="small">Výchozí jsou 3 řády = alespoň 1 000×. Toto pravidlo se nepoužívá pro složené jednotky ani pro čas. U času se naopak upřednostňují běžné dvojice den, h, min, s a ms; velmi malé jednotky se mohou objevit jen občas.</span>
         </div>
         <div class="settingField">
           <label class="check">
@@ -269,7 +269,7 @@ const defaultSettings = {
   smallDecimals:2,
   mediumDecimals:1,
   largeDecimals:0,
-  minJump:2,
+  minJump:3,
   resultLimitsByMode:{
     zs:{enabled:true, maxIntegerDigits:7, maxDecimals:6},
     ss:{enabled:true, maxIntegerDigits:7, maxDecimals:6}
@@ -817,7 +817,13 @@ function randomFloat(min, max){
   return min + Math.random() * (max - min);
 }
 
-function chooseUnitPair(units){
+const commonTimeUnits = new Set(['den','h','min','s','ms']);
+
+function isCommonTimePair(pair){
+  return commonTimeUnits.has(pair.from.unit) && commonTimeUnits.has(pair.to.unit);
+}
+
+function chooseUnitPair(units, quantityId = null){
   if(units.length < 2) return null;
   const compoundMode = compoundConversionMode();
   const candidates = [];
@@ -837,11 +843,29 @@ function chooseUnitPair(units){
       }
 
       const jump = Math.abs((from.order ?? Math.log10(Math.abs(from.factor))) - (to.order ?? Math.log10(Math.abs(to.factor))));
-      candidates.push({from, to, jump});
+      candidates.push({from, to, jump, compound:diffCount !== null});
     }
   }
 
   if(!candidates.length) return null;
+
+  // Čas má vlastní logiku: většinu příkladů skládáme z běžných jednotek,
+  // aby negeneroval hlavně dvojice typu ns ↔ ms. Velmi malé jednotky zůstávají možné.
+  if(quantityId === 'cas'){
+    const common = candidates.filter(isCommonTimePair);
+    const pool = common.length && Math.random() < 0.85 ? common : candidates;
+    const chosen = randomChoice(pool);
+    return chosen ? {from:chosen.from, to:chosen.to} : null;
+  }
+
+  // U složených jednotek má přednost pedagogická volba „měnit jednu / obě části“.
+  // Odstup v řádech proto aplikujeme jen na jednoduché jednotky.
+  const hasCompoundUnits = candidates.some(pair => pair.compound);
+  if(hasCompoundUnits){
+    const chosen = randomChoice(candidates);
+    return chosen ? {from:chosen.from, to:chosen.to} : null;
+  }
+
   const minJump = clampInt(settings.minJump, 1, 6);
   const preferred = candidates.filter(pair => pair.jump + 1e-12 >= minJump);
   const pool = preferred.length
@@ -869,7 +893,7 @@ function makeExample(index, preferredQuantity, useExponentialInput = false){
   for(let guard=0; guard<900; guard++){
     const q = preferredQuantity || randomChoice(quantities);
     const units = q.build(settings.mode).filter(u => Number.isFinite(u.factor) && u.factor !== 0);
-    const pair = chooseUnitPair(units);
+    const pair = chooseUnitPair(units, q.id);
     if(!pair) continue;
 
     const sampledSi = samplePhysicalSiValue(q.id, settings.mode);

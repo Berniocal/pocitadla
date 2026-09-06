@@ -125,6 +125,7 @@ assert.equal(JSON.stringify(defaults.quantitiesByMode.zs), JSON.stringify(expect
 assert.equal(JSON.stringify(defaults.quantitiesByMode.ss), JSON.stringify(expectedDefaults), 'Výchozí SŠ veličiny se změnily.');
 assert.equal(JSON.stringify(defaults.exponentialQuantitiesByMode.ss), JSON.stringify(['delka','hmotnost','sila','energie']), 'Výchozí SŠ exp. veličiny se změnily.');
 assert.equal(defaults.compoundConversionByMode.ss, 'both', 'Výchozí SŠ složené jednotky mají měnit obě části.');
+assert.equal(defaults.minJump, 3, 'Výchozí odstup jednoduchých jednotek má být 3 řády.');
 assert.equal(defaults.numberSettingsByMode.ss.niceInputByUnitSize, true, 'SŠ má mít výchozí hezčí zadání zapnuté.');
 assert.equal(defaults.resultLimitsByMode.ss.enabled, true, 'SŠ má mít výchozí omezení délky výsledku zapnuté.');
 
@@ -153,7 +154,7 @@ for(const mode of ['zs','ss']){
   }
 }
 
-// Ovladač odstupu znamená řády převodního poměru: 2 = alespoň 100×, ne dvě sousední předpony.
+// Ovladač odstupu znamená řády převodního poměru u jednoduchých jednotek: 2 = alespoň 100×.
 {
   const cfg = structuredClone(defaults);
   cfg.mode = 'ss';
@@ -172,6 +173,37 @@ for(const mode of ['zs','ss']){
     const ratio = Math.max(pair.from.factor, pair.to.factor) / Math.min(pair.from.factor, pair.to.factor);
     assert(ratio >= 100 - 1e-12, `Při minJump=2 musí být preferovaná dvojice alespoň 100× od sebe, ale je ${ratio}×.`);
   }
+}
+
+// Složené jednotky odstup v řádech ignorují; rozhoduje volba změny jedné/obou částí.
+{
+  const cfg = structuredClone(defaults);
+  cfg.mode = 'ss';
+  cfg.minJump = 6;
+  cfg.compoundConversionByMode.ss = 'both';
+  api.setSettings(cfg);
+  const speed = quantityById('rychlost');
+  for(let i=0; i<50; i++){
+    const pair = api.chooseUnitPair(speed.build('ss'), 'rychlost');
+    assert(pair, 'Složená rychlost nesmí být zablokována vysokým odstupem v řádech.');
+  }
+}
+
+// Čas odstup v řádech ignoruje a výrazně preferuje běžné jednotky den/h/min/s/ms.
+{
+  const cfg = structuredClone(defaults);
+  cfg.mode = 'ss';
+  cfg.minJump = 6;
+  api.setSettings(cfg);
+  const time = quantityById('cas');
+  const common = new Set(['den','h','min','s','ms']);
+  let commonCount = 0;
+  for(let i=0; i<1000; i++){
+    const pair = api.chooseUnitPair(time.build('ss'), 'cas');
+    assert(pair, 'Čas musí být generovatelný i při vysokém odstupu.');
+    if(common.has(pair.from.unit) && common.has(pair.to.unit)) commonCount++;
+  }
+  assert(commonCount >= 700, `Běžné časové dvojice mají výrazně převažovat; bylo jich ${commonCount}/1000.`);
 }
 
 // Když požadovaný odstup v nabídce neexistuje, musí se použít opravdu nejvzdálenější dostupná dvojice.
