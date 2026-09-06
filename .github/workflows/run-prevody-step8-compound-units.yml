@@ -21,3 +21,4 @@ jobs:
           git add prevody.html tests/prevody.test.mjs
           git diff --cached --quiet || git commit -m "Add SŠ compound-unit change mode"
           git push
+      # retry after adapting the patch script to the current CSS
