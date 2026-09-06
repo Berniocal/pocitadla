@@ -1,0 +1,22 @@
+name: Run prevody step 8 physical compound
+
+on:
+  push:
+    paths:
+      - '.github/workflows/run-prevody-step8-physical-compound.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python .github/scripts/prevody_step8_physical_compound.py
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prevody.html tests/prevody.test.mjs
+          git diff --cached --quiet || git commit -m "Add realistic physical ranges and compound unit options"
+          git push
