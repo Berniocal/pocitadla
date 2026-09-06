@@ -1,0 +1,22 @@
+name: Run prevody step 8 fix speed one
+
+on:
+  push:
+    paths:
+      - '.github/workflows/run-prevody-step8-fix-speed-one.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python .github/scripts/prevody_step8_fix_speed_one.py
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prevody.html
+          git diff --cached --quiet || git commit -m "Use m/min for one-part SŠ speed conversions"
+          git push
