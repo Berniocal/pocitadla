@@ -392,12 +392,16 @@ function buildForceUnits(mode){
   return prefixedUnits('N', ids);
 }
 
-function buildSpeedUnits(){
-  return filterUnits([
+function buildSpeedUnits(mode){
+  const units = [
     compoundUnit('m/s', 1, 0, 'm', 's', ''),
-    compoundUnit('km/h', 1 / 3.6, .55, 'km', 'h', 'k'),
-    compoundUnit('m/h', 1 / 3600, Math.log10(1 / 3600), 'm', 'h', '')
-  ]);
+    compoundUnit('km/h', 1 / 3.6, .55, 'km', 'h', 'k')
+  ];
+  if(mode === 'ss'){
+    // Pomocná běžná složená jednotka umožní na SŠ měnit jen čitatel nebo jen jmenovatel.
+    units.push(compoundUnit('m/h', 1 / 3600, Math.log10(1 / 3600), 'm', 'h', ''));
+  }
+  return filterUnits(units);
 }
 
 function buildDensityUnits(mode){
