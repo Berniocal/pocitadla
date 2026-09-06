@@ -328,6 +328,23 @@ for(const compoundMode of ['both','one']){
   }
 }
 
+// Rychlost na SŠ musí umět při režimu „jen jednu část“ změnit zvlášť jmenovatel i čitatel.
+{
+  const cfg = structuredClone(defaults);
+  cfg.mode = 'ss';
+  cfg.compoundConversionByMode.ss = 'one';
+  api.setSettings(cfg);
+  const speedUnits = quantityById('rychlost').build('ss');
+  const byName = name => speedUnits.find(u => u.unit === name);
+  const mPerS = byName('m/s');
+  const mPerMin = byName('m/min');
+  const kmPerMin = byName('km/min');
+  assert(mPerS && mPerMin && kmPerMin, 'SŠ rychlost musí obsahovat m/s, m/min a km/min.');
+  assert.equal(api.compoundDifferenceCount(mPerS, mPerMin), 1, 'm/s → m/min má měnit jen jmenovatel.');
+  assert.equal(api.compoundDifferenceCount(mPerMin, kmPerMin), 1, 'm/min → km/min má měnit jen čitatel.');
+  assert(nearlyEqual(kmPerMin.factor, 1000 / 60), 'km/min má chybný převodní faktor.');
+}
+
 // Elektrický náboj nesmí používat absurdně velké předpony.
 {
   const cfg = structuredClone(defaults);

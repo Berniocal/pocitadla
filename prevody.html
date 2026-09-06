@@ -206,7 +206,7 @@ p{line-height:1.45}
           <option value="both">obě části jednotky</option>
           <option value="one">jen jednu část jednotky</option>
         </select>
-        <span class="small">Platí pro veličiny jako rychlost, hustota a zrychlení. Např. m/s → km/h mění obě části, m/s → m/min jen jednu.</span>
+        <span class="small">Platí pro veličiny jako rychlost, hustota a zrychlení. Např. m/s → km/h mění obě části; m/s → m/min mění jen jmenovatel a m/min → km/min jen čitatel.</span>
       </div>
     </div>
 
@@ -406,8 +406,12 @@ function buildSpeedUnits(mode){
     compoundUnit('km/h', 1 / 3.6, .55, 'km', 'h', 'k')
   ];
   if(mode === 'ss'){
-    // Pomocná běžná složená jednotka umožní na SŠ měnit jen čitatel nebo jen jmenovatel.
-    units.push(compoundUnit('m/min', 1 / 60, Math.log10(1 / 60), 'm', 'min', ''));
+    // Doplňkové běžné složené jednotky dovolí při režimu „jen jednu část“
+    // měnit samostatně jmenovatel (m/s ↔ m/min) i čitatel (m/min ↔ km/min).
+    units.push(
+      compoundUnit('m/min', 1 / 60, Math.log10(1 / 60), 'm', 'min', ''),
+      compoundUnit('km/min', 1000 / 60, Math.log10(1000 / 60), 'km', 'min', 'k')
+    );
   }
   return filterUnits(units);
 }
