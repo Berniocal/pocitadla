@@ -198,7 +198,7 @@ p{line-height:1.45}
           <option value="both">obě části jednotky</option>
           <option value="one">jen jednu část jednotky</option>
         </select>
-        <span class="small">Platí pro veličiny jako rychlost, hustota a zrychlení. Např. m/s → km/h mění obě části, m/s → m/h jen jednu.</span>
+        <span class="small">Platí pro veličiny jako rychlost, hustota a zrychlení. Např. m/s → km/h mění obě části, m/s → m/min jen jednu.</span>
       </div>
     </div>
 
@@ -399,7 +399,7 @@ function buildSpeedUnits(mode){
   ];
   if(mode === 'ss'){
     // Pomocná běžná složená jednotka umožní na SŠ měnit jen čitatel nebo jen jmenovatel.
-    units.push(compoundUnit('m/h', 1 / 3600, Math.log10(1 / 3600), 'm', 'h', ''));
+    units.push(compoundUnit('m/min', 1 / 60, Math.log10(1 / 60), 'm', 'min', ''));
   }
   return filterUnits(units);
 }
