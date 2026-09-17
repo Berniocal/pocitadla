@@ -1,0 +1,222 @@
+name: One-time patch prevody prefix diversity
+
+on:
+  push:
+    branches:
+      - fix/prevody-prefix-diversity
+    paths:
+      - '.github/workflows/patch-prevody-prefix-diversity.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/prevody-prefix-diversity
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Patch prevody.html
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('prevody.html')
+          text = path.read_text(encoding='utf-8')
+
+          marker = "function chooseUnitPair(units, quantityId = null){"
+          assert marker in text, 'chooseUnitPair signature not found'
+
+          helpers = r'''
+function prefixPairKeyFromIds(a, b){
+  if(a === null || a === undefined || b === null || b === undefined || a === b) return null;
+  return [String(a), String(b)].sort().join('↔');
+}
+
+function prefixPairKey(from, to){
+  return prefixPairKeyFromIds(from?.prefixId, to?.prefixId);
+}
+
+function createDiversityState(){
+  return {
+    usedPrefixPairs:new Set(),
+    prefixUse:new Map(selectedPrefixes().map(prefix => [prefix.id, 0]))
+  };
+}
+
+function registerExampleDiversity(ex, diversity){
+  if(!ex || !diversity) return;
+  const key = prefixPairKeyFromIds(ex.fromPrefixId, ex.toPrefixId);
+  if(key) diversity.usedPrefixPairs.add(key);
+  for(const id of [ex.fromPrefixId, ex.toPrefixId]){
+    if(id === null || id === undefined) continue;
+    diversity.prefixUse.set(id, (diversity.prefixUse.get(id) || 0) + 1);
+  }
+}
+
+function diversityStateFromExamples(excludeIndex = null){
+  const diversity = createDiversityState();
+  for(const ex of examples){
+    if(excludeIndex !== null && ex.index === excludeIndex) continue;
+    registerExampleDiversity(ex, diversity);
+  }
+  return diversity;
+}
+
+function chooseDiversePair(pool, diversity){
+  if(!pool.length) return null;
+  if(!diversity) return randomChoice(pool);
+
+  let candidates = pool;
+  const unusedPairs = candidates.filter(pair => {
+    const key = prefixPairKey(pair.from, pair.to);
+    return key && !diversity.usedPrefixPairs.has(key);
+  });
+  if(unusedPairs.length) candidates = unusedPairs;
+
+  let bestScore = Infinity;
+  let best = [];
+  for(const pair of candidates){
+    const ids = [pair.from?.prefixId, pair.to?.prefixId]
+      .filter(id => id !== null && id !== undefined);
+    const score = ids.reduce((sum, id) => sum + (diversity.prefixUse.get(id) || 0), 0);
+    if(score < bestScore){
+      bestScore = score;
+      best = [pair];
+    }else if(score === bestScore){
+      best.push(pair);
+    }
+  }
+  return randomChoice(best.length ? best : candidates);
+}
+
+'''
+          text = text.replace(marker, helpers + "function chooseUnitPair(units, quantityId = null, diversity = null){", 1)
+
+          start = text.index("function chooseUnitPair(units, quantityId = null, diversity = null){")
+          end = text.index("\nfunction shuffle(arr){", start)
+          segment = text[start:end]
+          assert segment.count("const chosen = randomChoice(pool);") == 2, 'Unexpected pool chooser count'
+          assert segment.count("const chosen = randomChoice(candidates);") == 1, 'Unexpected candidate chooser count'
+          segment = segment.replace("const chosen = randomChoice(pool);", "const chosen = chooseDiversePair(pool, diversity);")
+          segment = segment.replace("const chosen = randomChoice(candidates);", "const chosen = chooseDiversePair(candidates, diversity);")
+          text = text[:start] + segment + text[end:]
+
+          old_sig = "function makeExample(index, preferredQuantity, useExponentialInput = false){"
+          new_sig = "function makeExample(index, preferredQuantity, useExponentialInput = false, diversity = null){"
+          assert old_sig in text, 'makeExample signature not found'
+          text = text.replace(old_sig, new_sig, 1)
+
+          old_choose = "const pair = chooseUnitPair(units, q.id);"
+          assert old_choose in text, 'makeExample chooseUnitPair call not found'
+          text = text.replace(old_choose, "const pair = chooseUnitPair(units, q.id, diversity);", 1)
+
+          old_fields = "      from:pair.from.unit,\n      to:pair.to.unit,"
+          new_fields = "      from:pair.from.unit,\n      to:pair.to.unit,\n      fromPrefixId:pair.from.prefixId,\n      toPrefixId:pair.to.prefixId,"
+          assert old_fields in text, 'Example unit fields not found'
+          text = text.replace(old_fields, new_fields, 1)
+
+          old_repl_sig = "function replacementExampleFor(ex){"
+          assert old_repl_sig in text, 'replacementExampleFor signature not found'
+          text = text.replace(old_repl_sig, "function replacementExampleFor(ex, diversity = null){", 1)
+
+          old_repl_call = "  return makeExample(ex.index, q, usesExponentialForQuantity(q.id));"
+          assert old_repl_call in text, 'replacementExampleFor makeExample call not found'
+          text = text.replace(old_repl_call, "  return makeExample(ex.index, q, usesExponentialForQuantity(q.id), diversity);", 1)
+
+          old_regen = "  const oldExample = examples[position];\n  const replacement = replacementExampleFor(oldExample);"
+          new_regen = "  const oldExample = examples[position];\n  const diversity = diversityStateFromExamples(index);\n  const replacement = replacementExampleFor(oldExample, diversity);"
+          assert old_regen in text, 'regenerateExampleAt block not found'
+          text = text.replace(old_regen, new_regen, 1)
+
+          old_generation_init = "  examples = [];\n  generationFailures = [];"
+          new_generation_init = "  examples = [];\n  const diversity = createDiversityState();\n  generationFailures = [];"
+          assert old_generation_init in text, 'generateExamples initialization not found'
+          text = text.replace(old_generation_init, new_generation_init, 1)
+
+          old_generate_call = "    const ex = makeExample(i, preferred, useExponential);"
+          assert old_generate_call in text, 'generateExamples makeExample call not found'
+          text = text.replace(old_generate_call, "    const ex = makeExample(i, preferred, useExponential, diversity);", 1)
+
+          old_push = "      examples.push(ex);\n      previousId = ex.quantityId;"
+          new_push = "      examples.push(ex);\n      registerExampleDiversity(ex, diversity);\n      previousId = ex.quantityId;"
+          assert old_push in text, 'generateExamples push block not found'
+          text = text.replace(old_push, new_push, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Run existing tests
+        run: node tests/prevody.test.mjs
+
+      - name: Run prefix diversity regression test
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          src = Path('tests/prevody.test.mjs').read_text(encoding='utf-8')
+          needle = "  replacementExampleFor\n};`;"
+          replacement = "  replacementExampleFor,\n  createDiversityState,\n  registerExampleDiversity,\n  prefixPairKeyFromIds\n};`;"
+          assert needle in src, 'test API insertion point not found'
+          src = src.replace(needle, replacement, 1)
+          src += r'''
+
+// Nová regrese: obrácený směr stejné dvojice předpon je pořád tentýž typ převodu
+// a při dostupných možnostech se mají nejdřív využívat různé dvojice i málo použité předpony.
+{
+  const cfg = structuredClone(defaults);
+  cfg.mode = 'ss';
+  cfg.minJump = 3;
+  cfg.prefixes = ['m','','k','M','G'];
+  api.setSettings(cfg);
+
+  assert.equal(api.prefixPairKeyFromIds('k','M'), api.prefixPairKeyFromIds('M','k'), 'Směr nesmí měnit identitu dvojice předpon.');
+
+  const synthetic = [
+    {unit:'mU', factor:1e-3, order:-3, prefixId:'m', parts:null},
+    {unit:'U', factor:1, order:0, prefixId:'', parts:null},
+    {unit:'kU', factor:1e3, order:3, prefixId:'k', parts:null},
+    {unit:'MU', factor:1e6, order:6, prefixId:'M', parts:null},
+    {unit:'GU', factor:1e9, order:9, prefixId:'G', parts:null}
+  ];
+  const diversity = api.createDiversityState();
+  const seen = new Set();
+  for(let i=0; i<10; i++){
+    const pair = api.chooseUnitPair(synthetic, null, diversity);
+    assert(pair, 'Diverzitní výběr nedokázal vybrat dvojici.');
+    const key = api.prefixPairKeyFromIds(pair.from.prefixId, pair.to.prefixId);
+    assert(key, 'Syntetická dvojice musí mít klíč předpon.');
+    assert(!seen.has(key), `Dvojice předpon ${key} se zopakovala dřív, než se vyčerpaly dostupné možnosti.`);
+    seen.add(key);
+    api.registerExampleDiversity({fromPrefixId:pair.from.prefixId, toPrefixId:pair.to.prefixId}, diversity);
+    if(i === 2){
+      for(const id of ['m','','k','M','G']){
+        assert((diversity.prefixUse.get(id) || 0) > 0, `Předpona ${id || '(bez předpony)'} nebyla během prvních tří dvojic vystřídána.`);
+      }
+    }
+  }
+  assert.equal(seen.size, 10, 'Pět předpon má dát deset různých neuspořádaných dvojic.');
+}
+'''
+          Path('/tmp/prevody-diversity.test.mjs').write_text(src, encoding='utf-8')
+          PY
+          cp /tmp/prevody-diversity.test.mjs tests/prevody.diversity.tmp.mjs
+          node tests/prevody.diversity.tmp.mjs
+          rm tests/prevody.diversity.tmp.mjs
+
+      - name: Commit tested patch and remove one-time workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/patch-prevody-prefix-diversity.yml
+          git add prevody.html
+          git commit -m "Improve prefix diversity in conversion generator"
+          git push origin HEAD:fix/prevody-prefix-diversity
