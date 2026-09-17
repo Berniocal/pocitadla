@@ -941,20 +941,22 @@ function chooseDiversePair(pool, diversity){
   });
   if(unusedPairs.length) candidates = unusedPairs;
 
-  let bestScore = Infinity;
-  let best = [];
-  for(const pair of candidates){
+  // Rozmanitost je preference, ne další tvrdé omezení. Všechny zatím
+  // nepoužité dvojice zůstávají ve hře; méně použité předpony mají jen
+  // vyšší váhu. Tím se generátor nezamkne na jedné nevhodné dvojici.
+  const scored = candidates.map(pair => {
     const ids = [pair.from?.prefixId, pair.to?.prefixId]
       .filter(id => id !== null && id !== undefined);
     const score = ids.reduce((sum, id) => sum + (diversity.prefixUse.get(id) || 0), 0);
-    if(score < bestScore){
-      bestScore = score;
-      best = [pair];
-    }else if(score === bestScore){
-      best.push(pair);
-    }
+    return {pair, score};
+  });
+  const maxScore = Math.max(...scored.map(item => item.score));
+  const weighted = [];
+  for(const item of scored){
+    const weight = Math.max(1, Math.min(12, maxScore - item.score + 1));
+    for(let i=0; i<weight; i++) weighted.push(item.pair);
   }
-  return randomChoice(best.length ? best : candidates);
+  return randomChoice(weighted.length ? weighted : candidates);
 }
 
 function chooseUnitPair(units, quantityId = null, diversity = null){
@@ -1059,7 +1061,11 @@ function makeExample(index, preferredQuantity, useExponentialInput = false, dive
   for(let guard=0; guard<900; guard++){
     const q = preferredQuantity || randomChoice(quantities);
     const units = q.build(settings.mode).filter(u => Number.isFinite(u.factor) && u.factor !== 0);
-    const pair = chooseUnitPair(units, q.id, diversity);
+    // Neopakování dvojic a střídání předpon jsou jen preference.
+    // Pokud se kvůli nim dlouho nedaří vytvořit numericky platný příklad,
+    // poslední třetina pokusů použije pouze skutečná uživatelská omezení.
+    const activeDiversity = guard < 600 ? diversity : null;
+    const pair = chooseUnitPair(units, q.id, activeDiversity);
     if(!pair) continue;
 
     const sampledSi = samplePhysicalSiValue(q.id, settings.mode);
