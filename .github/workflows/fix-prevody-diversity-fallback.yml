@@ -25,86 +25,8 @@ jobs:
       - name: Patch prevody.html
         shell: bash
         run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path('prevody.html')
-          text = path.read_text(encoding='utf-8')
-
-          old = '''function chooseDiversePair(pool, diversity){
-  if(!pool.length) return null;
-  if(!diversity) return randomChoice(pool);
-
-  let candidates = pool;
-  const unusedPairs = candidates.filter(pair => {
-    const key = prefixPairKey(pair.from, pair.to);
-    return key && !diversity.usedPrefixPairs.has(key);
-  });
-  if(unusedPairs.length) candidates = unusedPairs;
-
-  let bestScore = Infinity;
-  let best = [];
-  for(const pair of candidates){
-    const ids = [pair.from?.prefixId, pair.to?.prefixId]
-      .filter(id => id !== null && id !== undefined);
-    const score = ids.reduce((sum, id) => sum + (diversity.prefixUse.get(id) || 0), 0);
-    if(score < bestScore){
-      bestScore = score;
-      best = [pair];
-    }else if(score === bestScore){
-      best.push(pair);
-    }
-  }
-  return randomChoice(best.length ? best : candidates);
-}
-'''
-          new = '''function chooseDiversePair(pool, diversity){
-  if(!pool.length) return null;
-  if(!diversity) return randomChoice(pool);
-
-  let candidates = pool;
-  const unusedPairs = candidates.filter(pair => {
-    const key = prefixPairKey(pair.from, pair.to);
-    return key && !diversity.usedPrefixPairs.has(key);
-  });
-  if(unusedPairs.length) candidates = unusedPairs;
-
-  // Rozmanitost je preference, ne další tvrdé omezení. Všechny zatím
-  // nepoužité dvojice zůstávají ve hře; méně použité předpony mají jen
-  // vyšší váhu. Tím se generátor nezamkne na jedné nevhodné dvojici.
-  const scored = candidates.map(pair => {
-    const ids = [pair.from?.prefixId, pair.to?.prefixId]
-      .filter(id => id !== null && id !== undefined);
-    const score = ids.reduce((sum, id) => sum + (diversity.prefixUse.get(id) || 0), 0);
-    return {pair, score};
-  });
-  const maxScore = Math.max(...scored.map(item => item.score));
-  const weighted = [];
-  for(const item of scored){
-    const weight = Math.max(1, Math.min(12, maxScore - item.score + 1));
-    for(let i=0; i<weight; i++) weighted.push(item.pair);
-  }
-  return randomChoice(weighted.length ? weighted : candidates);
-}
-'''
-          assert old in text, 'chooseDiversePair block not found'
-          text = text.replace(old, new, 1)
-
-          old_pair = '''    const pair = chooseUnitPair(units, q.id, diversity);
-    if(!pair) continue;
-'''
-          new_pair = '''    // Neopakování dvojic a střídání předpon jsou jen preference.
-    // Pokud se kvůli nim dlouho nedaří vytvořit numericky platný příklad,
-    // poslední třetina pokusů použije pouze skutečná uživatelská omezení.
-    const activeDiversity = guard < 600 ? diversity : null;
-    const pair = chooseUnitPair(units, q.id, activeDiversity);
-    if(!pair) continue;
-'''
-          assert old_pair in text, 'makeExample pair selection not found'
-          text = text.replace(old_pair, new_pair, 1)
-
-          path.write_text(text, encoding='utf-8')
-          PY
+          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCgpwYXRoID0gUGF0aCgncHJldm9keS5odG1sJykKdGV4dCA9IHBhdGgucmVhZF90ZXh0KGVuY29kaW5nPSd1dGYtOCcpCgpvbGQgPSAiIiJmdW5jdGlvbiBjaG9vc2VEaXZlcnNlUGFpcihwb29sLCBkaXZlcnNpdHkpewogIGlmKCFwb29sLmxlbmd0aCkgcmV0dXJuIG51bGw7CiAgaWYoIWRpdmVyc2l0eSkgcmV0dXJuIHJhbmRvbUNob2ljZShwb29sKTsKCiAgbGV0IGNhbmRpZGF0ZXMgPSBwb29sOwogIGNvbnN0IHVudXNlZFBhaXJzID0gY2FuZGlkYXRlcy5maWx0ZXIocGFpciA9PiB7CiAgICBjb25zdCBrZXkgPSBwcmVmaXhQYWlyS2V5KHBhaXIuZnJvbSwgcGFpci50byk7CiAgICByZXR1cm4ga2V5ICYmICFkaXZlcnNpdHkudXNlZFByZWZpeFBhaXJzLmhhcyhrZXkpOwogIH0pOwogIGlmKHVudXNlZFBhaXJzLmxlbmd0aCkgY2FuZGlkYXRlcyA9IHVudXNlZFBhaXJzOwoKICBsZXQgYmVzdFNjb3JlID0gSW5maW5pdHk7CiAgbGV0IGJlc3QgPSBbXTsKICBmb3IoY29uc3QgcGFpciBvZiBjYW5kaWRhdGVzKXsKICAgIGNvbnN0IGlkcyA9IFtwYWlyLmZyb20/LnByZWZpeElkLCBwYWlyLnRvPy5wcmVmaXhJZF0KICAgICAgLmZpbHRlcihpZCA9PiBpZCAhPT0gbnVsbCAmJiBpZCAhPT0gdW5kZWZpbmVkKTsKICAgIGNvbnN0IHNjb3JlID0gaWRzLnJlZHVjZSgoc3VtLCBpZCkgPT4gc3VtICsgKGRpdmVyc2l0eS5wcmVmaXhVc2UuZ2V0KGlkKSB8fCAwKSwgMCk7CiAgICBpZihzY29yZSA8IGJlc3RTY29yZSl7CiAgICAgIGJlc3RTY29yZSA9IHNjb3JlOwogICAgICBiZXN0ID0gW3BhaXJdOwogICAgfWVsc2UgaWYoc2NvcmUgPT09IGJlc3RTY29yZSl7CiAgICAgIGJlc3QucHVzaChwYWlyKTsKICAgIH0KICB9CiAgcmV0dXJuIHJhbmRvbUNob2ljZShiZXN0Lmxlbmd0aCA/IGJlc3QgOiBjYW5kaWRhdGVzKTsKfQoiIiIKbmV3ID0gIiIiZnVuY3Rpb24gY2hvb3NlRGl2ZXJzZVBhaXIocG9vbCwgZGl2ZXJzaXR5KXsKICBpZighcG9vbC5sZW5ndGgpIHJldHVybiBudWxsOwogIGlmKCFkaXZlcnNpdHkpIHJldHVybiByYW5kb21DaG9pY2UocG9vbCk7CgogIGxldCBjYW5kaWRhdGVzID0gcG9vbDsKICBjb25zdCB1bnVzZWRQYWlycyA9IGNhbmRpZGF0ZXMuZmlsdGVyKHBhaXIgPT4gewogICAgY29uc3Qga2V5ID0gcHJlZml4UGFpcktleShwYWlyLmZyb20sIHBhaXIudG8pOwogICAgcmV0dXJuIGtleSAmJiAhZGl2ZXJzaXR5LnVzZWRQcmVmaXhQYWlycy5oYXMoa2V5KTsKICB9KTsKICBpZih1bnVzZWRQYWlycy5sZW5ndGgpIGNhbmRpZGF0ZXMgPSB1bnVzZWRQYWlyczsKCiAgLy8gUm96bWFuaXRvc3QgamUgcHJlZmVyZW5jZSwgbmUgZGFsxaHDrSB0dnJkw6kgb21lemVuw60uIFbFoWVjaG55IHphdMOtbQogIC8vIG5lcG91xb5pdMOpIGR2b2ppY2UgesWvc3TDoXZhasOtIHZlIGjFmWU7IG3DqW7EmyBwb3XFvml0w6kgcMWZZWRwb255IG1hasOtIGplbgogIC8vIHZ5xaHFocOtIHbDoWh1LiBUw61tIHNlIGdlbmVyw6F0b3IgbmV6YW1rbmUgbmEgamVkbsOpIG5ldmhvZG7DqSBkdm9qaWNpLgogIGNvbnN0IHNjb3JlZCA9IGNhbmRpZGF0ZXMubWFwKHBhaXIgPT4gewogICAgY29uc3QgaWRzID0gW3BhaXIuZnJvbT8ucHJlZml4SWQsIHBhaXIudG8/LnByZWZpeElkXQogICAgICAuZmlsdGVyKGlkID0+IGlkICE9PSBudWxsICYmIGlkICE9PSB1bmRlZmluZWQpOwogICAgY29uc3Qgc2NvcmUgPSBpZHMucmVkdWNlKChzdW0sIGlkKSA9PiBzdW0gKyAoZGl2ZXJzaXR5LnByZWZpeFVzZS5nZXQoaWQpIHx8IDApLCAwKTsKICAgIHJldHVybiB7cGFpciwgc2NvcmV9OwogIH0pOwogIGNvbnN0IG1heFNjb3JlID0gTWF0aC5tYXgoLi4uc2NvcmVkLm1hcChpdGVtID0+IGl0ZW0uc2NvcmUpKTsKICBjb25zdCB3ZWlnaHRlZCA9IFtdOwogIGZvcihjb25zdCBpdGVtIG9mIHNjb3JlZCl7CiAgICBjb25zdCB3ZWlnaHQgPSBNYXRoLm1heCgxLCBNYXRoLm1pbigxMiwgbWF4U2NvcmUgLSBpdGVtLnNjb3JlICsgMSkpOwogICAgZm9yKGxldCBpPTA7IGk8d2VpZ2h0OyBpKyspIHdlaWdodGVkLnB1c2goaXRlbS5wYWlyKTsKICB9CiAgcmV0dXJuIHJhbmRvbUNob2ljZSh3ZWlnaHRlZC5sZW5ndGggPyB3ZWlnaHRlZCA6IGNhbmRpZGF0ZXMpOwp9CiIiIgphc3NlcnQgb2xkIGluIHRleHQsICdjaG9vc2VEaXZlcnNlUGFpciBibG9jayBub3QgZm91bmQnCnRleHQgPSB0ZXh0LnJlcGxhY2Uob2xkLCBuZXcsIDEpCgpvbGRfcGFpciA9ICIiIiAgICBjb25zdCBwYWlyID0gY2hvb3NlVW5pdFBhaXIodW5pdHMsIHEuaWQsIGRpdmVyc2l0eSk7CiAgICBpZighcGFpcikgY29udGludWU7CiIiIgpuZXdfcGFpciA9ICIiIiAgICAvLyBOZW9wYWtvdsOhbsOtIGR2b2ppYyBhIHN0xZnDrWTDoW7DrSBwxZllZHBvbiBqc291IGplbiBwcmVmZXJlbmNlLgogICAgLy8gUG9rdWQgc2Uga3bFr2xpIG5pbSBkbG91aG8gbmVkYcWZw60gdnl0dm/FmWl0IG51bWVyaWNreSBwbGF0bsO9IHDFmcOta2xhZCwKICAgIC8vIHBvc2xlZG7DrSB0xZlldGluYSBwb2t1c8WvIHBvdcW+aWplIHBvdXplIHNrdXRlxI1uw6EgdcW+aXZhdGVsc2vDoSBvbWV6ZW7DrS4KICAgIGNvbnN0IGFjdGl2ZURpdmVyc2l0eSA9IGd1YXJkIDwgNjAwID8gZGl2ZXJzaXR5IDogbnVsbDsKICAgIGNvbnN0IHBhaXIgPSBjaG9vc2VVbml0UGFpcih1bml0cywgcS5pZCwgYWN0aXZlRGl2ZXJzaXR5KTsKICAgIGlmKCFwYWlyKSBjb250aW51ZTsKIiIiCmFzc2VydCBvbGRfcGFpciBpbiB0ZXh0LCAnbWFrZUV4YW1wbGUgcGFpciBzZWxlY3Rpb24gbm90IGZvdW5kJwp0ZXh0ID0gdGV4dC5yZXBsYWNlKG9sZF9wYWlyLCBuZXdfcGFpciwgMSkKCnBhdGgud3JpdGVfdGV4dCh0ZXh0LCBlbmNvZGluZz0ndXRmLTgnKQo=' | base64 -d > /tmp/patch_prevody.py
+          python /tmp/patch_prevody.py
 
       - name: Run existing tests
         run: node tests/prevody.test.mjs
@@ -112,33 +34,8 @@ jobs:
       - name: Run diversity fallback regression
         shell: bash
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          src = Path('tests/prevody.test.mjs').read_text(encoding='utf-8')
-          needle = "  replacementExampleFor\n};`;"
-          replacement = "  replacementExampleFor,\n  createDiversityState,\n  registerExampleDiversity\n};`;"
-          assert needle in src, 'test API insertion point not found'
-          src = src.replace(needle, replacement, 1)
-          src += r'''
-
-// Rozmanitost nesmí zabránit vytvoření příkladu. U plochy jsou femto-jednotky
-// při běžných ZŠ limitech prakticky nepoužitelné; po vyčerpání diverzitní fáze
-// se musí generátor vrátit k jiné povolené dvojici a příklad vytvořit.
-{
-  const cfg = structuredClone(defaults);
-  cfg.mode = 'zs';
-  cfg.prefixes = ['f','','k'];
-  cfg.minJump = 3;
-  api.setSettings(cfg);
-  const area = quantityById('plocha');
-  const diversity = api.createDiversityState();
-  api.registerExampleDiversity({fromPrefixId:'', toPrefixId:'k'}, diversity);
-  const ex = api.makeExample(1, area, false, diversity);
-  assert(ex, 'Preference rozmanitosti nesmí zablokovat jinak vytvořitelný příklad plochy.');
-}
-'''
-          Path('tests/prevody.diversity-fallback.tmp.mjs').write_text(src, encoding='utf-8')
-          PY
+          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCnNyYyA9IFBhdGgoJ3Rlc3RzL3ByZXZvZHkudGVzdC5tanMnKS5yZWFkX3RleHQoZW5jb2Rpbmc9J3V0Zi04JykKbmVlZGxlID0gIiAgcmVwbGFjZW1lbnRFeGFtcGxlRm9yXG59O2A7IgpyZXBsYWNlbWVudCA9ICIgIHJlcGxhY2VtZW50RXhhbXBsZUZvcixcbiAgY3JlYXRlRGl2ZXJzaXR5U3RhdGUsXG4gIHJlZ2lzdGVyRXhhbXBsZURpdmVyc2l0eVxufTtgOyIKYXNzZXJ0IG5lZWRsZSBpbiBzcmMsICd0ZXN0IEFQSSBpbnNlcnRpb24gcG9pbnQgbm90IGZvdW5kJwpzcmMgPSBzcmMucmVwbGFjZShuZWVkbGUsIHJlcGxhY2VtZW50LCAxKQpzcmMgKz0gciIiIgoKLy8gUm96bWFuaXRvc3QgbmVzbcOtIHphYnLDoW5pdCB2eXR2b8WZZW7DrSBwxZnDrWtsYWR1LiBVIHBsb2NoeSBqc291IGZlbXRvLWplZG5vdGt5Ci8vIHDFmWkgYsSbxb5uw71jaCBaxaAgbGltaXRlY2ggcHJha3RpY2t5IG5lcG91xb5pdGVsbsOpOyBwbyB2ecSNZXJww6Fuw60gZGl2ZXJ6aXRuw60gZsOhemUKLy8gc2UgbXVzw60gZ2VuZXLDoXRvciB2csOhdGl0IGsgamluw6kgcG92b2xlbsOpIGR2b2ppY2kgYSBwxZnDrWtsYWQgdnl0dm/FmWl0Lgp7CiAgY29uc3QgY2ZnID0gc3RydWN0dXJlZENsb25lKGRlZmF1bHRzKTsKICBjZmcubW9kZSA9ICd6cyc7CiAgY2ZnLnByZWZpeGVzID0gWydmJywnJywnayddOwogIGNmZy5taW5KdW1wID0gMzsKICBhcGkuc2V0U2V0dGluZ3MoY2ZnKTsKICBjb25zdCBhcmVhID0gcXVhbnRpdHlCeUlkKCdwbG9jaGEnKTsKICBjb25zdCBkaXZlcnNpdHkgPSBhcGkuY3JlYXRlRGl2ZXJzaXR5U3RhdGUoKTsKICBhcGkucmVnaXN0ZXJFeGFtcGxlRGl2ZXJzaXR5KHtmcm9tUHJlZml4SWQ6JycsIHRvUHJlZml4SWQ6J2snfSwgZGl2ZXJzaXR5KTsKICBjb25zdCBleCA9IGFwaS5tYWtlRXhhbXBsZSgxLCBhcmVhLCBmYWxzZSwgZGl2ZXJzaXR5KTsKICBhc3NlcnQoZXgsICdQcmVmZXJlbmNlIHJvem1hbml0b3N0aSBuZXNtw60gemFibG9rb3ZhdCBqaW5hayB2eXR2b8WZaXRlbG7DvSBwxZnDrWtsYWQgcGxvY2h5LicpOwp9CiIiIgpQYXRoKCd0ZXN0cy9wcmV2b2R5LmRpdmVyc2l0eS1mYWxsYmFjay50bXAubWpzJykud3JpdGVfdGV4dChzcmMsIGVuY29kaW5nPSd1dGYtOCcpCg==' | base64 -d > /tmp/make_regression.py
+          python /tmp/make_regression.py
           node tests/prevody.diversity-fallback.tmp.mjs
           rm tests/prevody.diversity-fallback.tmp.mjs
 
