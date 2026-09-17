@@ -1,0 +1,153 @@
+name: One-time fix prevody diversity fallback
+
+on:
+  push:
+    branches:
+      - fix/prevody-diversity-fallback
+    paths:
+      - '.github/workflows/fix-prevody-diversity-fallback.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/prevody-diversity-fallback
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Patch prevody.html
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('prevody.html')
+          text = path.read_text(encoding='utf-8')
+
+          old = '''function chooseDiversePair(pool, diversity){
+  if(!pool.length) return null;
+  if(!diversity) return randomChoice(pool);
+
+  let candidates = pool;
+  const unusedPairs = candidates.filter(pair => {
+    const key = prefixPairKey(pair.from, pair.to);
+    return key && !diversity.usedPrefixPairs.has(key);
+  });
+  if(unusedPairs.length) candidates = unusedPairs;
+
+  let bestScore = Infinity;
+  let best = [];
+  for(const pair of candidates){
+    const ids = [pair.from?.prefixId, pair.to?.prefixId]
+      .filter(id => id !== null && id !== undefined);
+    const score = ids.reduce((sum, id) => sum + (diversity.prefixUse.get(id) || 0), 0);
+    if(score < bestScore){
+      bestScore = score;
+      best = [pair];
+    }else if(score === bestScore){
+      best.push(pair);
+    }
+  }
+  return randomChoice(best.length ? best : candidates);
+}
+'''
+          new = '''function chooseDiversePair(pool, diversity){
+  if(!pool.length) return null;
+  if(!diversity) return randomChoice(pool);
+
+  let candidates = pool;
+  const unusedPairs = candidates.filter(pair => {
+    const key = prefixPairKey(pair.from, pair.to);
+    return key && !diversity.usedPrefixPairs.has(key);
+  });
+  if(unusedPairs.length) candidates = unusedPairs;
+
+  // Rozmanitost je preference, ne další tvrdé omezení. Všechny zatím
+  // nepoužité dvojice zůstávají ve hře; méně použité předpony mají jen
+  // vyšší váhu. Tím se generátor nezamkne na jedné nevhodné dvojici.
+  const scored = candidates.map(pair => {
+    const ids = [pair.from?.prefixId, pair.to?.prefixId]
+      .filter(id => id !== null && id !== undefined);
+    const score = ids.reduce((sum, id) => sum + (diversity.prefixUse.get(id) || 0), 0);
+    return {pair, score};
+  });
+  const maxScore = Math.max(...scored.map(item => item.score));
+  const weighted = [];
+  for(const item of scored){
+    const weight = Math.max(1, Math.min(12, maxScore - item.score + 1));
+    for(let i=0; i<weight; i++) weighted.push(item.pair);
+  }
+  return randomChoice(weighted.length ? weighted : candidates);
+}
+'''
+          assert old in text, 'chooseDiversePair block not found'
+          text = text.replace(old, new, 1)
+
+          old_pair = '''    const pair = chooseUnitPair(units, q.id, diversity);
+    if(!pair) continue;
+'''
+          new_pair = '''    // Neopakování dvojic a střídání předpon jsou jen preference.
+    // Pokud se kvůli nim dlouho nedaří vytvořit numericky platný příklad,
+    // poslední třetina pokusů použije pouze skutečná uživatelská omezení.
+    const activeDiversity = guard < 600 ? diversity : null;
+    const pair = chooseUnitPair(units, q.id, activeDiversity);
+    if(!pair) continue;
+'''
+          assert old_pair in text, 'makeExample pair selection not found'
+          text = text.replace(old_pair, new_pair, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Run existing tests
+        run: node tests/prevody.test.mjs
+
+      - name: Run diversity fallback regression
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          src = Path('tests/prevody.test.mjs').read_text(encoding='utf-8')
+          needle = "  replacementExampleFor\n};`;"
+          replacement = "  replacementExampleFor,\n  createDiversityState,\n  registerExampleDiversity\n};`;"
+          assert needle in src, 'test API insertion point not found'
+          src = src.replace(needle, replacement, 1)
+          src += r'''
+
+// Rozmanitost nesmí zabránit vytvoření příkladu. U plochy jsou femto-jednotky
+// při běžných ZŠ limitech prakticky nepoužitelné; po vyčerpání diverzitní fáze
+// se musí generátor vrátit k jiné povolené dvojici a příklad vytvořit.
+{
+  const cfg = structuredClone(defaults);
+  cfg.mode = 'zs';
+  cfg.prefixes = ['f','','k'];
+  cfg.minJump = 3;
+  api.setSettings(cfg);
+  const area = quantityById('plocha');
+  const diversity = api.createDiversityState();
+  api.registerExampleDiversity({fromPrefixId:'', toPrefixId:'k'}, diversity);
+  const ex = api.makeExample(1, area, false, diversity);
+  assert(ex, 'Preference rozmanitosti nesmí zablokovat jinak vytvořitelný příklad plochy.');
+}
+'''
+          Path('tests/prevody.diversity-fallback.tmp.mjs').write_text(src, encoding='utf-8')
+          PY
+          node tests/prevody.diversity-fallback.tmp.mjs
+          rm tests/prevody.diversity-fallback.tmp.mjs
+
+      - name: Commit tested fix and remove one-time workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/fix-prevody-diversity-fallback.yml
+          git add prevody.html
+          git commit -m "Prevent diversity preference from blocking conversions"
+          git push origin HEAD:fix/prevody-diversity-fallback
