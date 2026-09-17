@@ -894,7 +894,70 @@ function isAdjacentTimePair(pair){
   return Math.abs(fromIndex - toIndex) === 1;
 }
 
-function chooseUnitPair(units, quantityId = null){
+
+function prefixPairKeyFromIds(a, b){
+  if(a === null || a === undefined || b === null || b === undefined || a === b) return null;
+  return [String(a), String(b)].sort().join('↔');
+}
+
+function prefixPairKey(from, to){
+  return prefixPairKeyFromIds(from?.prefixId, to?.prefixId);
+}
+
+function createDiversityState(){
+  return {
+    usedPrefixPairs:new Set(),
+    prefixUse:new Map(selectedPrefixes().map(prefix => [prefix.id, 0]))
+  };
+}
+
+function registerExampleDiversity(ex, diversity){
+  if(!ex || !diversity) return;
+  const key = prefixPairKeyFromIds(ex.fromPrefixId, ex.toPrefixId);
+  if(key) diversity.usedPrefixPairs.add(key);
+  for(const id of [ex.fromPrefixId, ex.toPrefixId]){
+    if(id === null || id === undefined) continue;
+    diversity.prefixUse.set(id, (diversity.prefixUse.get(id) || 0) + 1);
+  }
+}
+
+function diversityStateFromExamples(excludeIndex = null){
+  const diversity = createDiversityState();
+  for(const ex of examples){
+    if(excludeIndex !== null && ex.index === excludeIndex) continue;
+    registerExampleDiversity(ex, diversity);
+  }
+  return diversity;
+}
+
+function chooseDiversePair(pool, diversity){
+  if(!pool.length) return null;
+  if(!diversity) return randomChoice(pool);
+
+  let candidates = pool;
+  const unusedPairs = candidates.filter(pair => {
+    const key = prefixPairKey(pair.from, pair.to);
+    return key && !diversity.usedPrefixPairs.has(key);
+  });
+  if(unusedPairs.length) candidates = unusedPairs;
+
+  let bestScore = Infinity;
+  let best = [];
+  for(const pair of candidates){
+    const ids = [pair.from?.prefixId, pair.to?.prefixId]
+      .filter(id => id !== null && id !== undefined);
+    const score = ids.reduce((sum, id) => sum + (diversity.prefixUse.get(id) || 0), 0);
+    if(score < bestScore){
+      bestScore = score;
+      best = [pair];
+    }else if(score === bestScore){
+      best.push(pair);
+    }
+  }
+  return randomChoice(best.length ? best : candidates);
+}
+
+function chooseUnitPair(units, quantityId = null, diversity = null){
   if(units.length < 2) return null;
   const compoundMode = compoundConversionMode();
   const candidates = [];
@@ -927,7 +990,7 @@ function chooseUnitPair(units, quantityId = null){
     const available = nonAdjacent.length ? nonAdjacent : candidates;
     const common = available.filter(isCommonTimePair);
     const pool = common.length && Math.random() < 0.85 ? common : available;
-    const chosen = randomChoice(pool);
+    const chosen = chooseDiversePair(pool, diversity);
     return chosen ? {from:chosen.from, to:chosen.to} : null;
   }
 
@@ -935,7 +998,7 @@ function chooseUnitPair(units, quantityId = null){
   // Odstup v řádech proto aplikujeme jen na jednoduché jednotky.
   const hasCompoundUnits = candidates.some(pair => pair.compound);
   if(hasCompoundUnits){
-    const chosen = randomChoice(candidates);
+    const chosen = chooseDiversePair(candidates, diversity);
     return chosen ? {from:chosen.from, to:chosen.to} : null;
   }
 
@@ -947,7 +1010,7 @@ function chooseUnitPair(units, quantityId = null){
         const maxJump = Math.max(...candidates.map(pair => pair.jump));
         return candidates.filter(pair => Math.abs(pair.jump - maxJump) <= 1e-12);
       })();
-  const chosen = randomChoice(pool);
+  const chosen = chooseDiversePair(pool, diversity);
   return chosen ? {from:chosen.from, to:chosen.to} : null;
 }
 
@@ -990,13 +1053,13 @@ function formattedResultForPair(result, significantFigures, pair){
   };
 }
 
-function makeExample(index, preferredQuantity, useExponentialInput = false){
+function makeExample(index, preferredQuantity, useExponentialInput = false, diversity = null){
   const quantities = preferredQuantity ? [preferredQuantity] : selectedQuantities();
   if(!quantities.length) return null;
   for(let guard=0; guard<900; guard++){
     const q = preferredQuantity || randomChoice(quantities);
     const units = q.build(settings.mode).filter(u => Number.isFinite(u.factor) && u.factor !== 0);
-    const pair = chooseUnitPair(units, q.id);
+    const pair = chooseUnitPair(units, q.id, diversity);
     if(!pair) continue;
 
     const sampledSi = samplePhysicalSiValue(q.id, settings.mode);
@@ -1021,6 +1084,8 @@ function makeExample(index, preferredQuantity, useExponentialInput = false){
       exponentialFormat:Boolean(useExponentialInput),
       from:pair.from.unit,
       to:pair.to.unit,
+      fromPrefixId:pair.from.prefixId,
+      toPrefixId:pair.to.prefixId,
       result,
       siValue:displayedSi,
       significantFigures,
@@ -1031,18 +1096,19 @@ function makeExample(index, preferredQuantity, useExponentialInput = false){
   return null;
 }
 
-function replacementExampleFor(ex){
+function replacementExampleFor(ex, diversity = null){
   if(!ex) return null;
   const q = quantityMeta.find(item => item.id === ex.quantityId && item.modes.includes(settings.mode));
   if(!q) return null;
-  return makeExample(ex.index, q, usesExponentialForQuantity(q.id));
+  return makeExample(ex.index, q, usesExponentialForQuantity(q.id), diversity);
 }
 
 function regenerateExampleAt(index){
   const position = examples.findIndex(ex => ex.index === index);
   if(position < 0) return false;
   const oldExample = examples[position];
-  const replacement = replacementExampleFor(oldExample);
+  const diversity = diversityStateFromExamples(index);
+  const replacement = replacementExampleFor(oldExample, diversity);
   if(!replacement){
     $('copyState').textContent = `Příklad ${index} se nepodařilo přegenerovat bez porušení nastavení.`;
     return false;
@@ -1064,6 +1130,7 @@ function generateExamples(){
   let cycle = shuffle(quantities);
   let previousId = null;
   examples = [];
+  const diversity = createDiversityState();
   generationFailures = [];
   for(let i=1; i<=count; i++){
     if(cycle.length === 0) cycle = shuffle(quantities);
@@ -1072,9 +1139,10 @@ function generateExamples(){
     }
     const preferred = cycle.shift();
     const useExponential = Boolean(preferred && usesExponentialForQuantity(preferred.id));
-    const ex = makeExample(i, preferred, useExponential);
+    const ex = makeExample(i, preferred, useExponential, diversity);
     if(ex){
       examples.push(ex);
+      registerExampleDiversity(ex, diversity);
       previousId = ex.quantityId;
     }else if(preferred){
       generationFailures.push(preferred.title);
