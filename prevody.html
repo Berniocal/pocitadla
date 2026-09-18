@@ -1037,8 +1037,19 @@ function resultNeedsTenths(pair){
 
 function formattedResultForPair(result, significantFigures, pair){
   if(resultNeedsTenths(pair)){
-    const rounded = Math.round((result + Number.EPSILON) * 100) / 100;
-    const plain = formatCz(rounded, 2, 2);
+    const abs = Math.abs(result);
+    let decimals = 2;
+
+    // Minimálně dvě desetinná místa a současně alespoň dvě platné číslice.
+    // Např. 0,000166... -> 0,00017, nikoli 0,0002.
+    if(abs > 0 && abs < 1){
+      decimals = Math.max(2, Math.ceil(-Math.log10(abs)) + 1);
+    }
+
+    decimals = Math.min(decimals, 8);
+    const scale = Math.pow(10, decimals);
+    const rounded = Math.round((result + Number.EPSILON) * scale) / scale;
+    const plain = formatCz(rounded, decimals, decimals);
     const displaySig = countVisibleSignificantFigures(plain);
     return {
       value:rounded,
