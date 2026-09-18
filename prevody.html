@@ -1037,8 +1037,8 @@ function resultNeedsTenths(pair){
 
 function formattedResultForPair(result, significantFigures, pair){
   if(resultNeedsTenths(pair)){
-    const rounded = Math.round((result + Number.EPSILON) * 10) / 10;
-    const plain = formatCz(rounded, 1, 1);
+    const rounded = Math.round((result + Number.EPSILON) * 100) / 100;
+    const plain = formatCz(rounded, 2, 2);
     const displaySig = countVisibleSignificantFigures(plain);
     return {
       value:rounded,
