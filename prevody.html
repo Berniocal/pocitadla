@@ -1047,11 +1047,29 @@ function formattedResultForPair(result, significantFigures, pair){
       exp:formatExpNumber(rounded, displaySig)
     };
   }
+
+  // Běžný výsledek nezaokrouhlujeme podle počtu platných číslic zadání.
+  // Pro školní přehlednost zobrazíme až dvě desetinná místa.
+  // U velmi malých nenulových výsledků zachováme významné číslice,
+  // aby se například 0,00058 nezměnilo na 0.
+  const twoDecimalRounded = Math.round((result + Number.EPSILON) * 100) / 100;
+  let rounded = twoDecimalRounded;
+  let plain;
+
+  if(result !== 0 && twoDecimalRounded === 0){
+    const fallbackSig = Math.max(2, significantFigures);
+    plain = formatSignificantPlain(result, fallbackSig);
+    rounded = parseCzNumber(plain);
+  }else{
+    plain = trimCz(formatCz(twoDecimalRounded, 0, 2));
+  }
+
+  const displaySig = countVisibleSignificantFigures(plain);
   return {
-    value:result,
-    significantFigures,
-    plain:formatSignificantPlain(result, significantFigures),
-    exp:formatExpNumber(result, significantFigures)
+    value:rounded,
+    significantFigures:displaySig,
+    plain,
+    exp:formatExpNumber(rounded, displaySig)
   };
 }
 
