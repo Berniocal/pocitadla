@@ -1073,7 +1073,11 @@ function makeExample(index, preferredQuantity, useExponentialInput = false, dive
     const x = visibleNumberFromPhysicalSi(sampledSi, pair, useExponentialInput);
     if(!x) continue;
 
-    const displayedSi = x.value * pair.from.factor;
+    // Jediným zdrojem pro výpočet je číslo, které uživatel skutečně vidí.
+    // Tím se do výsledku nemůže propsat skrytá přesnější hodnota před zaokrouhlením.
+    const displayedValue = parseVisibleNumber(x.visible);
+    if(!Number.isFinite(displayedValue) || displayedValue <= 0) continue;
+    const displayedSi = displayedValue * pair.from.factor;
     if(!physicalValueFitsProfile(q.id, displayedSi, settings.mode)) continue;
     const result = displayedSi / pair.to.factor;
     if(!Number.isFinite(result) || result === 0) continue;
@@ -1257,6 +1261,21 @@ function trimCz(str){
 
 function parseCzNumber(str){
   return Number(String(str).replace(/\u202f/g,'').replace(/\s/g,'').replace(',', '.'));
+}
+
+function parseVisibleNumber(str){
+  const compact = String(str ?? '').replace(/\u202f/g,'').replace(/\s/g,'');
+  const parts = compact.split(/[·×]10/);
+  const mantissa = parseCzNumber(parts[0]);
+  if(!Number.isFinite(mantissa)) return NaN;
+  if(parts.length === 1) return mantissa;
+  if(parts.length !== 2) return NaN;
+
+  const exponentMap = {'⁻':'-','⁰':'0','¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9'};
+  const exponentText = [...parts[1]].map(ch => exponentMap[ch] ?? ch).join('');
+  const exponent = Number(exponentText);
+  if(!Number.isFinite(exponent)) return NaN;
+  return mantissa * Math.pow(10, exponent);
 }
 
 function toSuperscript(n){
