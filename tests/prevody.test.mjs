@@ -379,6 +379,19 @@ for(const compoundMode of ['both','one']){
   assert(nearlyEqual(kmPerMin.factor, 1000 / 60), 'km/min má chybný převodní faktor.');
 }
 
+// Běžné výsledky se nesmí zbytečně zkracovat podle počtu platných číslic zadání.
+// Např. 58,2 musí zůstat 58,2, i když zadání mělo jen 2 platné číslice.
+{
+  const neutralPair = {
+    from:{factor:1},
+    to:{factor:1}
+  };
+  assert.equal(api.formattedResultForPair(58.2, 2, neutralPair).plain, '58,2', '58,2 se nesmí zobrazit jako 58.');
+  assert.equal(api.formattedResultForPair(58.274, 2, neutralPair).plain, '58,27', 'Běžný výsledek má mít nejvýše dvě desetinná místa.');
+  assert.equal(api.formattedResultForPair(58, 2, neutralPair).plain, '58', 'Celé číslo nemá dostat zbytečné desetinné nuly.');
+  assert.notEqual(api.formattedResultForPair(0.00058, 2, neutralPair).plain, '0', 'Velmi malý nenulový výsledek se nesmí zaokrouhlit na nulu.');
+}
+
 // Při dělení 3,6 nebo 60 se běžný výsledek zaokrouhlí alespoň na desetiny.
 {
   const speedUnits = quantityById('rychlost').build('ss');
