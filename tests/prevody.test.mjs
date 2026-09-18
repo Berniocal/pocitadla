@@ -392,16 +392,17 @@ for(const compoundMode of ['both','one']){
   assert.notEqual(api.formattedResultForPair(0.00058, 2, neutralPair).plain, '0', 'Velmi malý nenulový výsledek se nesmí zaokrouhlit na nulu.');
 }
 
-// Při dělení 3,6 nebo 60 se běžný výsledek zaokrouhlí alespoň na desetiny.
+// Při dělení 3,6 nebo 60 se běžný výsledek zaokrouhlí na dvě desetinná místa.
 {
   const speedUnits = quantityById('rychlost').build('ss');
   const byName = name => speedUnits.find(u => u.unit === name);
   const kmhToMs = {from:byName('km/h'), to:byName('m/s')};
   const mminToMs = {from:byName('m/min'), to:byName('m/s')};
-  assert(api.resultNeedsTenths(kmhToMs), 'km/h → m/s musí používat desetiny (dělení 3,6).');
-  assert(api.resultNeedsTenths(mminToMs), 'm/min → m/s musí používat desetiny (dělení 60).');
-  assert.equal(api.formattedResultForPair(100 / 3.6, 1, kmhToMs).plain, '27,8', '100 km/h → m/s má být 27,8 m/s.');
-  assert.equal(api.formattedResultForPair(900 / 60, 1, mminToMs).plain, '15,0', '900 m/min → m/s má být 15,0 m/s.');
+  assert(api.resultNeedsTenths(kmhToMs), 'km/h → m/s musí používat dvě desetinná místa (dělení 3,6).');
+  assert(api.resultNeedsTenths(mminToMs), 'm/min → m/s musí používat dvě desetinná místa (dělení 60).');
+  assert.equal(api.formattedResultForPair(100 / 3.6, 1, kmhToMs).plain, '27,78', '100 km/h → m/s má být 27,78 m/s.');
+  assert.equal(api.formattedResultForPair(900 / 60, 1, mminToMs).plain, '15,00', '900 m/min → m/s má být 15,00 m/s.');
+  assert.equal(api.formattedResultForPair(1 / 60, 1, mminToMs).plain, '0,02', '1 m/min → m/s má být 0,02 m/s.');
 }
 
 // Elektrický náboj nesmí používat absurdně velké předpony.
