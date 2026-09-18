@@ -31,7 +31,8 @@ code += `\nglobalThis.__prevodyTestApi = {
   chooseUnitPair,
   resultNeedsTenths,
   formattedResultForPair,
-  replacementExampleFor
+  replacementExampleFor,
+  parseVisibleNumber
 };`;
 
 const sandbox = {
@@ -103,6 +104,11 @@ function unitFactor(quantity, mode, unitName){
 }
 
 const defaults = api.getDefaultSettings();
+
+// Výpočet musí vycházet přesně z textu, který uživatel vidí v zadání.
+assert.equal(api.parseVisibleNumber('1,8'), 1.8, 'Běžné desetinné zadání se musí číst ze zobrazeného textu.');
+assert.equal(api.parseVisibleNumber('3,2·10⁵'), 3.2e5, 'Exponenciální zadání se musí číst ze zobrazeného textu.');
+assert.equal(api.parseVisibleNumber('4,4×10⁻⁷'), 4.4e-7, 'Parser musí zvládnout i znak × v exponenciálním zápisu.');
 
 // Exponent 0 se nesmí zobrazovat jako zbytečné ·10⁰.
 assert.equal(api.formatExponentialText('3,5', 0), '3,5', 'Exponent 0 se má zobrazit běžně.');
@@ -296,6 +302,7 @@ for(const mode of ['zs','ss']){
       const toFactor = unitFactor(q, mode, ex.to);
       const expectedResult = input * fromFactor / toFactor;
       assert(nearlyEqual(ex.result, expectedResult), `Výsledek se nepočítá z viditelného zadání: ${ex.value} ${ex.from} -> ${ex.to}.`);
+      assert(nearlyEqual(ex.siValue, input * fromFactor), `Interní SI hodnota se nepočítá z viditelného zadání: ${ex.value} ${ex.from}.`);
 
       assert.equal(ex.significantFigures, api.countVisibleSignificantFigures(ex.value), `Nesedí počet platných číslic u ${ex.value}.`);
       if(cfg.resultLimitsByMode[mode].enabled){
