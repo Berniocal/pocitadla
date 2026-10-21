@@ -42,6 +42,7 @@ a{color:var(--primary)}
 .viewer.dragover{outline:4px solid #187a9e;outline-offset:-4px}
 canvas{width:100%;height:100%;display:block;touch-action:none;outline-offset:-5px}
 canvas:focus-visible{outline:3px solid #eaa733}
+.empty[hidden]{display:none}
 .empty{position:absolute;inset:0;display:flex;justify-content:center;align-items:center;text-align:center;padding:25px;pointer-events:none}
 .empty .message{background:#ffffffef;border:2px dashed #b9d1dc;padding:24px;border-radius:18px;max-width:480px;line-height:1.6;color:#3b5966}
 .foot{padding:10px 14px;color:var(--muted);font-size:.82rem;border-top:1px solid var(--line)}
@@ -62,7 +63,7 @@ canvas:focus-visible{outline:3px solid #eaa733}
 .panel-actions{display:flex;gap:8px;margin-top:17px}
 .panel-actions button{flex:1;min-width:0}
 .help{margin-top:17px;color:#506c79;line-height:1.52;font-size:.86rem}
-.help h3{margin:0 0:8px;font-size:.95rem;color:var(--ink)}
+.help h3{margin:0 0 8px;font-size:.95rem;color:var(--ink)}
 .help p{margin:8px 0 0}
 .status{font-size:.86rem;color:#456b7b;margin:10px 0 0;min-height:1.35em}
 @media(max-width:900px){.layout{grid-template-columns:1fr}.panel{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px}.panel h2{grid-column:1/-1;margin:0}.panel .help{margin:0}.panel-actions{align-self:start}}
@@ -143,7 +144,7 @@ const canvas = el("canvas"), viewer = el("viewer"), ctx = canvas.getContext("2d"
 const fileInput = el("file");
 const state = {
   image:null, imageW:0, imageH:0, scale:1, x:0, y:0, vw:0, vh:0,
-  points:[null,null], active:0, next:0, mode:"measure", pointers:new Map(),
+  points:[null,null], active:0, next:0, replaceExplicit:false, mode:"measure", pointers:new Map(),
   interaction:null, pinch:null, pinchUsed:false, loading:0
 };
 const pixelNumber = n => n.toLocaleString("cs-CZ");
@@ -265,10 +266,11 @@ function place(p,index){
 }
 function placeNext(p){
   if(!p)return;
-  if(state.next===0&&state.points[0]&&state.points[1]){
+  if(state.next===0&&!state.replaceExplicit&&state.points[0]&&state.points[1]){
     state.points[1]=null;
   }
   place(p,state.next);
+  state.replaceExplicit=false;
 }
 function nearestMarker(sx,sy){
   for(let i=1;i>=0;i--){
@@ -316,7 +318,7 @@ async function loadImage(file){
   if(!w||!h)throw new Error("Fotografii nelze dekódovat.");
   if(state.image instanceof ImageBitmap)state.image.close();
   state.image=newImage;state.imageW=w;state.imageH=h;
-  state.points=[null,null];state.next=0;state.active=0;
+  state.points=[null,null];state.next=0;state.active=0;state.replaceExplicit=false;
   el("empty").hidden=true;
   el("filename").textContent=file.name;
   el("resolution").textContent="Rozlišení: "+pixelNumber(w)+" × "+pixelNumber(h)+" px";
@@ -347,14 +349,14 @@ el("actual").addEventListener("click",()=>setZoom(1));
 el("measureMode").addEventListener("click",()=>setMode("measure"));
 el("panMode").addEventListener("click",()=>setMode("pan"));
 for(const [id,index] of [["chooseA",0],["chooseB",1]]){
-  el(id).addEventListener("click",()=>{if(!imageReady())return;state.next=index;state.active=index;setMode("measure");canvas.focus();draw();el("status").textContent="Kliknutím do fotografie umístíš bod "+(index===0?"A":"B")+".";});
+  el(id).addEventListener("click",()=>{if(!imageReady())return;state.next=index;state.active=index;state.replaceExplicit=true;setMode("measure");canvas.focus();draw();el("status").textContent="Kliknutím do fotografie umístíš bod "+(index===0?"A":"B")+".";});
 }
 el("undo").addEventListener("click",()=>{
-  if(state.points[1]){state.points[1]=null;state.next=1;state.active=0;}
-  else{state.points[0]=null;state.next=0;state.active=0;}
+  if(state.points[1]){state.points[1]=null;state.next=1;state.active=0;state.replaceExplicit=false;}
+  else{state.points[0]=null;state.next=0;state.active=0;state.replaceExplicit=false;}
   refreshResults();
 });
-el("clear").addEventListener("click",()=>{state.points=[null,null];state.next=0;state.active=0;refreshResults();});
+el("clear").addEventListener("click",()=>{state.points=[null,null];state.next=0;state.active=0;state.replaceExplicit=false;refreshResults();});
 viewer.addEventListener("wheel",e=>{
   if(!imageReady())return;
   e.preventDefault();
