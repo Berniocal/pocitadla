@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#145d77">
-<title>Měření vzdálenosti v pixelech | Fyzikální pomůcky</title>
+<title>Měření v pixelech a metrech | Fyzikální pomůcky</title>
 <style>
 :root{--ink:#17313d;--muted:#607681;--primary:#145d77;--line:#d4e2e8;--bg:#f3f7f8;--blue:#087ec1;--orange:#e45c32}
 *{box-sizing:border-box}
@@ -66,6 +66,32 @@ canvas:focus-visible{outline:3px solid #eaa733}
 .help h3{margin:0 0 8px;font-size:.95rem;color:var(--ink)}
 .help p{margin:8px 0 0}
 .status{font-size:.86rem;color:#456b7b;margin:10px 0 0;min-height:1.35em}
+
+/* Druhý režim: fyzikální měření z kalibrované fotografie */
+.measure-tabs{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0 0}
+.measure-tabs button{padding:12px 17px;border:1px solid #c9dce4;border-radius:12px;background:#fff;color:var(--ink);font-weight:750}
+.measure-tabs button[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:#fff}
+.panel[hidden]{display:none!important}
+.real-panel{display:block}
+.real-panel .subtle{color:var(--muted);font-size:.88rem;line-height:1.5}
+.real-panel h3{font-size:1rem;margin:16px 0 8px}
+.real-panel .field{display:grid;gap:5px;margin-top:10px}
+.real-panel label{font-size:.88rem;font-weight:720;line-height:1.4}
+.real-panel input,.real-panel select{width:100%;padding:10px 11px;min-height:42px;border:1px solid #b5cbd5;border-radius:10px;color:var(--ink);background:#fff}
+.real-panel input:focus-visible,.real-panel select:focus-visible{outline:3px solid #a7d7e9}
+.real-panel .cal{border:1px solid var(--line);border-radius:13px;padding:12px;margin-top:14px}
+.real-panel .cal summary{cursor:pointer;font-weight:800;line-height:1.45}
+.real-panel .row-buttons{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.real-panel .row-buttons button{flex:1;white-space:normal}
+.real-panel .cal-note{padding:9px 0 0;color:#506c79;font-size:.82rem;line-height:1.45}
+.real-panel .readout{padding:15px 12px;text-align:center;border-radius:13px;background:#edf8fc;border:1px solid #c9e2ec;margin:12px 0}
+.real-panel .readout strong{display:block;font-size:2rem;line-height:1.3;color:var(--primary);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.real-panel .readout small{display:block;color:#506c79;margin-top:5px;line-height:1.45;font-size:.84rem}
+.real-panel .warning{color:#885018;font-size:.83rem;line-height:1.5}
+.real-panel .saved{font-size:.83rem;color:#456572;line-height:1.5;margin:10px 0}
+.real-panel .inline-px{font-size:.9rem;font-weight:700;margin:0 0 10px}
+.real-panel .result-label{font-weight:760;font-size:.9rem}
+.real-panel .how{margin-top:14px;font-size:.83rem;color:#506c79;line-height:1.55}
 @media(max-width:900px){.layout{grid-template-columns:1fr}.panel{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px}.panel h2{grid-column:1/-1;margin:0}.panel .help{margin:0}.panel-actions{align-self:start}}
 @media(max-width:600px){.wrap{padding:10px 9px 25px}.heading{padding:17px}.tools{padding:10px}.sep{display:none}.viewer{height:54vh;min-height:300px}.panel{display:block}.panel .help{margin-top:16px}.zoom input{width:106px}.btn{padding:9px 11px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
@@ -75,9 +101,13 @@ canvas:focus-visible{outline:3px solid #eaa733}
 <main class="wrap">
   <div class="top"><a class="back" href="index.html">← Zpět na přehled pomůcek</a><span>Lokální zpracování · fotografie se nikam neodesílá</span></div>
   <header class="heading">
-    <h1>Měření vzdálenosti mezi body na fotografii</h1>
-    <p>Nahraj původní fotografii bez zmenšení, přibliž ji a označ body A a B. Výsledek se počítá podle souřadnic pixelů originálního obrázku, nikoliv podle jeho velikosti na obrazovce.</p>
+    <h1>Měření na fotografii</h1>
+    <p>Nahraj originální fotografii a označ dva body A a B. Změř jejich vzdálenost v pixelech, nebo po kalibraci urči skutečný rozměr objektu či vzdálenost od něj.</p>
   </header>
+  <nav class="measure-tabs" aria-label="Typ měření">
+    <button type="button" id="tabPixels" aria-pressed="true">📏 Měření v pixelech</button>
+    <button type="button" id="tabMeters" aria-pressed="false">📐 Skutečné rozměry a vzdálenosti</button>
+  </nav>
   <div class="tools" aria-label="Ovládání fotografie">
     <button id="open" class="btn primary" type="button">📷 Nahrát fotografii</button>
     <input class="file" type="file" id="file" accept="image/*" aria-label="Vybrat fotografii">
@@ -108,7 +138,7 @@ canvas:focus-visible{outline:3px solid #eaa733}
       </div>
       <div class="foot">Kolečko myši: zoom · tažení: posun · dotyk dvěma prsty: zoom · klepnutí: bod · přetažení bodu: úprava</div>
     </section>
-    <aside class="panel">
+    <aside class="panel" id="pixelPanel">
       <h2>Naměřené hodnoty</h2>
       <div class="result" aria-live="polite">
         <span class="number" id="distance">—</span>
@@ -133,6 +163,57 @@ canvas:focus-visible{outline:3px solid #eaa733}
         <p>Pro doladění klikni na bod a použij <strong>šipky</strong> na klávesnici (1 px, se Shiftem 10 px). Hodnota 100 % odpovídá jednomu obrazovkovému CSS pixelu na jeden pixel snímku.</p>
         <p>Vzdálenost se počítá jako √(Δx² + Δy²) mezi středy označených pixelů. Při měření fyzické délky je potřeba znát měřítko fotografie.</p>
       </div>
+    </aside>
+    <aside class="panel real-panel" id="physicalPanel" hidden>
+      <h2>Měřidlo v metrech</h2>
+      <p class="subtle">Označ koncové body objektu A a B na fotce. Měření používá jejich vzdálenost v <strong>původních pixelech snímku</strong>.</p>
+      <div class="inline-px">Označená délka: <span id="physicalPx">— px</span></div>
+      <div class="row-buttons">
+        <button type="button" class="btn secondary image-control" id="physicalChooseA" disabled>Změnit A</button>
+        <button type="button" class="btn secondary image-control" id="physicalChooseB" disabled>Změnit B</button>
+        <button type="button" class="btn secondary image-control" id="physicalClear" disabled>Smazat body</button>
+      </div>
+      <details class="cal" id="calibrationDetails" open>
+        <summary>⚙️ Kalibrace fotoaparátu a měřítka</summary>
+        <p class="cal-note">Zadej referenční vzdálenost a kolik metrů představuje <strong>1 px při této vzdálenosti</strong>. Měřítko se se vzdáleností mění.</p>
+        <div class="field">
+          <label for="calDistance">Referenční vzdálenost od objektu (m)</label>
+          <input id="calDistance" type="number" inputmode="decimal" min="0" step="any" placeholder="např. 5">
+        </div>
+        <div class="field">
+          <label for="calScale">Skutečná délka na 1 px v referenční vzdálenosti (m/px)</label>
+          <input id="calScale" type="number" inputmode="decimal" min="0" step="any" placeholder="např. 0,002">
+        </div>
+        <div class="row-buttons"><button type="button" class="btn primary" id="saveCalibration">Uložit kalibraci</button></div>
+        <div class="cal-note">Nevíš, kolik je m/px? Vyfoť předmět známé velikosti ze známé vzdálenosti, označ jeho krajní body a zadej skutečnou délku:</div>
+        <div class="field">
+          <label for="calRealSize">Skutečná délka označeného referenčního úseku (m)</label>
+          <input id="calRealSize" type="number" inputmode="decimal" min="0" step="any" placeholder="např. 0,3">
+        </div>
+        <div class="row-buttons"><button type="button" class="btn secondary" id="calibrateFromPoints">Vypočítat m/px z A–B a uložit</button></div>
+        <div class="row-buttons"><button type="button" class="btn secondary" id="forgetCalibration">Smazat kalibraci</button></div>
+        <p id="calStatus" class="warning" role="status" aria-live="polite"></p>
+      </details>
+      <p id="calSummary" class="saved">Zatím není uložená kalibrace.</p>
+      <h3>Co chceš vypočítat?</h3>
+      <div class="field">
+        <label for="physicalMode">Způsob výpočtu</label>
+        <select id="physicalMode">
+          <option value="size">Znám vzdálenost → skutečný rozměr</option>
+          <option value="distance">Znám skutečný rozměr → vzdálenost</option>
+        </select>
+      </div>
+      <div class="field">
+        <label id="knownLabel" for="knownValue">Vzdálenost fotoaparátu od objektu (m)</label>
+        <input id="knownValue" type="number" inputmode="decimal" min="0" step="any" placeholder="např. 12">
+      </div>
+      <div class="readout" aria-live="polite">
+        <span id="physicalResultLabel" class="result-label">Skutečný rozměr objektu</span>
+        <strong id="physicalResult">—</strong>
+        <small id="physicalHint">Proveď kalibraci a označ body A a B.</small>
+      </div>
+      <p class="how"><strong>Princip:</strong> Ve stejné kameře při stejném ohnisku roste skutečná délka odpovídající jednomu pixelu přibližně úměrně vzdálenosti. Vztah platí pro objekty kolmé ke směru fotografování a podobnou polohu v záběru.</p>
+      <p class="warning">Pro použitelné výsledky fotografuj stejným fotoaparátem, stejným zoomem a ve stejném rozlišení, bez ořezu či digitálního přepočítání. Jde o geometrický odhad, nikoli přesný laserový dálkoměr.</p>
     </aside>
   </div>
   <p id="status" class="status" role="status" aria-live="polite"></p>
@@ -255,6 +336,7 @@ function refreshResults(){
   }
   el("undo").disabled=!a&&!b;
   el("clear").disabled=!a&&!b;
+  refreshPhysical();
   draw();
 }
 function place(p,index){
@@ -445,6 +527,139 @@ canvas.addEventListener("keydown",e=>{
   else if(e.key==="0"){e.preventDefault();fitImage();}
   else if(e.key==="1"){e.preventDefault();setZoom(1);}
 });
+
+// Výpočet je kalibrován ve vzdálenosti d0: m/px(d) = m/px(d0) * d/d0.
+// Bez d0 nelze jednu fotografii převést současně na rozměr a vzdálenost.
+const physicalKey="pixely-physical-calibration-v1";
+const modeKey="pixely-physical-view-v1";
+let calibration=null;
+let physicalView="pixels";
+function positiveValue(id){
+  const raw=el(id).value.trim().replace(/\s/g,"").replace(",",".");
+  const n=Number(raw);
+  return raw!==""&&Number.isFinite(n)&&n>0?n:null;
+}
+function fmtLength(n){
+  if(!Number.isFinite(n)||n<=0)return "—";
+  return n.toLocaleString("cs-CZ",{maximumSignificantDigits:5})+" m";
+}
+function fmtNumber(n){
+  return n.toLocaleString("cs-CZ",{maximumSignificantDigits:6});
+}
+function pixelDistance(){
+  const [a,b]=state.points;
+  return a&&b?Math.hypot(b.x-a.x,b.y-a.y):null;
+}
+function sameResolution(){
+  if(!calibration||!state.image)return false;
+  if(!calibration.refW||!calibration.refH)return true; // Kalibrace z ručně zadané hodnoty bez referenčního souboru
+  return (state.imageW===calibration.refW&&state.imageH===calibration.refH)||
+    (state.imageW===calibration.refH&&state.imageH===calibration.refW);
+}
+function refreshPhysical(){
+  const n=pixelDistance();
+  el("physicalPx").textContent=n===null?"— px":fmtNumber(n)+" px";
+  el("physicalClear").disabled=n===null&&state.points[0]===null&&state.points[1]===null;
+  const distanceMode=el("physicalMode").value==="distance";
+  el("knownLabel").textContent=distanceMode?"Skutečný rozměr označeného objektu (m)":"Vzdálenost fotoaparátu od objektu (m)";
+  el("physicalResultLabel").textContent=distanceMode?"Odhad vzdálenosti od objektu":"Odhad skutečného rozměru objektu";
+  el("knownValue").placeholder=distanceMode?"např. 1,8":"např. 12";
+  el("calSummary").textContent=calibration
+    ?"Uloženo: "+fmtNumber(calibration.d0)+" m od objektu, "+fmtNumber(calibration.mpp)+" m/px"+
+      (calibration.refW?" · fotografie "+calibration.refW+" × "+calibration.refH+" px":" · rozlišení kalibračního snímku neověřeno")
+    :"Zatím není uložená kalibrace.";
+  const output=el("physicalResult"),hint=el("physicalHint");
+  output.textContent="—";
+  if(!calibration){hint.textContent="Nejdřív ulož kalibraci (referenční vzdálenost a m/px).";return;}
+  if(!state.image){hint.textContent="Nahraj fotografii objektu, který chceš změřit.";return;}
+  if(!sameResolution()){
+    hint.textContent="Fotografie má jiné rozlišení než kalibrační snímek. Nahraj snímek stejného rozlišení, nebo proveď novou kalibraci.";
+    return;
+  }
+  if(n===null){hint.textContent="Označ oba koncové body objektu (A a B).";return;}
+  if(n===0){hint.textContent="Body A a B jsou totožné, označ nenulovou délku.";return;}
+  const v=positiveValue("knownValue");
+  if(v===null){hint.textContent=distanceMode?"Zadej skutečnou délku označeného objektu v metrech.":"Zadej vzdálenost od fotografovaného objektu v metrech.";return;}
+  const result=distanceMode?(calibration.d0*v/(n*calibration.mpp)):(n*calibration.mpp*v/calibration.d0);
+  output.textContent=fmtLength(result);
+  hint.textContent=distanceMode
+    ?"D = "+fmtNumber(calibration.d0)+" m × "+fmtNumber(v)+" m ÷ ("+fmtNumber(n)+" px × "+fmtNumber(calibration.mpp)+" m/px)"
+    :"L = "+fmtNumber(n)+" px × "+fmtNumber(calibration.mpp)+" m/px × ("+fmtNumber(v)+" / "+fmtNumber(calibration.d0)+")";
+  if(!calibration.refW){
+    hint.textContent+=" · Pozor: rozlišení ručně zadané kalibrace nebylo ověřeno.";
+  }
+}
+function persistCalibration(next,message){
+  calibration=next;
+  try{
+    if(calibration)localStorage.setItem(physicalKey,JSON.stringify(calibration));
+    else localStorage.removeItem(physicalKey);
+  }catch(e){message+=" (Prohlížeč ale nepovolil trvalé uložení.)";}
+  el("calStatus").textContent=message;
+  refreshPhysical();
+}
+el("saveCalibration").addEventListener("click",()=>{
+  const d0=positiveValue("calDistance"),mpp=positiveValue("calScale");
+  if(d0===null||mpp===null){
+    el("calStatus").textContent="Zadej dvě kladné hodnoty: vzdálenost v m a skutečné m/px.";return;
+  }
+  persistCalibration({d0,mpp,refW:state.imageW||null,refH:state.imageH||null},
+    state.image?"Kalibrace uložena pro rozlišení právě načtené fotografie.":"Kalibrace uložena. Nemohu ověřit rozlišení referenčního snímku, protože není načten.");
+});
+el("calibrateFromPoints").addEventListener("click",()=>{
+  const d0=positiveValue("calDistance"),real=positiveValue("calRealSize"),px=pixelDistance();
+  if(d0===null||real===null||px===null||px===0||!imageReady()){
+    el("calStatus").textContent="Nahraj referenční fotku, označ oba body na známém rozměru a vyplň referenční vzdálenost i skutečnou délku.";return;
+  }
+  const mpp=real/px;
+  el("calScale").value=String(Number(mpp.toPrecision(12)));
+  persistCalibration({d0,mpp,refW:state.imageW,refH:state.imageH},
+    "Kalibrace vypočtena: "+fmtNumber(mpp)+" m/px. Teď označ na fotce objekt, který chceš změřit.");
+});
+el("forgetCalibration").addEventListener("click",()=>{
+  persistCalibration(null,"Uložená kalibrace smazána.");
+  el("calDistance").value="";el("calScale").value="";el("calRealSize").value="";
+  el("calibrationDetails").open=true;
+});
+function switchPhysicalTab(name){
+  physicalView=name;
+  el("pixelPanel").hidden=name!=="pixels";
+  el("physicalPanel").hidden=name!=="meters";
+  el("tabPixels").setAttribute("aria-pressed",String(name==="pixels"));
+  el("tabMeters").setAttribute("aria-pressed",String(name==="meters"));
+  if(name==="meters"&&!calibration)el("calibrationDetails").open=true;
+  try{localStorage.setItem(modeKey,name);}catch(e){}
+  refreshPhysical();
+}
+el("tabPixels").addEventListener("click",()=>switchPhysicalTab("pixels"));
+el("tabMeters").addEventListener("click",()=>switchPhysicalTab("meters"));
+el("physicalMode").addEventListener("change",refreshPhysical);
+el("knownValue").addEventListener("input",refreshPhysical);
+for(const [button,index] of [["physicalChooseA",0],["physicalChooseB",1]]){
+  el(button).addEventListener("click",()=>{
+    if(!imageReady())return;
+    state.next=index;state.active=index;state.replaceExplicit=true;
+    setMode("measure");canvas.focus();draw();
+    el("status").textContent="Klepni na fotografii a změň bod "+(index===0?"A":"B")+".";
+  });
+}
+el("physicalClear").addEventListener("click",()=>{
+  state.points=[null,null];state.next=0;state.active=0;state.replaceExplicit=false;refreshResults();
+});
+try{
+  const old=JSON.parse(localStorage.getItem(physicalKey)||"null");
+  if(old&&Number.isFinite(old.d0)&&old.d0>0&&Number.isFinite(old.mpp)&&old.mpp>0){
+    calibration={d0:old.d0,mpp:old.mpp,refW:old.refW||null,refH:old.refH||null};
+    el("calDistance").value=String(old.d0);
+    el("calScale").value=String(old.mpp);
+    el("calibrationDetails").open=false;
+  }
+}catch(e){}
+try{
+  const oldMode=localStorage.getItem(modeKey);
+  if(oldMode==="meters")physicalView="meters";
+}catch(e){}
+switchPhysicalTab(physicalView);
 const observer=new ResizeObserver(resize);
 observer.observe(viewer);
 resize();
