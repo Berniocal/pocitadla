@@ -92,6 +92,24 @@ canvas:focus-visible{outline:3px solid #eaa733}
 .real-panel .inline-px{font-size:.9rem;font-weight:700;margin:0 0 10px}
 .real-panel .result-label{font-weight:760;font-size:.9rem}
 .real-panel .how{margin-top:14px;font-size:.83rem;color:#506c79;line-height:1.55}
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.heading{padding:15px 20px}
+.heading h1{font-size:1.55rem;margin:0}
+.measure-tabs{margin-top:10px;gap:6px}
+.measure-tabs button{padding:9px 14px}
+.tools{margin:9px 0}
+.point-actions{display:flex;gap:7px;margin:10px 0;flex-wrap:wrap}
+.point-actions button{flex:1}
+.panel h2{margin-bottom:8px}
+.real-panel .cal{margin-top:12px}
+.real-panel .readout{margin:10px 0}
+.real-panel .readout small:empty{display:none}
+.real-panel .saved:empty{display:none}
+.panel.real-panel{display:block}
+.real-panel .field{margin-top:9px}
+.real-panel .inline-px{margin:3px 0;color:var(--muted)}
+.real-panel .warning:empty{display:none}
+.status:empty{display:none}
 @media(max-width:900px){.layout{grid-template-columns:1fr}.panel{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px}.panel h2{grid-column:1/-1;margin:0}.panel .help{margin:0}.panel-actions{align-self:start}}
 @media(max-width:600px){.wrap{padding:10px 9px 25px}.heading{padding:17px}.tools{padding:10px}.sep{display:none}.viewer{height:54vh;min-height:300px}.panel{display:block}.panel .help{margin-top:16px}.zoom input{width:106px}.btn{padding:9px 11px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
@@ -99,17 +117,14 @@ canvas:focus-visible{outline:3px solid #eaa733}
 </head>
 <body>
 <main class="wrap">
-  <div class="top"><a class="back" href="index.html">← Zpět na přehled pomůcek</a><span>Lokální zpracování · fotografie se nikam neodesílá</span></div>
-  <header class="heading">
-    <h1>Měření na fotografii</h1>
-    <p>Nahraj originální fotografii a označ dva body A a B. Změř jejich vzdálenost v pixelech, nebo po kalibraci urči skutečný rozměr objektu či vzdálenost od něj.</p>
-  </header>
+  <div class="top"><a class="back" href="index.html">← Pomůcky</a></div>
+  <header class="heading"><h1>Měření na fotce</h1></header>
   <nav class="measure-tabs" aria-label="Typ měření">
-    <button type="button" id="tabPixels" aria-pressed="true">📏 Měření v pixelech</button>
-    <button type="button" id="tabMeters" aria-pressed="false">📐 Skutečné rozměry a vzdálenosti</button>
+    <button type="button" id="tabPixels" aria-pressed="true">Pixely</button>
+    <button type="button" id="tabMeters" aria-pressed="false">Metry</button>
   </nav>
   <div class="tools" aria-label="Ovládání fotografie">
-    <button id="open" class="btn primary" type="button">📷 Nahrát fotografii</button>
+    <button id="open" class="btn primary" type="button">📷 Fotka</button>
     <input class="file" type="file" id="file" accept="image/*" aria-label="Vybrat fotografii">
     <span class="sep" aria-hidden="true"></span>
     <div class="zoom">
@@ -118,7 +133,7 @@ canvas:focus-visible{outline:3px solid #eaa733}
       <button class="btn secondary image-control" type="button" id="zoomIn" aria-label="Přiblížit" disabled>+</button>
       <span id="zoomValue" class="zoom-value" aria-live="off">—</span>
     </div>
-    <button id="fit" class="btn secondary image-control" type="button" disabled>Celá fotka</button>
+    <button id="fit" class="btn secondary image-control" type="button" disabled>Celý snímek</button>
     <button id="actual" class="btn secondary image-control" type="button" disabled>100 %</button>
     <span class="sep" aria-hidden="true"></span>
     <div class="mode" role="group" aria-label="Režim práce">
@@ -134,87 +149,71 @@ canvas:focus-visible{outline:3px solid #eaa733}
       </div>
       <div class="viewer" id="viewer">
         <canvas id="canvas" tabindex="0" aria-label="Fotografie. Kliknutím označíš dva body; šipkami lze vybraný bod posunout o jeden pixel."></canvas>
-        <div class="empty" id="empty"><div class="message">📷<br><strong>Vyber fotografii</strong> tlačítkem nahoře, nebo ji sem přetáhni.<br>Originální rozlišení zůstává zachováno.</div></div>
+        <div class="empty" id="empty"><div class="message">Nahraj fotografii.</div></div>
       </div>
-      <div class="foot">Kolečko myši: zoom · tažení: posun · dotyk dvěma prsty: zoom · klepnutí: bod · přetažení bodu: úprava</div>
+      
     </section>
     <aside class="panel" id="pixelPanel">
-      <h2>Naměřené hodnoty</h2>
+      <h2>Pixely</h2>
       <div class="result" aria-live="polite">
         <span class="number" id="distance">—</span>
-        <span class="unit">pixelů (px)</span>
-        <div class="hint" id="resultHint">Vyber dva body na fotografii.</div>
+        <span class="unit">px</span>
+        <div class="sr-only" id="resultHint">Označ dva body.</div>
       </div>
-      <div class="points">
-        <div class="point"><div class="label"><span><i class="dot"></i>Bod A</span><button type="button" class="btn secondary image-control" id="chooseA" disabled>Vybrat</button></div><div class="coords" id="pointA">Dosud neurčeno</div></div>
-        <div class="point"><div class="label"><span><i class="dot b"></i>Bod B</span><button type="button" class="btn secondary image-control" id="chooseB" disabled>Vybrat</button></div><div class="coords" id="pointB">Dosud neurčeno</div></div>
+      <div class="point-actions">
+        <button type="button" class="btn secondary image-control" id="chooseA" disabled>Bod A</button>
+        <button type="button" class="btn secondary image-control" id="chooseB" disabled>Bod B</button>
       </div>
-      <div>
-        <div class="metric"><span>Vodorovně |Δx|</span><strong id="dx">— px</strong></div>
-        <div class="metric"><span>Svisle |Δy|</span><strong id="dy">— px</strong></div>
-      </div>
+      <div class="sr-only"><span id="pointA"></span><span id="pointB"></span><span id="dx"></span><span id="dy"></span></div>
       <div class="panel-actions">
-        <button type="button" class="btn secondary image-control" id="undo" disabled>Zpět o bod</button>
+        <button type="button" class="btn secondary image-control" id="undo" disabled>Zpět</button>
         <button type="button" class="btn secondary image-control" id="clear" disabled>Smazat body</button>
-      </div>
-      <div class="help">
-        <h3>Jak měřit přesně</h3>
-        <p>Klikni na místo pro bod A a pak pro bod B. Kolečkem nebo gestem přibliž detaily. Tažením lze bod upravit. Tlačítky <strong>Vybrat</strong> určíš, který bod umístí další klepnutí.</p>
-        <p>Pro doladění klikni na bod a použij <strong>šipky</strong> na klávesnici (1 px, se Shiftem 10 px). Hodnota 100 % odpovídá jednomu obrazovkovému CSS pixelu na jeden pixel snímku.</p>
-        <p>Vzdálenost se počítá jako √(Δx² + Δy²) mezi středy označených pixelů. Při měření fyzické délky je potřeba znát měřítko fotografie.</p>
       </div>
     </aside>
     <aside class="panel real-panel" id="physicalPanel" hidden>
-      <h2>Měřidlo v metrech</h2>
-      <p class="subtle">Označ koncové body objektu A a B na fotce. Měření používá jejich vzdálenost v <strong>původních pixelech snímku</strong>.</p>
-      <div class="inline-px">Označená délka: <span id="physicalPx">— px</span></div>
-      <div class="row-buttons">
-        <button type="button" class="btn secondary image-control" id="physicalChooseA" disabled>Změnit A</button>
-        <button type="button" class="btn secondary image-control" id="physicalChooseB" disabled>Změnit B</button>
-        <button type="button" class="btn secondary image-control" id="physicalClear" disabled>Smazat body</button>
+      <h2>Metry</h2>
+      <div class="inline-px"><span id="physicalPx">— px</span></div>
+      <div class="point-actions">
+        <button type="button" class="btn secondary image-control" id="physicalChooseA" disabled>Bod A</button>
+        <button type="button" class="btn secondary image-control" id="physicalChooseB" disabled>Bod B</button>
+        <button type="button" class="btn secondary image-control" id="physicalClear" disabled>Smazat</button>
       </div>
-      <details class="cal" id="calibrationDetails" open>
-        <summary>⚙️ Kalibrace fotoaparátu a měřítka</summary>
-        <p class="cal-note">Zadej referenční vzdálenost a kolik metrů představuje <strong>1 px při této vzdálenosti</strong>. Měřítko se se vzdáleností mění.</p>
-        <div class="field">
-          <label for="calDistance">Referenční vzdálenost od objektu (m)</label>
-          <input id="calDistance" type="number" inputmode="decimal" min="0" step="any" placeholder="např. 5">
-        </div>
-        <div class="field">
-          <label for="calScale">Skutečná délka na 1 px v referenční vzdálenosti (m/px)</label>
-          <input id="calScale" type="number" inputmode="decimal" min="0" step="any" placeholder="např. 0,002">
-        </div>
-        <div class="row-buttons"><button type="button" class="btn primary" id="saveCalibration">Uložit kalibraci</button></div>
-        <div class="cal-note">Nevíš, kolik je m/px? Vyfoť předmět známé velikosti ze známé vzdálenosti, označ jeho krajní body a zadej skutečnou délku:</div>
-        <div class="field">
-          <label for="calRealSize">Skutečná délka označeného referenčního úseku (m)</label>
-          <input id="calRealSize" type="number" inputmode="decimal" min="0" step="any" placeholder="např. 0,3">
-        </div>
-        <div class="row-buttons"><button type="button" class="btn secondary" id="calibrateFromPoints">Vypočítat m/px z A–B a uložit</button></div>
-        <div class="row-buttons"><button type="button" class="btn secondary" id="forgetCalibration">Smazat kalibraci</button></div>
-        <p id="calStatus" class="warning" role="status" aria-live="polite"></p>
-      </details>
-      <p id="calSummary" class="saved">Zatím není uložená kalibrace.</p>
-      <h3>Co chceš vypočítat?</h3>
       <div class="field">
-        <label for="physicalMode">Způsob výpočtu</label>
+        <label for="physicalMode">Vypočítat</label>
         <select id="physicalMode">
-          <option value="size">Znám vzdálenost → skutečný rozměr</option>
-          <option value="distance">Znám skutečný rozměr → vzdálenost</option>
+          <option value="size">Rozměr objektu</option>
+          <option value="distance">Vzdálenost</option>
         </select>
       </div>
       <div class="field">
-        <label id="knownLabel" for="knownValue">Vzdálenost fotoaparátu od objektu (m)</label>
-        <input id="knownValue" type="number" inputmode="decimal" min="0" step="any" placeholder="např. 12">
+        <label id="knownLabel" for="knownValue">Vzdálenost (m)</label>
+        <input id="knownValue" type="number" inputmode="decimal" min="0" step="any" placeholder="m">
       </div>
       <div class="readout" aria-live="polite">
-        <span id="physicalResultLabel" class="result-label">Skutečný rozměr objektu</span>
+        <span id="physicalResultLabel" class="result-label">Rozměr</span>
         <strong id="physicalResult">—</strong>
-        <small id="physicalHint">Proveď kalibraci a označ body A a B.</small>
+        <small id="physicalHint">Chybí kalibrace.</small>
       </div>
-      <p class="how"><strong>Princip:</strong> Ve stejné kameře při stejném ohnisku roste skutečná délka odpovídající jednomu pixelu přibližně úměrně vzdálenosti. Vztah platí pro objekty kolmé ke směru fotografování a podobnou polohu v záběru.</p>
-      <p class="warning">Pro použitelné výsledky fotografuj stejným fotoaparátem, stejným zoomem a ve stejném rozlišení, bez ořezu či digitálního přepočítání. Jde o geometrický odhad, nikoli přesný laserový dálkoměr.</p>
-    </aside>
+      <details class="cal" id="calibrationDetails">
+        <summary>⚙️ Kalibrace</summary>
+        <div class="field">
+          <label for="calDistance">Vzdálenost při kalibraci (m)</label>
+          <input id="calDistance" type="number" inputmode="decimal" min="0" step="any" placeholder="m">
+        </div>
+        <div class="field">
+          <label for="calScale">Měřítko (m/px)</label>
+          <input id="calScale" type="number" inputmode="decimal" min="0" step="any" placeholder="m/px">
+        </div>
+        <div class="row-buttons"><button type="button" class="btn primary" id="saveCalibration">Uložit</button></div>
+        <div class="field">
+          <label for="calRealSize">Známá délka A–B (m)</label>
+          <input id="calRealSize" type="number" inputmode="decimal" min="0" step="any" placeholder="m">
+        </div>
+        <div class="row-buttons"><button type="button" class="btn secondary" id="calibrateFromPoints">Určit měřítko z A–B</button></div>
+        <div class="row-buttons"><button type="button" class="btn secondary" id="forgetCalibration">Smazat kalibraci</button></div>
+        <p id="calStatus" class="warning" role="status" aria-live="polite"></p>
+      </details>
+      <p id="calSummary" class="saved"></p>    </aside>
   </div>
   <p id="status" class="status" role="status" aria-live="polite"></p>
 </main>
@@ -406,7 +405,7 @@ async function loadImage(file){
   el("resolution").textContent="Rozlišení: "+pixelNumber(w)+" × "+pixelNumber(h)+" px";
   controlsReady();setMode("measure");
   fitImage();refreshResults();
-  el("status").textContent="Fotografie připravena: "+pixelNumber(w)+" × "+pixelNumber(h)+" pixelů, bez zmenšení.";
+  el("status").textContent="Načteno: "+pixelNumber(w)+" × "+pixelNumber(h)+" px";
 }
 el("open").addEventListener("click",()=>fileInput.click());
 fileInput.addEventListener("change",async()=>{
@@ -561,63 +560,54 @@ function refreshPhysical(){
   el("physicalPx").textContent=n===null?"— px":fmtNumber(n)+" px";
   el("physicalClear").disabled=n===null&&state.points[0]===null&&state.points[1]===null;
   const distanceMode=el("physicalMode").value==="distance";
-  el("knownLabel").textContent=distanceMode?"Skutečný rozměr označeného objektu (m)":"Vzdálenost fotoaparátu od objektu (m)";
-  el("physicalResultLabel").textContent=distanceMode?"Odhad vzdálenosti od objektu":"Odhad skutečného rozměru objektu";
-  el("knownValue").placeholder=distanceMode?"např. 1,8":"např. 12";
+  el("knownLabel").textContent=distanceMode?"Rozměr objektu (m)":"Vzdálenost (m)";
+  el("physicalResultLabel").textContent=distanceMode?"Vzdálenost":"Rozměr objektu";
+  el("knownValue").placeholder="m";
   el("calSummary").textContent=calibration
-    ?"Uloženo: "+fmtNumber(calibration.d0)+" m od objektu, "+fmtNumber(calibration.mpp)+" m/px"+
-      (calibration.refW?" · fotografie "+calibration.refW+" × "+calibration.refH+" px":" · rozlišení kalibračního snímku neověřeno")
-    :"Zatím není uložená kalibrace.";
+    ?"Kalibrace: "+fmtNumber(calibration.d0)+" m · "+fmtNumber(calibration.mpp)+" m/px"
+    :"";
   const output=el("physicalResult"),hint=el("physicalHint");
   output.textContent="—";
-  if(!calibration){hint.textContent="Nejdřív ulož kalibraci (referenční vzdálenost a m/px).";return;}
-  if(!state.image){hint.textContent="Nahraj fotografii objektu, který chceš změřit.";return;}
-  if(!sameResolution()){
-    hint.textContent="Fotografie má jiné rozlišení než kalibrační snímek. Nahraj snímek stejného rozlišení, nebo proveď novou kalibraci.";
-    return;
-  }
-  if(n===null){hint.textContent="Označ oba koncové body objektu (A a B).";return;}
-  if(n===0){hint.textContent="Body A a B jsou totožné, označ nenulovou délku.";return;}
+  if(!calibration){hint.textContent="Chybí kalibrace.";return;}
+  if(!state.image){hint.textContent="Nahraj fotku.";return;}
+  if(!sameResolution()){hint.textContent="Jiné rozlišení. Zkalibruj znovu.";return;}
+  if(n===null){hint.textContent="Označ body A a B.";return;}
+  if(n===0){hint.textContent="Vyber různé body.";return;}
   const v=positiveValue("knownValue");
-  if(v===null){hint.textContent=distanceMode?"Zadej skutečnou délku označeného objektu v metrech.":"Zadej vzdálenost od fotografovaného objektu v metrech.";return;}
+  if(v===null){hint.textContent=distanceMode?"Zadej rozměr.":"Zadej vzdálenost.";return;}
   const result=distanceMode?(calibration.d0*v/(n*calibration.mpp)):(n*calibration.mpp*v/calibration.d0);
   output.textContent=fmtLength(result);
-  hint.textContent=distanceMode
-    ?"D = "+fmtNumber(calibration.d0)+" m × "+fmtNumber(v)+" m ÷ ("+fmtNumber(n)+" px × "+fmtNumber(calibration.mpp)+" m/px)"
-    :"L = "+fmtNumber(n)+" px × "+fmtNumber(calibration.mpp)+" m/px × ("+fmtNumber(v)+" / "+fmtNumber(calibration.d0)+")";
-  if(!calibration.refW){
-    hint.textContent+=" · Pozor: rozlišení ručně zadané kalibrace nebylo ověřeno.";
-  }
+  hint.textContent="";
 }
 function persistCalibration(next,message){
   calibration=next;
   try{
     if(calibration)localStorage.setItem(physicalKey,JSON.stringify(calibration));
     else localStorage.removeItem(physicalKey);
-  }catch(e){message+=" (Prohlížeč ale nepovolil trvalé uložení.)";}
+  }catch(e){message+=" (bez uložení do prohlížeče)";}
   el("calStatus").textContent=message;
   refreshPhysical();
 }
 el("saveCalibration").addEventListener("click",()=>{
   const d0=positiveValue("calDistance"),mpp=positiveValue("calScale");
   if(d0===null||mpp===null){
-    el("calStatus").textContent="Zadej dvě kladné hodnoty: vzdálenost v m a skutečné m/px.";return;
+    el("calStatus").textContent="Vyplň vzdálenost a m/px.";return;
   }
   persistCalibration({d0,mpp,refW:state.imageW||null,refH:state.imageH||null},
-    state.image?"Kalibrace uložena pro rozlišení právě načtené fotografie.":"Kalibrace uložena. Nemohu ověřit rozlišení referenčního snímku, protože není načten.");
+    "Uloženo.");
 });
 el("calibrateFromPoints").addEventListener("click",()=>{
   const d0=positiveValue("calDistance"),real=positiveValue("calRealSize"),px=pixelDistance();
   if(d0===null||real===null||px===null||px===0||!imageReady()){
-    el("calStatus").textContent="Nahraj referenční fotku, označ oba body na známém rozměru a vyplň referenční vzdálenost i skutečnou délku.";return;
+    el("calStatus").textContent="Vyplň vzdálenost, délku A–B a označ body.";return;
   }
   const mpp=real/px;
   el("calScale").value=String(Number(mpp.toPrecision(12)));
   persistCalibration({d0,mpp,refW:state.imageW,refH:state.imageH},
-    "Kalibrace vypočtena: "+fmtNumber(mpp)+" m/px. Teď označ na fotce objekt, který chceš změřit.");
+    "Uloženo: "+fmtNumber(mpp)+" m/px.");
 });
 el("forgetCalibration").addEventListener("click",()=>{
-  persistCalibration(null,"Uložená kalibrace smazána.");
+  persistCalibration(null,"Smazáno.");
   el("calDistance").value="";el("calScale").value="";el("calRealSize").value="";
   el("calibrationDetails").open=true;
 });
