@@ -109,6 +109,9 @@ canvas:focus-visible{outline:3px solid #eaa733}
 .real-panel .field{margin-top:9px}
 .real-panel .inline-px{margin:3px 0;color:var(--muted)}
 .real-panel .warning:empty{display:none}
+.real-panel .calc-line{padding:6px 0;font-size:.91rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.real-panel .calc-line + .calc-line{border-top:1px solid var(--line)}
+.real-panel .calc-legend{font-size:.79rem;line-height:1.4;color:var(--muted);margin-top:7px}
 .status:empty{display:none}
 @media(max-width:900px){.layout{grid-template-columns:1fr}.panel{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px}.panel h2{grid-column:1/-1;margin:0}.panel .help{margin:0}.panel-actions{align-self:start}}
 @media(max-width:600px){.wrap{padding:10px 9px 25px}.heading{padding:17px}.tools{padding:10px}.sep{display:none}.viewer{height:54vh;min-height:300px}.panel{display:block}.panel .help{margin-top:16px}.zoom input{width:106px}.btn{padding:9px 11px}}
@@ -194,6 +197,12 @@ canvas:focus-visible{outline:3px solid #eaa733}
         <strong id="physicalResult">—</strong>
         <small id="physicalHint">Chybí kalibrace.</small>
       </div>
+      <details class="cal" id="calculationDetails">
+        <summary>Výpočet</summary>
+        <div class="calc-line" id="calcFormula">L = p × k₀ × D / D₀</div>
+        <div class="calc-line" id="calcSubstitution">—</div>
+        <div class="calc-legend">p = pixely A–B · k₀ = m/px při kalibraci · D₀ = vzdálenost při kalibraci</div>
+      </details>
       <details class="cal" id="calibrationDetails">
         <summary>⚙️ Kalibrace</summary>
         <div class="field">
@@ -563,6 +572,10 @@ function refreshPhysical(){
   el("knownLabel").textContent=distanceMode?"Rozměr objektu (m)":"Vzdálenost (m)";
   el("physicalResultLabel").textContent=distanceMode?"Vzdálenost":"Rozměr objektu";
   el("knownValue").placeholder="m";
+  el("calcFormula").textContent=distanceMode
+    ?"D = (D₀ × L) / (p × k₀)"
+    :"L = p × k₀ × (D / D₀)";
+  el("calcSubstitution").textContent="Zadej údaje a označ body.";
   el("calSummary").textContent=calibration
     ?"Kalibrace: "+fmtNumber(calibration.d0)+" m · "+fmtNumber(calibration.mpp)+" m/px"
     :"";
@@ -578,6 +591,10 @@ function refreshPhysical(){
   const result=distanceMode?(calibration.d0*v/(n*calibration.mpp)):(n*calibration.mpp*v/calibration.d0);
   output.textContent=fmtLength(result);
   hint.textContent="";
+  const p=fmtNumber(n),d0=fmtNumber(calibration.d0),k0=fmtNumber(calibration.mpp),known=fmtNumber(v);
+  el("calcSubstitution").textContent=distanceMode
+    ?"D = ("+d0+" m × "+known+" m) / ("+p+" px × "+k0+" m/px) = "+fmtLength(result)
+    :"L = "+p+" px × "+k0+" m/px × ("+known+" m / "+d0+" m) = "+fmtLength(result);
 }
 function persistCalibration(next,message){
   calibration=next;
