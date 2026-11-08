@@ -350,7 +350,8 @@ public final class MainActivity extends Activity {
             "\nRežim: "+mode+"   •   "+(w>0?w+" × "+h:"—")+
             "\nSkutečná expozice: "+(actualExp>0?String.format(java.util.Locale.US,"%.1f ms",actualExp/1e6):"—")+
             "   •   ISO: "+actualIso+
-            "\nDNG uloženo: "+prefs.getInt("dngCount",0)+"   •   délka: "+duration+\n            "\nPodpora fotoaparátu: "+prefs.getString("cameraInfo","—"));
+            "\nDNG uloženo: "+prefs.getInt("dngCount",0)+"   •   délka: "+duration+
+            "\nPodpora fotoaparátu: "+prefs.getString("cameraInfo","—"));
         List<EventStore.EventRow> rows=db.latest(5);
         if(rows.isEmpty()) {
             history.setText("Zatím žádné kandidátní zásahy.");
