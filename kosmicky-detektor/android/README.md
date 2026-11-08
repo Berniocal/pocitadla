@@ -1,23 +1,27 @@
-# Kosmický detektor — nativní Android aplikace
+# Kosmický detektor Android 1.1 — experimentální RAW měření
 
-Samostatná Android verze (Java / Camera2), nejde o WebView/PWA obal.
+Nativní Camera2 aplikace, bez WebView/PWA. Přidána podpora skutečného **RAW_SENSOR** (16bitová Bayerova mozaika) u kamer, které ji přes Camera2 zpřístupňují.
 
-- Používá Camera2 + ImageReader YUV snímky.
-- Požádá o vypnutí redukce šumu a korekce horkých pixelů, pokud to kamera umožňuje.
-- Vypne automatickou expozici, pokud hardware dovolí manuální ovládání.
-- Kalibruje tmavý obraz a hledá izolované přechodné jasné shluky.
-- Běží jako služba v popředí s upozorněním; může pokračovat po zhasnutí obrazovky.
-- Do interní databáze ukládá čas, polohu, velikost a sílu kandidátního zásahu i lokální ořez obrázku.
-- Exportuje CSV přes systémové Uložit jako.
+## Režimy a snímání
+- **RAW_SENSOR** (výchozí, při nepodpoře automaticky YUV): senzorové hodnoty bez demosaicingu. Analýza středového výřezu až 2048 × 1536 senzorových pixelů, tedy nikoli celé plochy snímače.
+- **YUV**: rychlejší režim se zpracovaným obrazem, vhodný pro porovnání.
+- **Expoziční časy**: volby 50, 100, 300 ms, 1, 2, 5, 10, 30 s, vždy omezené rozsahem `SENSOR_INFO_EXPOSURE_TIME_RANGE` daného telefonu. ISO 100–3200 rovněž omezené hardwarem.
+- Vypnutí korekce vadných pixelů a odšumování, jen pokud takovou možnost Camera2 hlásí. Ruční nastavení není na všech kamerách podporované.
+- Snímání po jednotlivých expozicích, párování RAW snímku a skutečných metadat Camera2.
+- Kalibrace RAW 18 snímky, YUV 50 snímky. Software odlišuje trvalé a opakující se pixely od nových kandidátních shluků; nadměrně světlé snímky odmítá.
+
+## Data a export
+- Metadata události: čas, x/y v **souřadnicích celého snímače**, počet pixelů, vrchol změny, režim, skutečná expozice a ISO.
+- Ukládají se diferenciální PNG výřezy (RAW režim) nebo výřezy YUV.
+- Přepínač „Uložit DNG“ vytvoří při zásahu celý RAW soubor DNG (max. 50 pro jeden běh). Může být velmi velký.
+- CSV export i ZIP archiv obsahující CSV, PNG výřezy a uložené DNG. Archiv se vytváří ve vedlejším vlákně.
+- Databáze starších událostí se migrací zachovává.
 
 ## Sestavení APK
+GitHub Actions → „Kosmicky detektor APK“ → nejnovější úspěšný běh → Artifacts.
+Lokálně je potřeba Android SDK 35, Gradle 8.10.2 a JDK 17.
 
-Na GitHubu: Actions > Kosmicky detektor APK > poslední úspěšný běh > Artifacts > kosmicky-detektor-apk.
+## Důležitá omezení
+Ani nekomprimovaný RAW nezaručuje naprosto nezpracovanou informaci: před zobrazením může čip nebo firmware dělat vlastní korekce. Rozsah ruční expozice vyplývá z Camera2 metadat (telefon může žádost omezit). Není vědecky potvrzeno, že každý kandidát pochází z kosmického záření. RAW frame může zabírat velkou paměť, delší expozice prodlužuje kalibraci a zahřívá zařízení. Měření při zamknuté obrazovce závisí na systému. Bez validace na skutečném telefonu nelze prohlásit detekci za kalibrovanou.
 
-Lokálně: otevři složku `android` v Android Studiu nebo spusť `gradle assembleDebug` s Android SDK 35 a JDK 17. Instalace výsledku `app/build/outputs/apk/debug/app-debug.apk`.
-
-## Interpretace a omezení
-
-Detekce je experimentální a nemůže sama potvrdit, že anomálie pochází z kosmického záření. Android Camera2 nemusí poskytovat neovlivněná data snímače: YUV obraz stále prochází ISP. Chybějící podpora ruční expozice nebo vypnutí šumu bude řešena návratem k automatickému režimu.
-
-Spouštěj měření z otevřené aplikace. Android 14+ nedovoluje zakládat kamerovou službu libovolně z pozadí. Po uzamčení obrazovky může výrobce kamerovou relaci i přes službu ukončit; dlouhé měření je nutné ověřit na konkrétním telefonu. Při dlouhodobém měření sleduj zahřívání a spotřebu.
+Vývojová inspirace: [CREDO](https://github.com/credo-science/credo-detector-android).
