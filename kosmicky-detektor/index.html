@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#08101f">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Experimentální lokální detektor kandidátních stop ionizujících částic pomocí CMOS fotoaparátu telefonu nebo webkamery.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png" sizes="192x192">
+  <title>Kosmický detektor · experiment</title>
+  <style>
+    :root { --bg:#080e19;--panel:#101c2c;--panel2:#132238;--edge:#26364b;--muted:#94a8be;--text:#edf5ff;--mint:#65e5b3;--blue:#6cb2ff;--orange:#ffc17e;--red:#ff8c99;--shadow:0 14px 42px #0004; }
+    * { box-sizing:border-box; }
+    html { background:var(--bg);scroll-behavior:smooth; }
+    body { margin:0;color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:radial-gradient(ellipse 1050px 540px at 76% -150px,#193c51 0,transparent 66%),var(--bg);line-height:1.45; }
+    button,select,input { font:inherit; }
+    button { cursor:pointer; } button:disabled{opacity:.42;cursor:not-allowed}
+    :focus-visible { outline:2px solid var(--mint);outline-offset:3px; }
+    .wrap{max-width:1150px;margin:0 auto;padding:22px 18px 70px}
+    header{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:23px;flex-wrap:wrap}
+    .brand{display:flex;align-items:center;gap:13px}
+    .mark{height:49px;width:49px;display:grid;place-items:center;background:linear-gradient(150deg,#20374b,#123b45);border:1px solid #427a78;border-radius:15px;box-shadow:0 0 28px #6decba18}
+    .mark svg{width:32px;height:32px}
+    .eyebrow{color:var(--mint);font-size:11px;letter-spacing:.18em;font-weight:750;text-transform:uppercase}
+    h1{font-size:clamp(21px,3.5vw,30px);line-height:1.15;letter-spacing:-.035em;margin:3px 0 0}
+    h2{font-size:17px;letter-spacing:-.02em;margin:0}
+    h3{font-size:14px;margin:0}
+    p { margin:0; }
+    .tag{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);border:1px solid var(--edge);border-radius:100px;padding:8px 12px;background:#111e2a}
+    .tag i,.status-dot{width:9px;height:9px;display:inline-block;background:#697d90;border-radius:50%;flex-shrink:0}
+    .tag.live i,.status-dot.live{background:var(--mint);box-shadow:0 0 12px #65e5b388}
+    .tag.cal i,.status-dot.cal{background:var(--orange);box-shadow:0 0 12px #ffc17e55}
+    .notice{font-size:13px;display:flex;gap:10px;align-items:flex-start;border:1px solid #46617a;background:#112536;border-radius:13px;padding:12px 14px;color:#c9deed;margin:0 0 20px}
+    .notice strong{color:#fff}.notice svg{flex-shrink:0;margin-top:2px}
+    .layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(295px,.85fr);gap:17px;align-items:start}
+    .panel{background:linear-gradient(160deg,#132134,#101a29);border:1px solid var(--edge);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+    .pad{padding:18px}.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:15px;flex-wrap:wrap}
+    .small{color:var(--muted);font-size:12px}.tiny{color:var(--muted);font-size:11px}
+    .preview-wrap{position:relative;background:radial-gradient(circle at center,#18283c,#050b13 60%);border-radius:12px;border:1px solid #304053;aspect-ratio:16/10;overflow:hidden;display:grid;place-items:center}
+    .preview-wrap canvas{width:100%;height:100%;object-fit:contain;image-rendering:auto;}
+    .preview-over{pointer-events:none;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:26px;color:#8ca1b8;font-size:13px}
+    .preview-info{position:absolute;top:10px;left:10px;padding:5px 8px;background:#081322dc;color:#b8d0e4;font-size:11px;border-radius:7px;font-variant-numeric:tabular-nums}
+    .preview-time{position:absolute;bottom:10px;right:10px;font-size:11px;background:#081322dd;padding:4px 8px;border-radius:7px;font-variant-numeric:tabular-nums}
+    .buttons{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+    .btn{min-height:43px;padding:10px 15px;border-radius:11px;border:1px solid #35495e;color:var(--text);background:#1b2a3e;font-weight:700;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+    .btn:hover:not(:disabled){filter:brightness(1.12)} .btn.primary{background:var(--mint);color:#06251d;border-color:var(--mint)}
+    .btn.danger{color:#ffd5da;border-color:#653b51;background:#312031}.btn.secondary{background:transparent}
+    .btn svg{height:16px;width:16px}
+    .hidden{display:none!important}
+    .progress{height:5px;background:#23374a;margin-top:12px;border-radius:15px;overflow:hidden}
+    .progress>div{height:100%;width:0;background:var(--mint);transition:width .2s}
+    .helper{margin-top:11px;color:#a2b7c8;font-size:12px;min-height:35px}
+    .summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .metric{border:1px solid #294057;background:#0c1928;border-radius:12px;padding:14px;min-width:0}
+    .metric big{font-size:30px;font-weight:790;letter-spacing:-.05em;font-variant-numeric:tabular-nums;display:block;line-height:1.1;margin:6px 0 0}
+    .metric.highlight big{color:var(--mint)}
+    .metric .unit{color:var(--muted);font-size:11px;font-weight:500;letter-spacing:0}
+    .graph{margin-top:14px;padding:13px;background:#0c1928;border:1px solid #294057;border-radius:12px}
+    .graph-bars{height:83px;display:flex;gap:4px;align-items:end;margin:13px 0 4px}
+    .bar{flex:1;min-width:2px;background:#325569;min-height:2px;border-radius:3px 3px 0 0;transition:height .3s}
+    .bar.active{background:var(--mint)}
+    .graph-axis{display:flex;justify-content:space-between;color:var(--muted);font-size:10px}
+    .rowline{display:flex;justify-content:space-between;gap:15px;align-items:center}
+    .settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+    label.field{display:block;font-size:12px;font-weight:650;color:#c5d7e8}
+    label.field span{display:block;margin-bottom:6px}
+    select,.input{background:#091725;color:var(--text);border:1px solid #31475a;border-radius:9px;width:100%;min-height:40px;padding:9px 10px;font-size:13px;outline:none}
+    input[type=range]{width:100%;accent-color:var(--mint);margin:6px 0 0}
+    .range-val{float:right;color:var(--mint);font-variant-numeric:tabular-nums}
+    .checkline{display:flex;gap:9px;align-items:flex-start;font-size:12px;color:#c3d3e2;cursor:pointer}
+    .checkline input{accent-color:var(--mint);margin:2px 0}
+    .hr{border-top:1px solid var(--edge);margin:17px 0}
+    .events-panel{margin-top:17px}
+    .events-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .event{display:grid;grid-template-columns:90px minmax(0,1fr);border:1px solid #2a4052;background:#0c1928;border-radius:12px;overflow:hidden;min-width:0}
+    .event img{width:90px;height:104px;object-fit:cover;background:#000;image-rendering:pixelated}
+    .event .ev-info{padding:10px;min-width:0;display:flex;flex-direction:column;gap:3px}
+    .event .ev-title{font-size:12px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .event .ev-meta{font-size:11px;color:var(--muted)}
+    .event .ev-actions{margin-top:auto;display:flex;gap:8px}
+    .text-btn{border:0;background:none;color:#88c6ff;font-size:11px;padding:0;min-height:20px}
+    .muted-panel{border:1px dashed #33485d;border-radius:12px;padding:22px;text-align:center;color:var(--muted);font-size:13px}
+    details{border:1px solid var(--edge);border-radius:13px;margin-top:12px;overflow:hidden;background:#0f1b2c}
+    details summary{padding:14px 16px;cursor:pointer;font-weight:700;font-size:13px}
+    details .detail-body{padding:0 16px 16px;color:#aec3d7;font-size:13px}
+    details ol{padding-left:21px;margin:8px 0 0}details li{margin:6px 0}
+    .pill{border-radius:99px;background:#193244;color:#a5d7e9;font-size:11px;padding:4px 8px;display:inline-flex}
+    .foot{margin-top:19px;color:#748a9f;font-size:11px;text-align:center}
+    #toast{position:fixed;z-index:10;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translate(-50%,90px);transition:transform .3s;background:#203c4b;border:1px solid #40717f;border-radius:10px;box-shadow:var(--shadow);padding:11px 16px;color:#f5fcff;font-size:13px;max-width:calc(100vw - 30px);pointer-events:none}
+    #toast.show{transform:translate(-50%,0)}
+    @media(max-width:800px){.layout{grid-template-columns:1fr}.events-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:480px){.wrap{padding:16px 12px 52px}.pad{padding:14px}.events-grid{grid-template-columns:1fr}.btn{padding:10px 12px}.preview-wrap{aspect-ratio:4/3}.tag{font-size:10px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div class="brand">
+        <div class="mark" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="19.5" cy="20" r="11.5" stroke="#70eac0" stroke-width="1.6" stroke-dasharray="3 3"/><circle cx="19.5" cy="20" r="4" fill="#70eac0"/><path d="M5 34L33 6" stroke="#91cfff" stroke-width="2" stroke-linecap="round"/><circle cx="32.5" cy="6.5" r="3" fill="#91cfff"/></svg></div>
+        <div><div class="eyebrow">Fyzikální experiment</div><h1>Kosmický detektor</h1></div>
+      </div>
+      <div class="tag" id="statusTag"><i></i><span id="statusLabel">Připraveno</span></div>
+    </header>
+
+    <div class="notice">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8bcaff" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 11v6m0-10v1"/></svg>
+      <div><strong>Experimentální detekce.</strong> Aplikace hledá neobvyklé jednorázové signály v zakrytém fotoaparátu. Zásah může být způsoben ionizující částicí, ale i šumem nebo chybou zpracování obrazu. Nejde o potvrzené počítadlo kosmického záření ani o měřič radiace.</div>
+    </div>
+
+    <div class="layout">
+      <section class="panel pad" aria-label="Měření">
+        <div class="panel-head"><h2>Živé měření</h2><span class="pill" id="cameraInfo">Fotoaparát vypnutý</span></div>
+        <div class="preview-wrap">
+          <canvas id="preview" width="640" height="400" aria-label="Náhled snímků z fotoaparátu"></canvas>
+          <div id="previewPlaceholder" class="preview-over">Zakryj objektiv neprůsvitnou páskou a spusť měření.<br> Černý náhled je správně.</div>
+          <div class="preview-info" id="previewInfo">—</div>
+          <div class="preview-time" id="previewTime">00:00:00</div>
+        </div>
+        <video id="sourceVideo" playsinline muted autoplay class="hidden"></video>
+        <canvas id="analysisCanvas" class="hidden"></canvas>
+        <div class="buttons">
+          <button id="startBtn" class="btn primary">▶ Spustit měření</button>
+          <button id="pauseBtn" class="btn secondary" disabled>Ⅱ Pozastavit</button>
+          <button id="stopBtn" class="btn danger" disabled>■ Ukončit</button>
+        </div>
+        <div class="progress" id="calibrationProgress" title="Kalibrace horkých pixelů"><div id="calibrationBar"></div></div>
+        <p class="helper" id="helperText">Pro dlouhé měření nech aplikaci otevřenou a displej zapnutý. Měření se při uspání stránky může přerušit.</p>
+      </section>
+
+      <section class="panel pad" aria-label="Statistiky">
+        <div class="panel-head"><h2>Statistiky měření</h2><span class="small" id="sessionInfo">Nová relace</span></div>
+        <div class="summary">
+          <div class="metric highlight"><div class="small">Kandidátní zásahy</div><big id="eventCount">0</big></div>
+          <div class="metric"><div class="small">Analyzované snímky</div><big id="frameCount">0</big></div>
+          <div class="metric"><div class="small">Tempo detekce</div><big id="rateValue">—<span class="unit"> / h</span></big></div>
+          <div class="metric"><div class="small">Maskované pixely</div><big id="hotValue">0</big></div>
+        </div>
+        <div class="graph">
+          <div class="rowline"><h3>Počet zásahů během měření</h3><span class="tiny">posledních 20 minut</span></div>
+          <div class="graph-bars" id="histogram" aria-label="Histogram událostí"></div>
+          <div class="graph-axis"><span>−19 min</span><span>nyní</span></div>
+        </div>
+        <div class="hr"></div>
+        <div class="rowline small"><span>Průměrný jas snímku</span><strong id="meanValue">—</strong></div>
+        <div class="rowline small" style="margin-top:8px"><span>Skutečná rychlost analýzy</span><strong id="speedValue">—</strong></div>
+        <div class="rowline small" style="margin-top:8px"><span>Podezřelé přesvětlení</span><strong id="lightValue">—</strong></div>
+      </section>
+
+      <section class="panel pad" aria-label="Nastavení detektoru">
+        <div class="panel-head"><h2>Nastavení detekce</h2><button id="resetSettings" class="text-btn">Výchozí hodnoty</button></div>
+        <div class="settings">
+          <label class="field"><span>Fotoaparát</span><select id="cameraSelect"><option value="environment">Zadní kamera (automaticky)</option><option value="user">Přední kamera</option></select></label>
+          <label class="field"><span>Rozlišení analýzy</span><select id="resolutionSelect"><option value="640">Úsporné (640 px)</option><option value="960" selected>Vyvážené (960 px)</option><option value="1280">Vysoké (1280 px)</option><option value="1920">Max. (1920 px)</option></select></label>
+          <label class="field"><span>Snímky za sekundu</span><select id="fpsSelect"><option value="2">2 za sekundu</option><option value="4" selected>4 za sekundu</option><option value="8">8 za sekundu</option></select></label>
+          <label class="field"><span>Minimum pixelů v zásahu</span><select id="minPixelsSelect"><option value="1">1 pixel (citlivé)</option><option value="2" selected>2 pixely</option><option value="3">3 pixely</option><option value="5">5 pixelů</option></select></label>
+          <label class="field"><span>Minimální jas pixelu <output class="range-val" id="brightnessOut">110</output></span><input id="brightnessRange" type="range" min="40" max="230" step="5" value="110"></label>
+          <label class="field"><span>Rozdíl vůči pozadí <output class="range-val" id="deltaOut">45</output></span><input id="deltaRange" type="range" min="15" max="160" step="5" value="45"></label>
+        </div>
+        <div class="hr"></div>
+        <div style="display:grid;gap:12px">
+          <label class="checkline"><input type="checkbox" id="wakeSwitch" checked> <span>Udržet displej zapnutý, pokud to prohlížeč dovoluje (Wake Lock)</span></label>
+          <label class="checkline"><input type="checkbox" id="saveSwitch" checked> <span>Ukládat výřezy podezřelých zásahů do tohoto zařízení</span></label>
+          <label class="checkline"><input type="checkbox" id="boostSwitch"> <span>Digitálně zesvětlit náhled (nemění samotnou detekci)</span></label>
+        </div>
+      </section>
+
+      <section class="panel pad" aria-label="Nápověda">
+        <div class="panel-head"><h2>Jak detektor funguje?</h2><span class="pill">Zpracování lokálně</span></div>
+        <p class="small">Algoritmus se nejprve naučí tmavé pozadí a opakovaně světlé (horké) pixely. Potom vyhledává nové světlé shluky, které v kalibraci nebyly.</p>
+        <details open><summary>Správný postup měření</summary><div class="detail-body"><ol><li>Přelep objektiv černou neprůsvitnou páskou nebo jinou krytkou, která nepropouští světlo.</li><li>Vyber kameru a spusť měření. Během kalibrace s telefonem nehýbej a nech ho v klidu.</li><li>Průměrný jas by měl být co nejnižší. Je-li snímek světlý, utěsni krytku.</li><li>Nech měřit desítky minut nebo hodiny. Ulož výsledky CSV/JSON a prohlédni výřezy.</li></ol></div></details>
+        <details><summary>Proč může najít falešné události?</summary><div class="detail-body">Kamera má horké pixely, tepelný šum, kompresní a obrazové artefakty. Mobil může odstranit i skutečné stopy částic ještě předtím, než obrázek získá prohlížeč. Jednotlivý jasný shluk proto není důkazem kosmické částice.</div></details>
+        <details><summary>Co HTML nedokáže?</summary><div class="detail-body">Neumí obvykle číst surová data CMOS (RAW), vypnout veškeré odšumování výrobce ani pracovat spolehlivě se zamknutým telefonem. Žádné údaje se neodesílají na server CREDO. Jde o nezávislý experimentální nástroj inspirovaný otevřenými principy projektu.</div></details>
+        <button id="demoBtn" class="btn secondary" style="margin-top:14px;width:100%">✦ Otestovat algoritmus simulovaným zásahem</button>
+        <p class="tiny" style="margin-top:8px">Simulace není skutečná detekce; pouze ověřuje zpracování a zobrazení. Záznam se označí „SIMULACE“.</p>
+      </section>
+    </div>
+
+    <section class="panel pad events-panel" aria-label="Zachycené události">
+      <div class="panel-head">
+        <div><h2>Zachycené události</h2><span class="small" id="savedLabel">Zatím žádné záznamy</span></div>
+        <div class="buttons" style="margin:0"><button class="btn secondary" id="exportCsv">CSV</button><button class="btn secondary" id="exportJson">JSON + snímky</button><button class="btn danger" id="clearBtn">Vymazat</button></div>
+      </div>
+      <div id="eventList" class="events-grid"><div class="muted-panel" style="grid-column:1/-1">Po kalibraci se zde zobrazí podezřelé shluky se snímkem, časem a jasem.</div></div>
+      <p class="tiny" style="margin-top:12px">Uloženo v prohlížeči v IndexedDB (pokud je dostupná). Pro dlouhodobé uchování exportuj JSON. Ukládá se nejvýše 250 posledních výřezů, protože úložiště mobilu je omezené.</p>
+    </section>
+
+    <p class="foot">Kosmický detektor · nezávislý český experiment · inspirováno výzkumem CREDO · bez serveru a bez přenosu snímků</p>
+  </main>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script>
+  (() => {
+    'use strict';
+    const $ = id => document.getElementById(id);
+    const video=$('sourceVideo'), canvas=$('analysisCanvas'), ctx=canvas.getContext('2d',{willReadFrequently:true}), preview=$('preview'), pctx=preview.getContext('2d');
+    const opts=['cameraSelect','resolutionSelect','fpsSelect','minPixelsSelect','brightnessRange','deltaRange','wakeSwitch','saveSwitch','boostSwitch'];
+    const defaults={cameraSelect:'environment',resolutionSelect:'960',fpsSelect:'4',minPixelsSelect:'2',brightnessRange:'110',deltaRange:'45',wakeSwitch:true,saveSwitch:true,boostSwitch:false};
+    let state='idle',stream=null,track=null,wake=null,loopTimer=null,db=null,events=[],readyFrames=0,frames=0,realEvents=0,calibrationCount=0,hotCount=0,lightWarning=false;
+    let baseline=null,heat=null,hotMask=null,lastSeen=new Map(),w=0,h=0,startedAt=0,activeMs=0,activeSince=0,sessionId='',timestampLast=0,lastFpsSample=0,frameSampleAt=0,fpsObserved=0,meanBrightness=0;
+    let toastTimer=null, lastPreview=0;
+    const CAL_FRAMES=32,MAX_RECORDS=250;
+    const isActive=()=>state==='running'||state==='calibrating';
+    function toast(msg){ const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3800); }
+    function status(label,kind=''){ $('statusLabel').textContent=label;$('statusTag').className='tag '+kind; }
+    function helper(msg){ $('helperText').textContent=msg; }
+    function readSettings(){return Object.fromEntries(opts.map(id=>[id,$(id).type==='checkbox'?$(id).checked:$(id).value]));}
+    function restoreSettings(){try{const saved=JSON.parse(localStorage.getItem('cosmic-detector-settings')||'{}');for(const id of opts){let value=id in saved?saved[id]:defaults[id];if($(id).type==='checkbox')$(id).checked=!!value;else {$(id).value=value;if(id==='cameraSelect'&&!$(id).value)$(id).value='environment';}}}catch{for(const id of opts){if($(id).type==='checkbox')$(id).checked=defaults[id];else $(id).value=defaults[id];}} updateRange();}
+    function saveSettings(){try{localStorage.setItem('cosmic-detector-settings',JSON.stringify(readSettings()));}catch{}}
+    function updateRange(){$('brightnessOut').value=$('brightnessRange').value;$('deltaOut').value=$('deltaRange').value;}
+    function formatTime(ms){const n=Math.max(0,Math.floor(ms/1000));return [Math.floor(n/3600),Math.floor(n%3600/60),n%60].map(x=>String(x).padStart(2,'0')).join(':');}
+    function duration(){return activeMs+(isActive()?performance.now()-activeSince:0);}
+    function setButtons(){const active=isActive();$('startBtn').disabled=active||state==='opening';$('startBtn').textContent=state==='paused'?'▶ Pokračovat':'▶ Spustit měření';$('pauseBtn').disabled=!active;$('stopBtn').disabled=state==='idle';$('cameraSelect').disabled=state!=='idle';$('resolutionSelect').disabled=state!=='idle';}
+    async function openDb(){if(!('indexedDB' in window))return;return new Promise(resolve=>{try{const req=indexedDB.open('cosmic-detector-local',1);req.onupgradeneeded=()=>{const d=req.result;if(!d.objectStoreNames.contains('events'))d.createObjectStore('events',{keyPath:'id'});};req.onsuccess=()=>resolve(req.result);req.onerror=()=>resolve(null);}catch{resolve(null);}});}
+    function dbAction(mode,fn){if(!db)return Promise.resolve();return new Promise(resolve=>{try{const t=db.transaction('events',mode);fn(t.objectStore('events'));t.oncomplete=()=>resolve();t.onerror=()=>resolve();}catch{resolve();}});}
+    async function loadEvents(){db=await openDb();if(db)await new Promise(resolve=>{try{const q=db.transaction('events','readonly').objectStore('events').getAll();q.onsuccess=()=>{events=(q.result||[]).sort((a,b)=>b.time-a.time).slice(0,MAX_RECORDS);resolve();};q.onerror=()=>resolve();}catch{resolve();}});renderEvents();}
+    async function appendEvent(ev){events.unshift(ev);if(events.length>MAX_RECORDS){const removed=events.splice(MAX_RECORDS);for(const old of removed)dbAction('readwrite',s=>s.delete(old.id));}renderEvents();if(db)await dbAction('readwrite',s=>s.put(ev));}
+    async function clearEvents(){if(!events.length)return;if(!confirm('Opravdu smazat všechny lokálně uložené záznamy?'))return;events=[];await dbAction('readwrite',s=>s.clear());renderEvents();toast('Záznamy byly smazány.');}
+    function download(blob,name){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),15000);}
+    function exportCsv(){const header=['datum','relace','typ','x','y','pixely','max_jas','max_rozdil','sirka','vyska'];const rows=events.map(e=>[new Date(e.time).toISOString(),e.session,e.simulated?'simulace':'kandidat',e.x,e.y,e.pixels,e.peak,e.delta,e.frameW,e.frameH]);const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';const csv='\ufeff'+[header,...rows].map(row=>row.map(q).join(';')).join('\r\n');download(new Blob([csv],{type:'text/csv;charset=utf-8'}),'kosmicky-detektor-'+dateStamp()+'.csv');}
+    function exportJson(){const payload={software:'Kosmický detektor',version:'1.0',kind:'experimental CMOS anomaly detector',notice:'Kandidáti nejsou potvrzené kosmické částice.',createdAt:new Date().toISOString(),settings:readSettings(),events};download(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),'kosmicky-detektor-'+dateStamp()+'.json');}
+    function dateStamp(){return new Date().toISOString().slice(0,10);}
+    function renderEvents(){const host=$('eventList');host.replaceChildren();$('savedLabel').textContent=events.length?`${events.length} uložených záznamů`:'Zatím žádné záznamy';if(!events.length){const empty=document.createElement('div');empty.className='muted-panel';empty.style.gridColumn='1/-1';empty.textContent='Po kalibraci se zde zobrazí podezřelé shluky se snímkem, časem a jasem.';host.append(empty);return;}
+      for(const ev of events.slice(0,40)){const item=document.createElement('div');item.className='event';const img=document.createElement('img');img.alt='Výřez detekovaného signálu';img.loading='lazy';img.src=ev.image||'';if(!ev.image){img.style.display='none';item.style.gridTemplateColumns='1fr';}
+        const info=document.createElement('div');info.className='ev-info';const title=document.createElement('div');title.className='ev-title';title.textContent=(ev.simulated?'SIMULACE · ':'')+new Date(ev.time).toLocaleTimeString('cs-CZ');
+        const m1=document.createElement('div');m1.className='ev-meta';m1.textContent=`${ev.pixels} px · max. jas ${ev.peak}/255`;
+        const m2=document.createElement('div');m2.className='ev-meta';m2.textContent=`Δ ${ev.delta} · ${ev.x}, ${ev.y}`;
+        const actions=document.createElement('div');actions.className='ev-actions';if(ev.image){const dl=document.createElement('button');dl.className='text-btn';dl.textContent='Snímek PNG';dl.onclick=()=>download(dataUrlBlob(ev.image),'zasah-'+new Date(ev.time).toISOString().replace(/[:.]/g,'-')+'.png');actions.append(dl);}
+        const del=document.createElement('button');del.className='text-btn';del.style.color='#ff9ca7';del.textContent='Smazat';del.onclick=async()=>{events=events.filter(e=>e.id!==ev.id);renderEvents();await dbAction('readwrite',s=>s.delete(ev.id));};actions.append(del);info.append(title,m1,m2,actions);item.append(img,info);host.append(item);}
+      if(events.length>40){const note=document.createElement('div');note.className='muted-panel';note.style.gridColumn='1/-1';note.textContent=`Zobrazeno posledních 40 z ${events.length} záznamů. Všechny jsou v exportu.`;host.append(note);}
+    }
+    function dataUrlBlob(dataUrl){const [head,data]=dataUrl.split(',');const type=(head.match(/data:(.*?);/)||[])[1]||'image/png';const bin=atob(data);const arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);return new Blob([arr],{type});}
+    function releaseWake(){if(wake){wake.release().catch(()=>{});wake=null;}}
+    async function acquireWake(){if(!$('wakeSwitch').checked||!('wakeLock' in navigator))return;try{wake=await navigator.wakeLock.request('screen');}catch{toast('Displej nelze udržet zapnutý; vypni automatické zhasínání.');}}
+    async function startCamera(){if(!navigator.mediaDevices?.getUserMedia){throw new Error('Fotoaparát je dostupný pouze v zabezpečené stránce (HTTPS / localhost) a podporovaném prohlížeči.');}
+      const choice=$('cameraSelect').value||'environment';const vConstraints={width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:15,max:30}};
+      if(choice==='environment'||choice==='user')vConstraints.facingMode={ideal:choice};else vConstraints.deviceId={exact:choice};
+      stream=await navigator.mediaDevices.getUserMedia({video:vConstraints,audio:false});track=stream.getVideoTracks()[0];video.srcObject=stream;await video.play();
+      const s=track.getSettings();$('cameraInfo').textContent=`${s.width||video.videoWidth} × ${s.height||video.videoHeight}`;
+      await refreshCameras(s.deviceId);
+    }
+    async function refreshCameras(active){if(!navigator.mediaDevices?.enumerateDevices)return;try{const devices=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');if(!devices.length)return;const selected=$('cameraSelect');const old=selected.value;selected.replaceChildren();for(const c of devices){const o=document.createElement('option');o.value=c.deviceId;o.textContent=c.label||`Kamera ${selected.options.length+1}`;selected.append(o);}selected.value=active||old;if(!selected.value)selected.selectedIndex=0;saveSettings();}catch{}}
+    function initAnalysis(){const cw=video.videoWidth||1280,ch=video.videoHeight||720,max=Number($('resolutionSelect').value);const ratio=Math.min(1,max/Math.max(cw,ch));w=Math.max(1,Math.round(cw*ratio));h=Math.max(1,Math.round(ch*ratio));canvas.width=w;canvas.height=h;preview.width=w;preview.height=h;
+      baseline=new Float32Array(w*h);heat=new Uint8Array(w*h);hotMask=new Uint8Array(w*h);calibrationCount=0;readyFrames=0;lastSeen.clear();hotCount=0;lightWarning=false;meanBrightness=0;
+      $('previewInfo').textContent=w+' × '+h;$('calibrationBar').style.width='0%';
+      helper('Kalibrace: učím se tmavé pozadí a horké pixely. Nechej zakrytý fotoaparát v klidu.');
+    }
+    async function start(){if(isActive()||state==='opening')return;const resuming=state==='paused';state='opening';setButtons();try{
+      if(!resuming){status('Spouštím kameru','cal');await startCamera();initAnalysis();frames=0;realEvents=0;activeMs=0;startedAt=Date.now();sessionId='session-'+startedAt;frameSampleAt=performance.now();lastFpsSample=0;}
+      else if(!track||track.readyState!=='live'){await startCamera();initAnalysis();}
+      state=calibrationCount<CAL_FRAMES?'calibrating':'running';activeSince=performance.now();setButtons();status(state==='calibrating'?'Kalibrace':'Měření běží',state==='calibrating'?'cal':'live');$('previewPlaceholder').classList.add('hidden');$('sessionInfo').textContent='Relace '+new Date(startedAt).toLocaleTimeString('cs-CZ');
+      await acquireWake();schedule(60);toast('Fotoaparát aktivní. Objektiv musí být zakrytý.');
+    }catch(err){stop(false);status('Chyba fotoaparátu');helper(`Fotoaparát se nepodařilo otevřít: ${err.message||err}`);toast('Přístup ke kameře není dostupný.');}}
+    function pause(msg){if(!isActive())return;activeMs+=performance.now()-activeSince;state='paused';clearTimeout(loopTimer);loopTimer=null;releaseWake();setButtons();status('Pozastaveno');helper(msg||'Měření je pozastavené. Klepni na Pokračovat.');}
+    function stop(notify=true){if(isActive())activeMs+=performance.now()-activeSince;state='idle';clearTimeout(loopTimer);loopTimer=null;releaseWake();if(stream){for(const t of stream.getTracks())t.stop();stream=null;track=null;video.srcObject=null;}$('cameraInfo').textContent='Fotoaparát vypnutý';setButtons();status('Připraveno');if(notify)toast('Měření ukončeno. Záznamy zůstaly uložené.');}
+    function schedule(ms){clearTimeout(loopTimer);if(isActive())loopTimer=setTimeout(step,ms);}
+    function checkEnvironment(pix){let total=0,bright=0,samples=0;const jump=Math.max(1,Math.floor((w*h)/1900));for(let i=0;i<w*h;i+=jump){const a=i*4;const v=Math.max(pix[a],pix[a+1],pix[a+2]);total+=v;if(v>70)bright++;samples++;}meanBrightness=total/Math.max(1,samples);lightWarning=meanBrightness>24||bright/Math.max(1,samples)>.04;return lightWarning;}
+    function paint(img,boxes=[]){const now=performance.now();if(now-lastPreview<170)return;lastPreview=now;pctx.putImageData(img,0,0);if($('boostSwitch').checked){const id=pctx.getImageData(0,0,w,h);const d=id.data;for(let i=0;i<d.length;i+=4){d[i]=Math.min(255,d[i]*4);d[i+1]=Math.min(255,d[i+1]*4);d[i+2]=Math.min(255,d[i+2]*4);}pctx.putImageData(id,0,0);}
+      pctx.lineWidth=Math.max(2,Math.floor(w/460));pctx.strokeStyle='#70f7bd';for(const e of boxes)pctx.strokeRect(Math.max(0,e.minX-8),Math.max(0,e.minY-8),e.maxX-e.minX+16,e.maxY-e.minY+16);
+    }
+    function step(){if(!isActive())return;if(document.hidden){pause('Stránka byla skryta. Prohlížeč může zastavit kameru; po návratu pokračuj ručně.');return;}
+      if(video.readyState<2){schedule(250);return;}
+      const t=performance.now();try{ctx.drawImage(video,0,0,w,h);const img=ctx.getImageData(0,0,w,h);const pix=img.data;frames++;
+        const tooBright=checkEnvironment(pix);if(tooBright){paint(img);status('Světlo proniká dovnitř','cal');helper('Náhled je příliš světlý. Utěsni krytku objektivu. Detekce je dočasně pozastavena.');if(state==='calibrating'){calibrationCount=0;baseline.fill(0);heat.fill(0);} }
+        else if(state==='calibrating'){calibrate(pix);paint(img);}
+        else {const matches=analyse(pix);paint(img,matches.slice(0,8));for(const m of matches)recordCandidate(m);status('Měření běží','live');helper('Měření probíhá. Kandidáti se ukládají automaticky, včetně výřezů ze snímků.');}
+        readyFrames++;if(t-frameSampleAt>2400){fpsObserved=(readyFrames-lastFpsSample)*1000/(t-frameSampleAt);lastFpsSample=readyFrames;frameSampleAt=t;}
+        renderStats();
+      }catch(err){pause('Nepodařilo se přečíst obraz z fotoaparátu: '+err.message);return;}
+      const desired=1000/Number($('fpsSelect').value);schedule(Math.max(20,desired-(performance.now()-t)));
+    }
+    function calibrate(pix){calibrationCount++;const k=calibrationCount;const threshold=Number($('brightnessRange').value);const alpha=k===1?1:Math.min(.22,2/(k+1));let hot=0;
+      for(let i=0,j=0;i<pix.length;i+=4,j++){const v=Math.max(pix[i],pix[i+1],pix[i+2]);baseline[j]+=alpha*(v-baseline[j]);if(v>=threshold)heat[j]++;}
+      $('calibrationBar').style.width=(calibrationCount/CAL_FRAMES*100).toFixed(1)+'%';
+      if(calibrationCount>=CAL_FRAMES){for(let i=0;i<heat.length;i++){if(heat[i]>=Math.max(5,Math.floor(CAL_FRAMES*.18))){hotMask[i]=1;hot++;}}hotCount=hot;state='running';status('Měření běží','live');helper(`Kalibrace hotová. Zamaskováno ${hot} stabilně světlých pixelů. Nyní hledám nové signály.`);}
+    }
+    function analyse(pix, width=w, height=h, background=baseline, badPixels=hotMask){const n=width*height,brightness=Number($('brightnessRange').value),delta=Number($('deltaRange').value),minPix=Number($('minPixelsSelect').value),mask=new Uint8Array(n),values=new Uint8Array(n),differences=new Uint8Array(n),candidates=[];
+      for(let j=0,i=0;j<n;j++,i+=4){const v=Math.max(pix[i],pix[i+1],pix[i+2]);const diff=v-background[j];if(!badPixels[j]&&v>=brightness&&diff>=delta){mask[j]=1;values[j]=v;differences[j]=Math.min(255,Math.round(diff));candidates.push(j);}
+        // Slow baseline update when the pixel looks like ordinary noise, not a transient hit.
+        if(diff<22&&diff>-45)background[j]+=.012*(v-background[j]);
+      }
+      if(!candidates.length||candidates.length>Math.max(1000,n*.006))return [];
+      const seen=new Uint8Array(n),results=[];
+      for(const start of candidates){if(seen[start])continue;seen[start]=1;const stack=[start];let area=0,peak=0,peakDelta=0,sumX=0,sumY=0,minX=width,maxX=0,minY=height,maxY=0,peakIndex=start;
+        while(stack.length){const pos=stack.pop(),x=pos%width,y=Math.floor(pos/width);area++;sumX+=x;sumY+=y;minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);if(y>maxY)maxY=y;
+          if(values[pos]>peak){peak=values[pos];peakIndex=pos;}peakDelta=Math.max(peakDelta,differences[pos]);
+          if(area>400)continue;
+          for(let dy=-1;dy<=1;dy++){const ny=y+dy;if(ny<0||ny>=height)continue;for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;const nx=x+dx;if(nx<0||nx>=width)continue;const at=ny*width+nx;if(mask[at]&&!seen[at]){seen[at]=1;stack.push(at);}}}
+        }
+        if(area<minPix||area>220)continue;
+        if((maxX-minX+1)>100||(maxY-minY+1)>100)continue;
+        results.push({x:Math.round(sumX/area),y:Math.round(sumY/area),minX,maxX,minY,maxY,pixels:area,peak,delta:peakDelta,peakIndex});
+        if(results.length>35)break;
+      }
+      return results;
+    }
+    function markHotSpot(x,y){let created=0;for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=w||yy>=h)continue;const i=yy*w+xx;if(!hotMask[i]){hotMask[i]=1;created++;}}hotCount+=created;}
+    function cropEvent(x,y){if(!$('saveSwitch').checked)return null;const side=64,left=Math.min(Math.max(0,x-side/2),Math.max(0,w-side)),top=Math.min(Math.max(0,y-side/2),Math.max(0,h-side));const c=document.createElement('canvas');c.width=192;c.height=192;const g=c.getContext('2d');g.fillStyle='#000';g.fillRect(0,0,192,192);g.imageSmoothingEnabled=false;g.drawImage(canvas,left,top,side,side,0,0,192,192);g.strokeStyle='#59eeb5';g.lineWidth=1;const px=(x-left)*3,py=(y-top)*3;g.strokeRect(px-11,py-11,22,22);return c.toDataURL('image/png');}
+    function recordCandidate(m){const key=(Math.floor(m.x/5))+','+(Math.floor(m.y/5));const now=performance.now();let history=lastSeen.get(key);if(history&&now-history.last<8000){history.count++;history.last=now;if(history.count>=3){markHotSpot(m.x,m.y);lastSeen.delete(key);}return;}lastSeen.set(key,{last:now,count:1});
+      if(lastSeen.size>200){for(const [k,v] of lastSeen)if(now-v.last>12000)lastSeen.delete(k);}
+      realEvents++;const ev={id:(globalThis.crypto?.randomUUID?.()||('id-'+Date.now()+'-'+Math.random().toString(36).slice(2))),time:Date.now(),session:sessionId,simulated:false,x:m.x,y:m.y,pixels:m.pixels,peak:m.peak,delta:m.delta,frameW:w,frameH:h,image:cropEvent(m.x,m.y)};appendEvent(ev);
+    }
+    function renderStats(){$('eventCount').textContent=realEvents.toLocaleString('cs-CZ');$('frameCount').textContent=frames.toLocaleString('cs-CZ');$('hotValue').textContent=hotCount.toLocaleString('cs-CZ');$('meanValue').textContent=Number.isFinite(meanBrightness)?meanBrightness.toFixed(1)+' / 255':'—';$('speedValue').textContent=fpsObserved?fpsObserved.toFixed(1)+' sn./s':'—';$('lightValue').textContent=lightWarning?'ANO – zkontroluj krytku':'ne';$('lightValue').style.color=lightWarning?'var(--orange)':'var(--mint)';$('previewTime').textContent=formatTime(duration());const hours=duration()/3600000;$('rateValue').innerHTML=(hours>0?(realEvents/hours).toFixed(1):'—')+'<span class="unit"> / h</span>';renderHistogram();}
+    function renderHistogram(){const hist=new Array(20).fill(0),now=Date.now();for(const e of events){if(e.simulated||e.session!==sessionId)continue;const min=Math.floor((now-e.time)/60000);if(min>=0&&min<20)hist[19-min]++;}const largest=Math.max(1,...hist);const el=$('histogram');if(el.children.length!==20){el.replaceChildren();for(let i=0;i<20;i++){const bar=document.createElement('div');bar.className='bar';el.append(bar);}}hist.forEach((n,i)=>{const bar=el.children[i];bar.style.height=(Math.max(2,n/largest*80))+'px';bar.className='bar'+(i===19?' active':'');bar.title=`${n} událostí`;});}
+    function syntheticTest(){const ww=320,hh=240,x=160,y=118;
+      const c=document.createElement('canvas');c.width=ww;c.height=hh;const g=c.getContext('2d');g.fillStyle='#060709';g.fillRect(0,0,ww,hh);g.fillStyle='#fff';g.fillRect(x,y,3,4);g.fillStyle='#96d9ff';g.fillRect(x+1,y+4,2,2);
+      let img=null;if($('saveSwitch').checked){const out=document.createElement('canvas');out.width=192;out.height=192;const oc=out.getContext('2d');oc.imageSmoothingEnabled=false;oc.drawImage(c,x-31,y-31,64,64,0,0,192,192);oc.strokeStyle='#59eeb5';oc.strokeRect(82,82,26,26);img=out.toDataURL('image/png');}
+      const frame=g.getImageData(0,0,ww,hh).data;const found=analyse(frame,ww,hh,new Float32Array(ww*hh),new Uint8Array(ww*hh));const match=found.find(e=>Math.abs(e.x-x)<10&&Math.abs(e.y-y)<10);if(!match){toast('Testovací shluk nebyl zachycen. Sniž nastavené prahy.');return;}
+      appendEvent({id:'sim-'+Date.now()+'-'+Math.random().toString(36).slice(2),time:Date.now(),session:sessionId||'test',simulated:true,x:match.x,y:match.y,pixels:match.pixels,peak:match.peak,delta:match.delta,frameW:ww,frameH:hh,image:img});toast('Algoritmus zachytil SIMULOVANÝ zásah – nikoli skutečnou částici.');}
+    for(const id of opts){$(id).addEventListener('change',()=>{updateRange();saveSettings();if(id==='wakeSwitch'&&isActive()){releaseWake();acquireWake();}if(id==='resolutionSelect'&&isActive())toast('Nové rozlišení se projeví po ukončení a novém spuštění.');});if($(id).type==='range')$(id).addEventListener('input',()=>{updateRange();saveSettings();});}
+    $('startBtn').addEventListener('click',start);$('pauseBtn').addEventListener('click',()=>pause());$('stopBtn').addEventListener('click',()=>stop());$('clearBtn').addEventListener('click',clearEvents);$('exportCsv').addEventListener('click',exportCsv);$('exportJson').addEventListener('click',exportJson);$('demoBtn').addEventListener('click',syntheticTest);
+    $('resetSettings').addEventListener('click',()=>{for(const id of opts){const e=$(id);if(e.type==='checkbox')e.checked=defaults[id];else if(id==='cameraSelect'&&e.options.length>2)continue;else e.value=defaults[id];}updateRange();saveSettings();toast('Obnoveno výchozí nastavení.');});
+    window.addEventListener('pagehide',()=>{if(isActive())pause('Stránka opuštěna. Po návratu pokračuj ručně.');});
+    document.addEventListener('visibilitychange',()=>{if(document.hidden&&isActive())pause('Stránka byla skryta – měření pozastaveno kvůli spolehlivosti dat.');});
+    restoreSettings();setButtons();renderHistogram();loadEvents();setInterval(()=>{if(state!=='idle')renderStats();},1000);
+    if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  })();
+  </script>
+</body>
+</html>
