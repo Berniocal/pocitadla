@@ -3,7 +3,7 @@ android {
     namespace 'cz.bernio.kosmickydetektor'
     compileSdk 35
     defaultConfig {
-        applicationId 'cz.bernio.kosmickydetektor'
+        applicationId 'cz.bernio.kosmickydetektor.raw'
         minSdk 26
         targetSdk 34
         versionCode 2

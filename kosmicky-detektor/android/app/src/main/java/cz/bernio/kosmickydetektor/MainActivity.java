@@ -109,7 +109,7 @@ public final class MainActivity extends Activity {
         root.setPadding(dp(16),dp(22),dp(16),dp(24));
         scroll.addView(root);
         setContentView(scroll);
-        spaced(root,text("☄  KOSMICKÝ DETEKTOR",13,COLOR_ACCENT,true),8);
+        spaced(root,text("☄  KOSMICKÝ DETEKTOR RAW 1.1",13,COLOR_ACCENT,true),8);
         spaced(root,text("Měření částic fotoaparátem",24,COLOR_TEXT,true),8);
         spaced(root,text("RAW_SENSOR · Camera2 · dlouhá expozice · experiment",13,COLOR_MUTED,false),20);
 
@@ -187,7 +187,7 @@ public final class MainActivity extends Activity {
         });
 
         CheckBox dngCheckbox=new CheckBox(this);
-        dngCheckbox.setText("Uložit úplný DNG snímek při zásahu (max. 50 souborů)");
+        dngCheckbox.setText("Uložit úplný DNG při zásahu (jen RAW, max. 50)");
         dngCheckbox.setTextColor(COLOR_TEXT);
         dngCheckbox.setChecked(saveDng);
         spaced(captureSettings,dngCheckbox,8);
@@ -350,7 +350,7 @@ public final class MainActivity extends Activity {
             "\nRežim: "+mode+"   •   "+(w>0?w+" × "+h:"—")+
             "\nSkutečná expozice: "+(actualExp>0?String.format(java.util.Locale.US,"%.1f ms",actualExp/1e6):"—")+
             "   •   ISO: "+actualIso+
-            "\nDNG uloženo: "+prefs.getInt("dngCount",0)+"   •   délka: "+duration);
+            "\nDNG uloženo: "+prefs.getInt("dngCount",0)+"   •   délka: "+duration+\n            "\nPodpora fotoaparátu: "+prefs.getString("cameraInfo","—"));
         List<EventStore.EventRow> rows=db.latest(5);
         if(rows.isEmpty()) {
             history.setText("Zatím žádné kandidátní zásahy.");

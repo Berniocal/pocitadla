@@ -17,7 +17,7 @@ Nativní Camera2 aplikace, bez WebView/PWA. Přidána podpora skutečného **RAW
 - CSV export i ZIP archiv obsahující CSV, PNG výřezy a uložené DNG. Archiv se vytváří ve vedlejším vlákně.
 - Databáze starších událostí se migrací zachovává.
 
-## Sestavení APK
+Android 1.1 má záměrně jiný identifikátor balíčku (`cz.bernio.kosmickydetektor.raw`) než stará verze. Lze ho tedy nainstalovat vedle 1.0; její uložené události zůstávají v původní aplikaci.\n\n## Sestavení APK
 GitHub Actions → „Kosmicky detektor APK“ → nejnovější úspěšný běh → Artifacts.
 Lokálně je potřeba Android SDK 35, Gradle 8.10.2 a JDK 17.
 
