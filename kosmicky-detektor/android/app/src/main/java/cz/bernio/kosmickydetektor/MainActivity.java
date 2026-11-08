@@ -36,9 +36,9 @@ public final class MainActivity extends Activity {
     private final Handler ui=new Handler(Looper.getMainLooper());
     private EventStore db;
     private SharedPreferences prefs;
-    private TextView status,stats,settingsLabel,history;
+    private TextView status,stats,settingsLabel,history,exposureInfo,changeNotice;
     private ImageView preview;
-    private Button startButton,stopButton;
+    private Button startButton,stopButton,applyButton;
     private SeekBar thresholdSlider;
     private int threshold=80;
     private boolean wantRaw=true,saveDng=false;
@@ -109,7 +109,7 @@ public final class MainActivity extends Activity {
         root.setPadding(dp(16),dp(22),dp(16),dp(24));
         scroll.addView(root);
         setContentView(scroll);
-        spaced(root,text("☄  KOSMICKÝ DETEKTOR RAW 1.1",13,COLOR_ACCENT,true),8);
+        spaced(root,text("☄  KOSMICKÝ DETEKTOR RAW 1.2",13,COLOR_ACCENT,true),8);
         spaced(root,text("Měření částic fotoaparátem",24,COLOR_TEXT,true),8);
         spaced(root,text("RAW_SENSOR · Camera2 · dlouhá expozice · experiment",13,COLOR_MUTED,false),20);
 
@@ -128,6 +128,13 @@ public final class MainActivity extends Activity {
         buttons.addView(startButton,b1);
         buttons.addView(stopButton,new LinearLayout.LayoutParams(0,dp(50),1));
         spaced(panel,buttons,10);
+        changeNotice=text("",13,0xffffc985,true);
+        spaced(panel,changeNotice,8);
+        applyButton=action("Použít změny a restartovat měření",0xff28517e,COLOR_TEXT);
+        spaced(panel,applyButton,10);
+        applyButton.setOnClickListener(v->restartMeasurement());
+        exposureInfo=text("",13,0xffedd6a3,false);
+        spaced(panel,exposureInfo,10);
         Button calibrate=action("Znovu kalibrovat tmavý obraz",0xff273e51,COLOR_TEXT);
         spaced(panel,calibrate,0);
         startButton.setOnClickListener(v->askStart());
@@ -217,7 +224,7 @@ public final class MainActivity extends Activity {
             @Override public void onStartTrackingTouch(SeekBar bar){}
             @Override public void onStopTrackingTouch(SeekBar bar){}
         });
-        spaced(settingsPanel,text("Nastavení platí od příštího spuštění. Před kalibrací vždy úplně zakryj objektiv, aby snímač neviděl světlo.",12,COLOR_MUTED,false),0);
+        spaced(settingsPanel,text("Nastavení je možné měnit, ale změny se použijí až po novém spuštění. Při běžícím měření použij tlačítko „Použít změny a restartovat měření“. Znovu proběhne kalibrace.",12,COLOR_MUTED,false),0);
 
         LinearLayout hitsPanel=card(root);
         spaced(hitsPanel,text("ZACHYCENÉ UDÁLOSTI",12,COLOR_MUTED,true),8);
@@ -241,6 +248,34 @@ public final class MainActivity extends Activity {
         spaced(guide,text("JAK MĚŘIT",12,COLOR_MUTED,true),8);
         spaced(guide,text("1. Neprůsvitně zakryj zadní fotoaparát.\n2. Spusť měření a vyčkej na kalibraci.\n3. Nech přístroj v klidu měřit. Kamera běží v popředí se systémovou notifikací.\n4. Podezřelé události můžeš exportovat do CSV nebo ZIP (včetně DNG).",14,COLOR_TEXT,false),12);
         spaced(guide,text("Pozor: jasný bod není důkaz kosmické částice. Může jít o šum, vadný pixel nebo obrazový artefakt. Android ani výrobce nezaručuje dlouhý provoz kamery po zamknutí.",12,COLOR_MUTED,false),0);
+    }
+    private void restartMeasurement() {
+        if(!prefs.getBoolean("running",false)) {
+            startMeasurement();
+            return;
+        }
+        applyButton.setEnabled(false);
+        changeNotice.setText("Zastavuji kameru a spouštím nové měření…");
+        // Wait until the old foreground service has released the camera and
+        // persisted running=false. Restarting immediately can cause camera-in-use.
+        try {
+            stopService(new Intent(this,DetectorService.class));
+            waitUntilStopped(0);
+        } catch(Exception e) {
+            Toast.makeText(this,"Nelze restartovat: "+e.getMessage(),Toast.LENGTH_LONG).show();
+        }
+    }
+    private void waitUntilStopped(int attempts) {
+        if(!prefs.getBoolean("running",false)) {
+            ui.postDelayed(this::startMeasurement,400);
+            return;
+        }
+        if(attempts>=30) {
+            changeNotice.setText("Nepodařilo se zastavit kameru. Zkus ručně Zastavit a Spustit.");
+            applyButton.setEnabled(true);
+            return;
+        }
+        ui.postDelayed(()->waitUntilStopped(attempts+1),200);
     }
     private void askStart() {
         if(checkSelfPermission(Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED) {
@@ -321,6 +356,9 @@ public final class MainActivity extends Activity {
             }
         }
     }
+    private String exposureLabel(int ms) {
+        return ms<1000 ? ms+" ms" : String.format(java.util.Locale.US,"%.1f s",ms/1000.0);
+    }
     private void refresh() {
         if(status==null)return;
         boolean running=prefs.getBoolean("running",false);
@@ -329,6 +367,30 @@ public final class MainActivity extends Activity {
         status.setTextColor(running?COLOR_ACCENT:COLOR_MUTED);
         startButton.setEnabled(!running);
         stopButton.setEnabled(running);
+        boolean changed=running && (
+            exposureMs!=prefs.getInt("appliedExposureMs",exposureMs) ||
+            iso!=prefs.getInt("appliedIso",iso) ||
+            threshold!=prefs.getInt("appliedThreshold",threshold) ||
+            wantRaw!=prefs.getBoolean("appliedRaw",wantRaw)
+        );
+        applyButton.setEnabled(changed);
+        if(changed) {
+            int activeMs=prefs.getInt("appliedExposureMs",exposureMs);
+            changeNotice.setText("POZOR: zvolená nastavení nejsou použita. " +
+                "Toto měření bylo spuštěno s požadavkem na "+exposureLabel(activeMs)+
+                ". Klepni na „Použít změny a restartovat měření“.");
+        }else{
+            changeNotice.setText(running?"Běží se zvolenými nastaveními.":"Připraveno na nové měření.");
+        }
+        String diagnostic=prefs.getString("exposureWarning","");
+        long minNs=prefs.getLong("minExposureNs",0);
+        long maxNs=prefs.getLong("maxExposureNs",0);
+        String allCameras=prefs.getString("cameraOptions","");
+        String lim=maxNs>0 ? ("Dostupný rozsah expozice: "+
+            String.format(java.util.Locale.US,"%.4f–%.3f s",minNs/1e9,maxNs/1e9)) :
+            "Rozsah expozice fotoaparát nesdělil.";
+        exposureInfo.setText(lim+(diagnostic.isEmpty()?"":"\n"+diagnostic)
+            +(allCameras.isEmpty()?"":"\n\nOstatní zadní kamery:\n"+allCameras));
         int frames=prefs.getInt("frames",0);
         int candidateCount=prefs.getInt("events",0);
         int cal=prefs.getInt("calibration",0);

@@ -25,3 +25,13 @@ Lokálně je potřeba Android SDK 35, Gradle 8.10.2 a JDK 17.
 Ani nekomprimovaný RAW nezaručuje naprosto nezpracovanou informaci: před zobrazením může čip nebo firmware dělat vlastní korekce. Rozsah ruční expozice vyplývá z Camera2 metadat (telefon může žádost omezit). Není vědecky potvrzeno, že každý kandidát pochází z kosmického záření. RAW frame může zabírat velkou paměť, delší expozice prodlužuje kalibraci a zahřívá zařízení. Měření při zamknuté obrazovce závisí na systému. Bez validace na skutečném telefonu nelze prohlásit detekci za kalibrovanou.
 
 Vývojová inspirace: [CREDO](https://github.com/credo-science/credo-detector-android).
+
+## Verze 1.2: ověření expozičního limitu
+
+- Volby expozice a ISO se dříve projevily až po novém spuštění, ale UI to při měření nevysvětlovalo. Nově aplikace označí změnu jako **nepoužitou** a nabídne tlačítko pro restart kamery a nové měření.
+- Při otevření kamery vypíše max. ruční expozici všech zadních kamer zpřístupněných přes Camera2 a automaticky vybere tu s nejdelší ruční expozicí (se zachováním preferovaného RAW režimu).
+- Ukazuje požadovaný čas, hardwarové minimum/maximum a **skutečně použitý čas z CaptureResult**. Pokud je maximum např. 100 ms, 10 s nelze v jednom RAW snímku získat.
+- Nevnucuje kratší `SENSOR_FRAME_DURATION`, která mohla narušit skutečně delší expozici.
+- V samostatné testovací APK má balíček identifikátor `cz.bernio.kosmickydetektor.raw12`, takže může být vedle 1.1 bez rizika ztráty starších měření při instalaci.
+
+**Fyzikální poznámka:** Sčítání 100 snímků s expozicí 100 ms nevytvoří skutečný 10s snímek se stejnou informací; zvlášť pro detekci přechodných stop je žádoucí analyzovat jednotlivé expozice odděleně.

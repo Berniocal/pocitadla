@@ -62,6 +62,8 @@ public final class DetectorService extends Service {
     private long startTime=0,lastReport=0,actualExposureNs=0;
     private int actualIso=0;
     private String status="Připraveno",hardwareInfo="";
+    private String cameraId="",cameraOptions="",exposureWarning="";
+    private long minSupportedExposureNs=0,maxSupportedExposureNs=0;
 
     @Override public void onCreate() {
         super.onCreate();
@@ -92,6 +94,8 @@ public final class DetectorService extends Service {
         yuvDetector.setThreshold(sensitivity);
         rawDetector.setThreshold(sensitivity);
         startTime=System.currentTimeMillis();events=dngCount=frames=0;
+        cameraId="";cameraOptions="";exposureWarning="";
+        minSupportedExposureNs=maxSupportedExposureNs=0;
         status="Otevírám kameru";
         startForeground(NOTIFICATION_ID,notification("Kalibrace a měření"),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA);
@@ -137,19 +141,39 @@ public final class DetectorService extends Service {
                 fail("Chybí povolení fotoaparátu");return;
             }
             CameraManager mgr=(CameraManager)getSystemService(Context.CAMERA_SERVICE);
+            // Search ALL rear cameras: the first RAW camera is not necessarily the one
+            // with the longest manual exposure. The list is also shown in the UI.
             String chosen=null,rawId=null;
             CameraCharacteristics backup=null,rawChars=null;
+            long bestYuvMax=-1,bestRawMax=-1;
+            StringBuilder capabilities=new StringBuilder();
             for(String id:mgr.getCameraIdList()){
                 CameraCharacteristics c=mgr.getCameraCharacteristics(id);
                 Integer facing=c.get(CameraCharacteristics.LENS_FACING);
                 if(facing==null || facing!=CameraCharacteristics.LENS_FACING_BACK)continue;
                 StreamConfigurationMap map=c.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
                 if(map==null || map.getOutputSizes(ImageFormat.YUV_420_888)==null)continue;
-                if(chosen==null){chosen=id;backup=c;}
-                if(supportsRaw(c)){rawId=id;rawChars=c;break;}
+                boolean cameraRaw=supportsRaw(c);
+                boolean cameraManual=has(c.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES),
+                        CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR);
+                Range<Long> timeRange=c.get(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE);
+                long maxNs=(cameraManual && timeRange!=null) ? timeRange.getUpper() : 0;
+                if(capabilities.length()>0)capabilities.append("\n");
+                capabilities.append("Kamera ").append(id).append(" · ")
+                    .append(cameraRaw?"RAW":"YUV").append(" · ");
+                if(maxNs>0)capabilities.append(String.format(Locale.US,"max %.3f s",maxNs/1e9));
+                else capabilities.append("ruční expozice nedostupná");
+                if(chosen==null || maxNs>bestYuvMax) {
+                    chosen=id;backup=c;bestYuvMax=maxNs;
+                }
+                if(cameraRaw && (rawId==null || maxNs>bestRawMax)) {
+                    rawId=id;rawChars=c;bestRawMax=maxNs;
+                }
             }
+            cameraOptions=capabilities.toString();
             if(wantRaw && rawId!=null){chosen=rawId;characteristics=rawChars;raw=true;}
             else{characteristics=backup;raw=false;}
+            cameraId=chosen==null?"":chosen;
             if(chosen==null||characteristics==null){fail("Nenalezena vhodná zadní kamera");return;}
             StreamConfigurationMap map=characteristics.get(
                 CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
@@ -235,6 +259,17 @@ public final class DetectorService extends Service {
             CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE);
         manual=has(caps,CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR)
             && exposureRange!=null && isoRange!=null;
+        minSupportedExposureNs=exposureRange==null?0:exposureRange.getLower();
+        maxSupportedExposureNs=exposureRange==null?0:exposureRange.getUpper();
+        exposureWarning="";
+        if(!manual){
+            exposureWarning="Ruční expoziční čas není pro tuto kameru zpřístupněn.";
+        }else if((long)desiredExposureMs*1_000_000L>maxSupportedExposureNs){
+            exposureWarning=String.format(Locale.US,
+                "Požadováno %.2f s, ale kamera %s povoluje maximálně %.3f s. " +
+                "Delší jednotlivý RAW snímek přes Camera2 nelze vynutit.",
+                desiredExposureMs/1000.0,cameraId,maxSupportedExposureNs/1e9);
+        }
         if(manual){
             long desiredNs=(long)Math.max(10,desiredExposureMs)*1_000_000L;
             long ns=Math.max(exposureRange.getLower(),Math.min(desiredNs,exposureRange.getUpper()));
@@ -243,11 +278,9 @@ public final class DetectorService extends Service {
             requestBuilder.set(CaptureRequest.CONTROL_MODE,CaptureRequest.CONTROL_MODE_OFF);
             requestBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME,ns);
             requestBuilder.set(CaptureRequest.SENSOR_SENSITIVITY,iso);
-            Long maxFrame=characteristics.get(
-                CameraCharacteristics.SENSOR_INFO_MAX_FRAME_DURATION);
-            if(maxFrame!=null)
-                requestBuilder.set(CaptureRequest.SENSOR_FRAME_DURATION,Math.min(maxFrame,
-                    Math.max(ns+10_000_000L,ns)));
+            // Do not force SENSOR_FRAME_DURATION. Camera2 determines a valid frame
+            // duration from the chosen single-shot exposure; an explicit short
+            // frame duration can cause the driver to shorten the exposure.
             actualExposureNs=ns;actualIso=iso;
         } else {
             actualExposureNs=0;actualIso=0;
@@ -266,7 +299,7 @@ public final class DetectorService extends Service {
             requestBuilder.set(CaptureRequest.EDGE_MODE,CaptureRequest.EDGE_MODE_OFF);
         requestBuilder.set(CaptureRequest.CONTROL_AF_MODE,CaptureRequest.CONTROL_AF_MODE_OFF);
         requestBuilder.set(CaptureRequest.FLASH_MODE,CaptureRequest.FLASH_MODE_OFF);
-        hardwareInfo=(raw?"RAW 16bit Bayer":"YUV")
+        hardwareInfo="Kamera "+cameraId+" · "+(raw?"RAW 16bit Bayer":"YUV")
             +" · "+captureW+"×"+captureH
             +" · "+(manual?String.format(Locale.US,"%.0f ms",actualExposureNs/1e6):"automatická expozice")
             +" · ISO "+(manual?actualIso:"auto");
@@ -410,7 +443,16 @@ public final class DetectorService extends Service {
             .putBoolean("running",camera!=null||opening||(startTime>0))
             .putString("status",status)
             .putString("mode",raw?"RAW_SENSOR":"YUV")
-            .putString("cameraInfo",hardwareInfo)
+                        .putString("cameraInfo",hardwareInfo)
+            .putString("cameraOptions",cameraOptions)
+            .putString("exposureWarning",exposureWarning)
+            .putString("selectedCameraId",cameraId)
+            .putLong("minExposureNs",minSupportedExposureNs)
+            .putLong("maxExposureNs",maxSupportedExposureNs)
+            .putInt("appliedExposureMs",desiredExposureMs)
+            .putInt("appliedIso",desiredIso)
+            .putInt("appliedThreshold",sensitivity)
+            .putBoolean("appliedRaw",wantRaw)
             .putLong("start",startTime)
             .putInt("frames",frames).putInt("calibration",cal)
             .putInt("calibrationTarget",raw?RawDetector.CALIBRATION_FRAMES:Detector.CALIBRATION_FRAMES)
