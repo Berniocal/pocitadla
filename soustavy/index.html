@@ -96,6 +96,35 @@ footer{margin-top:24px;text-align:center;font-size:.82rem;color:var(--muted)}
 .machine-binary{font:inherit;margin:0}
 .machine-carry{font-size:.37em;line-height:1.4;text-align:right;color:#fff0d8;min-height:1.4em;letter-spacing:.06em;font-weight:850;white-space:pre}
 @media(max-width:380px){.machine-math-stack{font-size:clamp(1.55rem,6.8vw,2.4rem)}}
+
+/* Dvě samostatně nastavitelné soustavy – společná číselná hodnota */
+.duo-lead{color:var(--muted);font-size:.93rem;margin:0 0 20px}
+.duo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.duo-counter{min-width:0;padding:18px;border:1px solid var(--line);background:linear-gradient(180deg,#f8fcfd,#fff);border-radius:17px}
+.duo-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
+.duo-heading h3{font-size:1rem;margin:0}
+.duo-heading span{background:#e5f3f8;color:var(--brand);border-radius:99px;padding:4px 9px;font-size:.76rem;font-weight:800}
+.duo-field{display:flex;flex-direction:column;gap:7px;margin:12px 0}
+.duo-field label{font-size:.84rem;color:#395b69;font-weight:800}
+.duo-field select,.duo-field input{width:100%;min-width:0;border:1px solid #bad0d8;background:#fff;border-radius:11px;color:var(--ink);padding:12px;font-weight:650}
+.duo-field input{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.05em;font-size:1.22rem}
+.duo-counter:focus-within{border-color:#9fbfcc}
+.duo-digits{display:flex;align-items:stretch;gap:4px;overflow-x:auto;padding:9px 2px 7px;min-height:103px;scrollbar-width:thin}
+.duo-place{display:flex;flex-direction:column;align-items:center;flex:0 0 auto;min-width:35px;gap:5px}
+.duo-place>small{white-space:nowrap;font-size:.66rem;color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums}
+.duo-tile{width:clamp(35px,5vw,43px);height:59px;border-radius:9px;border:1px solid #b89c73;border-bottom:4px solid #9f7c4c;background:linear-gradient(120deg,#f6e8c9,#d8bd8f);color:#493924;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:1.5rem;font-weight:850;box-shadow:0 3px 4px #27200f16}
+.duo-tile.duo-changed{animation:duo-flip .45s ease-out both}
+@keyframes duo-flip{0%{transform:rotateX(-70deg);background:#faf2d4}100%{transform:rotateX(0deg)}}
+.duo-placeholder{font-weight:800;color:var(--muted);align-self:center;padding:10px}
+.duo-controls{display:flex;gap:8px;margin-top:9px}
+.duo-controls button{flex:1;border:1px solid #b2cbd4;border-radius:11px;color:var(--brand);background:#e9f4f8;font-weight:850;padding:11px;min-width:0}
+.duo-controls button:hover,.duo-tile:hover{filter:brightness(.96)}
+.duo-controls button:active{transform:translateY(2px)}
+.duo-inline-error{color:#b43d38;min-height:18px;font-size:.79rem;margin:8px 0 0}
+.duo-center-note{text-align:center;border:1px solid #cce4e5;border-radius:13px;background:#f0f9f8;padding:12px;margin:16px 0 0;font-size:.94rem;font-weight:750;overflow-wrap:anywhere}
+.duo-help{margin:9px 0 0;font-size:.8rem;color:var(--muted)}
+@media(max-width:720px){.duo-grid{grid-template-columns:1fr}.duo-counter{padding:14px}.duo-digits{min-height:91px}}
+@media(prefers-reduced-motion:reduce){.duo-tile.duo-changed{animation:none}}
 </style>
 </head>
 <body>
@@ -139,6 +168,32 @@ footer{margin-top:24px;text-align:center;font-size:.82rem;color:var(--muted)}
     <button class="soft-btn" id="machine-example" type="button">Ukázat přenos 7 + 1</button>
   </div>
   <p class="machine-foot">Na destičku můžeš také kliknout a změnit přímo její bit. Počítadlo i převodník níže se navzájem synchronizují u čísel, která se na destičky vejdou.</p>
+</section>
+
+
+<section class="panel" aria-labelledby="duo-title">
+  <h2 id="duo-title">Dvě propojená počítadla</h2>
+  <p class="duo-lead">Zvol soustavu na každé straně zvlášť. Přičítej, odčítej nebo přepiš číslo na libovolném počítadle – druhé se okamžitě přepočítá. Kliknout můžeš i přímo na jednotlivé číslice.</p>
+  <div class="duo-grid">
+    <div class="duo-counter">
+      <div class="duo-heading"><h3>Počítadlo A</h3><span id="duo-name-a">BIN</span></div>
+      <div class="duo-field"><label for="duo-base-a">Číselná soustava</label><select id="duo-base-a" aria-label="Soustava počítadla A"></select></div>
+      <div class="duo-field"><label for="duo-input-a">Zadej číslo</label><input type="text" id="duo-input-a" value="11" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Číslo počítadla A"></div>
+      <div id="duo-digits-a" class="duo-digits" aria-label="Číslice počítadla A"></div>
+      <div class="duo-controls"><button id="duo-minus-a" type="button">−1</button><button id="duo-plus-a" type="button">+1</button></div>
+      <p id="duo-error-a" class="duo-inline-error" role="status"></p>
+    </div>
+    <div class="duo-counter">
+      <div class="duo-heading"><h3>Počítadlo B</h3><span id="duo-name-b">DEC</span></div>
+      <div class="duo-field"><label for="duo-base-b">Číselná soustava</label><select id="duo-base-b" aria-label="Soustava počítadla B"></select></div>
+      <div class="duo-field"><label for="duo-input-b">Zadej číslo</label><input type="text" id="duo-input-b" value="3" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Číslo počítadla B"></div>
+      <div id="duo-digits-b" class="duo-digits" aria-label="Číslice počítadla B"></div>
+      <div class="duo-controls"><button id="duo-minus-b" type="button">−1</button><button id="duo-plus-b" type="button">+1</button></div>
+      <p id="duo-error-b" class="duo-inline-error" role="status"></p>
+    </div>
+  </div>
+  <p id="duo-status" class="duo-center-note" role="status" aria-live="polite">Obě počítadla znázorňují stejné číslo.</p>
+  <p class="duo-help">Destičky jsou označené hodnotami řádů (1, základ, základ²…). Klepnutí na číslici přičte hodnotu jejího řádu a případně provede přenos. Podporované soustavy: 2 až 36, číslice A–Z znamenají 10 až 35.</p>
 </section>
 
 <section class="panel" aria-labelledby="converter-title">
@@ -249,6 +304,7 @@ function render(){
     showExplanation(input.value,base,value);
     handStatus(value);
     machineSync(value);
+    dualSync(value);
   }catch(e){
     lastValue=null;lastResult='';
     result.textContent='–';copy.disabled=true;error.textContent=e.message;
@@ -447,6 +503,97 @@ machineAuto.addEventListener('click',function(){
   machineTimer=setInterval(function(){machineStep(1);},850);
 });
 document.addEventListener('visibilitychange',function(){if(document.hidden)machineStop();});
+
+/* Dvě propojená počítadla: společná BigInt hodnota, nezávislé základy 2–36. */
+var dualValue=3n;
+var dualUIs={};
+var dualPrevious={a:null,b:null};
+var dualStatus=document.getElementById('duo-status');
+function dualSetStatus(message){dualStatus.textContent=message;}
+function dualReadableBase(base){
+  return base===2?'BIN':base===8?'OCT':base===10?'DEC':base===16?'HEX':'základ '+base;
+}
+function dualDraw(id,oldValue){
+  var ui=dualUIs[id],base=Number(ui.select.value);
+  var current=format(dualValue,base);
+  var old=oldValue===null?null:format(oldValue,base);
+  ui.input.value=current;
+  ui.name.textContent=dualReadableBase(base);
+  ui.error.textContent='';
+  ui.digits.replaceChildren();
+  var maxVisible=14;
+  var end=current.slice(-maxVisible);
+  if(current.length>maxVisible){
+    var e=document.createElement('span');e.className='duo-placeholder';e.textContent='…';e.title='Zobrazeno posledních 14 číslic';ui.digits.appendChild(e);
+  }
+  for(var i=0;i<end.length;i++){
+    (function(i){
+      var pos=end.length-i-1;
+      var character=end[i];
+      var tilePos=current.length-end.length+i;
+      var oldChar=old===null?'':old.padStart(current.length,'0')[tilePos];
+      var place=document.createElement('div');place.className='duo-place';
+      var button=document.createElement('button');button.type='button';button.className='duo-tile';
+      if(old!==null&&character!==oldChar)button.classList.add('duo-changed');
+      button.textContent=character;
+      var weight=BigInt(base)**BigInt(pos);
+      var weightText=weight.toString();
+      button.title='Přičíst '+weightText+' (řád '+base+'^'+pos+')';
+      button.setAttribute('aria-label','Přičíst '+weightText+' na počítadle '+id.toUpperCase());
+      button.addEventListener('click',function(){dualStep(weight,id);});
+      var label=document.createElement('small');
+      label.textContent=pos===0?'1':base+'^'+pos;
+      place.appendChild(button);place.appendChild(label);ui.digits.appendChild(place);
+    })(i);
+  }
+}
+function dualSync(value){
+  if(value<0n){dualSetStatus('Dvě propojená počítadla pracují s nezápornými celými čísly.');return;}
+  var old=dualValue;
+  dualValue=value;
+  dualDraw('a',dualPrevious.a===null?null:old);
+  dualDraw('b',dualPrevious.b===null?null:old);
+  dualPrevious.a=dualValue;dualPrevious.b=dualValue;
+}
+function dualCommit(value,id,action){
+  if(value<0n){dualUIs[id].error.textContent='Počítadlo nemůže jít pod nulu.';return;}
+  if(format(value,2).length>2048){dualUIs[id].error.textContent='Pro názorné počítadlo je číslo příliš velké (maximum 2048 bitů).';return;}
+  machineStop();
+  var old=dualValue;
+  input.value=format(value,Number(from.value));
+  render();
+  dualSetStatus('Počítadlo '+id.toUpperCase()+': '+action+'. '+old.toString()+' → '+value.toString()+' (v desítkové soustavě).');
+}
+function dualStep(by,id){
+  dualCommit(dualValue+by,id,by===1n?'+1':by===-1n?'−1':'přičtení hodnoty řádu');
+}
+function dualSetup(id,initialBase){
+  var select=document.getElementById('duo-base-'+id);
+  for(var b=2;b<=36;b++){
+    var option=document.createElement('option');option.value=String(b);option.textContent=names[b]||b+' – soustava';select.appendChild(option);
+  }
+  select.value=String(initialBase);
+  var ui={select:select,input:document.getElementById('duo-input-'+id),digits:document.getElementById('duo-digits-'+id),error:document.getElementById('duo-error-'+id),name:document.getElementById('duo-name-'+id)};
+  dualUIs[id]=ui;
+  select.addEventListener('change',function(){
+    dualPrevious[id]=null;
+    dualDraw(id,null);
+    dualSetStatus('Počítadlo '+id.toUpperCase()+' nyní používá soustavu se základem '+select.value+'. Hodnota zůstala stejná.');
+  });
+  ui.input.addEventListener('input',function(){
+    try{
+      var value=parseValue(ui.input.value,Number(ui.select.value));
+      if(value<0n)throw Error('Zadej nezáporné celé číslo.');
+      if(format(value,2).length>2048)throw Error('Číslo může mít nejvýše 2048 bitů.');
+      dualCommit(value,id,'zadání čísla');
+    }catch(e){ui.error.textContent=e.message;}
+  });
+  document.getElementById('duo-plus-'+id).addEventListener('click',function(){dualStep(1n,id);});
+  document.getElementById('duo-minus-'+id).addEventListener('click',function(){dualStep(-1n,id);});
+}
+dualSetup('a',2);
+dualSetup('b',10);
+
 machineBuild();
 machinePaint(machineValue,'init',0);
 render();
