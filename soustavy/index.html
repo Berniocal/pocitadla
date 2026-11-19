@@ -49,16 +49,80 @@ footer{margin-top:24px;text-align:center;font-size:.82rem;color:var(--muted)}
 @media(max-width:700px){.converter{grid-template-columns:1fr;gap:6px}.swap{margin:0 auto;transform:rotate(90deg)}.hands{grid-template-columns:1fr}.wrap{padding-top:14px}.panel{border-radius:17px}.hand{padding:11px}.finger{min-height:75px}}
 @media(max-width:370px){.overview{grid-template-columns:1fr}.value-wrap output,.value-wrap input{font-size:1rem}.finger{min-height:67px}.finger-labels span{font-size:.59rem}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Mechanický binární čítač – názorné překlápěcí destičky */
+.machine-panel{padding:0;overflow:hidden}
+.machine-head{padding:24px clamp(18px,3vw,28px) 13px}
+.machine-head p{margin:3px 0 8px;color:var(--muted);font-size:.95rem}
+.machine-stage{background:radial-gradient(ellipse at 50% 0%,#d9c9a9,#ab977a 65%,#89755c);color:#211f1a;padding:20px clamp(10px,2.5vw,26px) 25px;text-align:center}
+.machine-decimal{font-size:clamp(4rem,14vw,7rem);font-weight:850;letter-spacing:-.055em;line-height:1.08;color:#d52516;text-shadow:0 3px 0 #a6281c17;max-width:100%;overflow-wrap:anywhere}
+.machine-text{font-weight:850;font-size:.92rem;letter-spacing:.05em;text-transform:uppercase;margin:1px 0 18px;color:#3a352b}
+.machine-frame{background:linear-gradient(180deg,#40372c,#70573f 8%,#3b3024 16%,#584535 88%,#372a21);border:4px solid #4f3a28;border-radius:11px;padding:17px 10px 15px;box-shadow:0 10px 0 #6e5940,0 19px 20px #20180e55,inset 0 3px 9px #1d150bb0;max-width:770px;margin:0 auto}
+.machine-tiles{display:flex;align-items:end;justify-content:center;gap:clamp(3px,.8vw,8px);max-width:100%;perspective:750px}
+.machine-cell{min-width:0;flex:0 1 62px;display:flex;flex-direction:column;align-items:stretch;gap:9px}
+.machine-tile{position:relative;display:grid;place-items:center;aspect-ratio:.68;min-width:0;border:1px solid #614933;border-bottom:5px solid #6d4c30;border-radius:5px;background:linear-gradient(125deg,#cbb899 0%,#f0e0bd 37%,#e2cda6 58%,#aa8c69 100%);color:#59422d;box-shadow:inset 2px 2px 5px #fff4d1aa,inset -3px -2px 6px #60442844,2px 3px 3px #1c150e88;transform-origin:50% 10%;font-size:clamp(1.65rem,6.2vw,3.4rem);font-weight:800;line-height:1}
+.machine-tile:after{content:'';position:absolute;top:48%;left:0;right:0;height:2px;background:#6d533d88;box-shadow:0 2px 1px #fff7d488}
+.machine-tile:before{content:'';position:absolute;top:2px;left:50%;transform:translateX(-50%);width:clamp(5px,1vw,9px);height:clamp(5px,1vw,9px);border-radius:50%;background:radial-gradient(circle at 32% 25%,#f4f3e9,#8f8e85 58%,#46433b);box-shadow:0 1px 1px #111}
+.machine-tile.is-one{color:#3b3023;background:linear-gradient(120deg,#e3c9a3,#fff0d2 40%,#d1ad7e 100%)}
+.machine-tile.flip{animation:machineFlip .53s ease both;animation-delay:var(--flip-delay,0ms)}
+@keyframes machineFlip{0%{transform:rotateX(0deg)}45%{transform:rotateX(-78deg)}100%{transform:rotateX(0deg)}}
+.machine-weight{color:#f1e0bd;font-size:clamp(.63rem,1.55vw,.88rem);font-weight:800;font-variant-numeric:tabular-nums}
+.machine-binary{font-size:clamp(1.6rem,5vw,2.8rem);color:#dd741b;letter-spacing:.12em;font-weight:900;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;line-height:1.1;margin-top:31px}
+.machine-caption{color:#eee2cc;font-size:.76rem;margin-top:6px}
+.machine-explain{padding:18px clamp(18px,3vw,28px);border-bottom:1px solid var(--line)}
+.machine-operation{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:clamp(.85rem,2.5vw,1.09rem);font-weight:800;color:var(--brand);white-space:normal;overflow-wrap:anywhere;min-height:25px}
+.machine-status{font-size:.87rem;color:var(--muted);line-height:1.4;margin-top:8px;min-height:22px}
+.machine-controls{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:18px clamp(18px,3vw,28px) 12px}
+.machine-action{display:flex;justify-content:center;align-items:center;gap:7px;border-radius:13px;border:1px solid #b2cad5;padding:12px 17px;background:#f2f8fa;color:var(--brand);font-weight:850;min-height:51px}
+.machine-action.major{background:#145d77;color:#fff;border-color:#145d77;font-size:1.2rem;padding-inline:24px}
+.machine-action:active{transform:translateY(2px)}
+.machine-action:hover:not(:disabled){filter:brightness(.95)}
+.machine-options{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:0 clamp(18px,3vw,28px) 20px}
+.machine-options label{font-weight:800;font-size:.83rem;margin-right:2px;color:#3e5965}
+.machine-options select{border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);padding:9px 12px;max-width:190px}
+.machine-foot{font-size:.8rem;color:var(--muted);padding:0 clamp(18px,3vw,28px) 20px;margin:0}
+@media(max-width:700px){.machine-stage{padding:13px 10px 22px}.machine-tiles{gap:3px}.machine-cell{gap:6px}.machine-frame{padding:14px 5px 12px;border-width:3px}.machine-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.machine-action{padding-inline:7px}.machine-binary{margin-top:23px}}
+@media(prefers-reduced-motion:reduce){.machine-tile.flip{animation:none}}
 </style>
 </head>
 <body>
 <main class="wrap">
 <a class="back" href="../">← Všechna počítadla</a>
-<header class="hero"><span class="tag">Matematika · interaktivně</span><h1>Číselné soustavy</h1><p class="sub">Převeď číslo z jedné soustavy do druhé. A pokud chceš, vyzkoušej si dvojkovou soustavu přímo na deseti prstech.</p></header>
+<header class="hero"><span class="tag">Matematika · interaktivně</span><h1>Číselné soustavy</h1><p class="sub">Překlápěj bity jako na mechanickém počítadle a sleduj sčítání v binární soustavě. Nechybí ani převody mezi soustavami a počítání na prstech.</p></header>
+
+<section class="panel machine-panel" aria-labelledby="mechanical-title">
+  <div class="machine-head"><h2 id="mechanical-title">Mechanické binární počítadlo</h2><p>Přičítej jedničku jako na modelu z videa. Při přenosu do vyššího řádu se otočí i další destičky.</p></div>
+  <div class="machine-stage">
+    <div id="machine-decimal" class="machine-decimal" aria-label="Desítkové číslo" aria-live="polite">3</div>
+    <div class="machine-text">v desítkové soustavě</div>
+    <div class="machine-frame" aria-label="Překlápěcí binární čítač">
+      <div id="machine-tiles" class="machine-tiles"></div>
+    </div>
+    <div id="machine-binary" class="machine-binary">0000011</div>
+    <div class="machine-caption">ve dvojkové soustavě · každá destička představuje jeden bit</div>
+  </div>
+  <div class="machine-explain">
+    <div id="machine-operation" class="machine-operation" aria-live="polite">0000011₂ = 3₁₀</div>
+    <div id="machine-status" class="machine-status">Zkus přičíst 1: na počítadle vznikne 0000100₂, tedy 4.</div>
+  </div>
+  <div class="machine-controls">
+    <button class="machine-action" id="machine-minus" type="button">−1 Odečíst</button>
+    <button class="machine-action major" id="machine-plus" type="button">+1 Přičíst</button>
+    <button class="machine-action" id="machine-reset" type="button">↺ Vynulovat</button>
+    <button class="machine-action" id="machine-auto" type="button" aria-pressed="false">▶ Automaticky</button>
+  </div>
+  <div class="machine-options">
+    <label for="machine-bits">Počet destiček</label>
+    <select id="machine-bits"><option value="7" selected>7 bitů (0–127)</option><option value="10">10 bitů (0–1023)</option></select>
+    <button class="soft-btn" id="machine-example" type="button">Ukázat přenos 7 + 1</button>
+  </div>
+  <p class="machine-foot">Na destičku můžeš také kliknout a změnit přímo její bit. Počítadlo i převodník níže se navzájem synchronizují u čísel, která se na destičky vejdou.</p>
+</section>
+
 <section class="panel" aria-labelledby="converter-title">
 <h2 id="converter-title">Převod čísel</h2>
 <div class="converter">
-  <div class="field"><label for="from-base">Z jaké soustavy</label><select id="from-base"></select><div class="value-wrap"><input id="input" type="text" value="42" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Číslo k převodu" inputmode="text"></div><div class="tiny">Zadej celé číslo, např. 101010</div></div>
+  <div class="field"><label for="from-base">Z jaké soustavy</label><select id="from-base"></select><div class="value-wrap"><input id="input" type="text" value="3" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Číslo k převodu" inputmode="text"></div><div class="tiny">Zadej celé číslo, např. 101010</div></div>
   <button class="swap" id="swap" type="button" aria-label="Prohodit soustavy" title="Prohodit soustavy">⇄</button>
   <div class="field"><label for="to-base">Do jaké soustavy</label><select id="to-base"></select><div class="value-wrap"><output id="result" for="input from-base to-base" aria-live="polite"></output><button id="copy" class="copy" type="button" aria-label="Kopírovat výsledek">Kopírovat</button></div><div class="tiny">Převod probíhá automaticky</div></div>
 </div>
@@ -161,6 +225,7 @@ function render(){
     [2,8,10,16].forEach(function(b){document.getElementById('base-'+b).textContent=format(value,b);});
     showExplanation(input.value,base,value);
     handStatus(value);
+    machineSync(value);
   }catch(e){
     lastValue=null;lastResult='';
     result.textContent='–';copy.disabled=true;error.textContent=e.message;
@@ -214,6 +279,133 @@ copy.addEventListener('click',function(){
     area.remove();
   }
 });
+
+/* Interaktivní mechanický binární čítač */
+var machineBits=7;
+var machineValue=3n;
+var machineTimer=null;
+var machineTiles=document.getElementById('machine-tiles');
+var machineNumber=document.getElementById('machine-decimal');
+var machineBinary=document.getElementById('machine-binary');
+var machineOperation=document.getElementById('machine-operation');
+var machineStatus=document.getElementById('machine-status');
+var machineAuto=document.getElementById('machine-auto');
+function machineMax(){return (1n<<BigInt(machineBits))-1n;}
+function machineDigits(n){return n.toString(2).padStart(machineBits,'0');}
+function machineStop(){
+  if(machineTimer!==null){clearInterval(machineTimer);machineTimer=null;}
+  machineAuto.textContent='▶ Automaticky';
+  machineAuto.setAttribute('aria-pressed','false');
+}
+function machineBuild(){
+  machineTiles.replaceChildren();
+  for(var bit=machineBits-1;bit>=0;bit--){
+    (function(bit){
+      var cell=document.createElement('div');cell.className='machine-cell';
+      var tile=document.createElement('button');tile.type='button';tile.className='machine-tile';tile.dataset.bit=String(bit);
+      tile.title='Přepnout bit hodnoty '+(1<<bit);
+      tile.setAttribute('aria-label','Přepnout bit hodnoty '+(1<<bit));
+      var digit=document.createElement('span');digit.className='machine-digit';digit.textContent='0';
+      tile.appendChild(digit);
+      tile.addEventListener('click',function(){
+        machineStop();
+        machineChange(machineValue^(1n<<BigInt(bit)),'toggle');
+      });
+      var weight=document.createElement('span');weight.className='machine-weight';weight.textContent=String(1<<bit);
+      cell.appendChild(tile);cell.appendChild(weight);machineTiles.appendChild(cell);
+    })(bit);
+  }
+}
+function machinePaint(oldValue,mode,delta){
+  machineNumber.textContent=machineValue.toString();
+  machineBinary.textContent=machineDigits(machineValue);
+  var changed=oldValue^machineValue;
+  var cells=machineTiles.children;
+  var flipIndex=0;
+  for(var j=cells.length-1;j>=0;j--){
+    var button=cells[j].querySelector('button');
+    var bit=Number(button.dataset.bit);
+    var active=((machineValue>>BigInt(bit))&1n)===1n;
+    button.querySelector('.machine-digit').textContent=active?'1':'0';
+    button.classList.toggle('is-one',active);
+    button.setAttribute('aria-pressed',String(active));
+    button.classList.remove('flip');
+    button.style.removeProperty('--flip-delay');
+    if(mode==='step'&&(changed&(1n<<BigInt(bit)))!==0n){
+      void button.offsetWidth;
+      button.style.setProperty('--flip-delay',(flipIndex*85)+'ms');
+      button.classList.add('flip');
+      flipIndex++;
+    }
+  }
+  if(mode==='step'){
+    var sym=delta>0?'+':'−';
+    machineOperation.textContent=machineDigits(oldValue)+'₂ '+sym+' 1₂ = '+machineDigits(machineValue)+'₂   ('+oldValue+' '+sym+' 1 = '+machineValue+')';
+    var carry=(delta>0)?machineTrailingOnes(oldValue):machineTrailingZeros(oldValue);
+    if(delta>0 && oldValue===machineMax()){
+      machineStatus.textContent='Přetečení: všechny destičky byly 1, po přičtení se v tomto '+machineBits+'bitovém čítači zobrazí 0.';
+    }else if(delta<0 && oldValue===0n){
+      machineStatus.textContent='Podtečení: od nuly se čítač vrátil na nejvyšší zobrazenou hodnotu '+machineMax()+'.';
+    }else if(carry>0){
+      machineStatus.textContent='Přenos se projevil na '+(carry+1)+' destičkách: nižší bity se překlápějí, dokud se nepřepne první vyšší bit.';
+    }else{
+      machineStatus.textContent='Změnila se jen nejnižší destička (bit s hodnotou 1).';
+    }
+  }else{
+    machineOperation.textContent=machineDigits(machineValue)+'₂ = '+machineValue.toString()+'₁₀';
+    machineStatus.textContent='Rozklad: '+machineSum(machineValue)+'.';
+  }
+}
+function machineSum(n){
+  var terms=[];for(var i=machineBits-1;i>=0;i--){if((n&(1n<<BigInt(i)))!==0n)terms.push((1n<<BigInt(i)).toString());}
+  return terms.length?terms.join(' + '):'0';
+}
+function machineTrailingOnes(n){
+  var count=0;while(count<machineBits && (n&1n)===1n){count++;n>>=1n;}return count;
+}
+function machineTrailingZeros(n){
+  var count=0;while(count<machineBits && (n&1n)===0n){count++;n>>=1n;}return count;
+}
+function machineChange(next,mode,delta){
+  var old=machineValue;
+  machineValue=next;
+  machinePaint(old,mode,delta||0);
+  input.value=format(machineValue,Number(from.value));
+  render();
+}
+function machineStep(delta){
+  var size=machineMax()+1n;
+  var next=(machineValue+BigInt(delta)+size)%size;
+  machineChange(next,'step',delta);
+}
+function machineSync(value){
+  if(value===null||value<0n)return;
+  if(value>machineMax()){
+    machineStatus.textContent='Číslo '+value+' se nevejde do '+machineBits+' bitů. Pro zobrazení můžeš přepnout počet destiček.';
+    return;
+  }
+  if(machineValue!==value){
+    var old=machineValue;machineValue=value;machinePaint(old,'sync',0);
+  }
+}
+document.getElementById('machine-plus').addEventListener('click',function(){machineStop();machineStep(1);});
+document.getElementById('machine-minus').addEventListener('click',function(){machineStop();machineStep(-1);});
+document.getElementById('machine-reset').addEventListener('click',function(){machineStop();machineChange(0n,'reset');});
+document.getElementById('machine-example').addEventListener('click',function(){machineStop();machineChange(7n,'example');machineStep(1);});
+document.getElementById('machine-bits').addEventListener('change',function(){
+  machineStop();machineBits=Number(this.value);machineBuild();
+  if(lastValue!==null&&lastValue>=0n&&lastValue<=machineMax())machineValue=lastValue;
+  else if(machineValue>machineMax())machineValue=machineValue%(machineMax()+1n);
+  machinePaint(machineValue,'reset',0);
+});
+machineAuto.addEventListener('click',function(){
+  if(machineTimer!==null){machineStop();return;}
+  machineAuto.textContent='⏸ Zastavit';
+  machineAuto.setAttribute('aria-pressed','true');
+  machineTimer=setInterval(function(){machineStep(1);},850);
+});
+document.addEventListener('visibilitychange',function(){if(document.hidden)machineStop();});
+machineBuild();
 render();
 })();
 </script>
