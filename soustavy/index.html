@@ -83,6 +83,19 @@ footer{margin-top:24px;text-align:center;font-size:.82rem;color:var(--muted)}
 .machine-foot{font-size:.8rem;color:var(--muted);padding:0 clamp(18px,3vw,28px) 20px;margin:0}
 @media(max-width:700px){.machine-stage{padding:13px 10px 22px}.machine-tiles{gap:3px}.machine-cell{gap:6px}.machine-frame{padding:14px 5px 12px;border-width:3px}.machine-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.machine-action{padding-inline:7px}.machine-binary{margin-top:23px}}
 @media(prefers-reduced-motion:reduce){.machine-tile.flip{animation:none}}
+
+/* Sčítání z videa: hodnoty pod sebou, přenosy nad číslicemi. */
+.machine-math{padding-top:21px;display:flex;flex-direction:column;align-items:center}
+.machine-math-title{color:#f6e6cf;letter-spacing:.06em;text-transform:uppercase;font-size:.72rem;font-weight:850;margin-bottom:10px}
+.machine-math-stack{width:fit-content;max-width:100%;min-width:4.5ch;color:#ef801e;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-weight:900;font-size:clamp(2rem,6.8vw,4rem);line-height:1.18;letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.machine-math-row{display:grid;grid-template-columns:1.1ch auto;justify-content:end;align-items:end;white-space:pre;text-align:right}
+.machine-math-row>span:last-child{text-align:right;min-width:1ch}
+.machine-math-symbol{text-align:center}
+.machine-math-rule{height:0;border-top:4px dashed #ef801e;margin:7px 0 6px}
+.machine-math-result{color:#ffd48d}
+.machine-binary{font:inherit;margin:0}
+.machine-carry{font-size:.37em;line-height:1.4;text-align:right;color:#fff0d8;min-height:1.4em;letter-spacing:.06em;font-weight:850;white-space:pre}
+@media(max-width:380px){.machine-math-stack{font-size:clamp(1.55rem,6.8vw,2.4rem)}}
 </style>
 </head>
 <body>
@@ -98,8 +111,17 @@ footer{margin-top:24px;text-align:center;font-size:.82rem;color:var(--muted)}
     <div class="machine-frame" aria-label="Překlápěcí binární čítač">
       <div id="machine-tiles" class="machine-tiles"></div>
     </div>
-    <div id="machine-binary" class="machine-binary">0000011</div>
     <div class="machine-caption">ve dvojkové soustavě · každá destička představuje jeden bit</div>
+    <div class="machine-math" aria-label="Výpočet binárního čísla pod sebou">
+      <div class="machine-math-title">Výpočet pod sebou</div>
+      <div class="machine-math-stack" aria-live="polite" aria-atomic="true">
+        <div id="machine-carry" class="machine-carry" aria-hidden="true"></div>
+        <div class="machine-math-row"><span class="machine-math-symbol"></span><span id="machine-first">11</span></div>
+        <div class="machine-math-row"><span id="machine-operator" class="machine-math-symbol">+</span><span id="machine-second">0</span></div>
+        <div class="machine-math-rule" aria-hidden="true"></div>
+        <div class="machine-math-row machine-math-result"><span class="machine-math-symbol"></span><span id="machine-binary">11</span></div>
+      </div>
+    </div>
   </div>
   <div class="machine-explain">
     <div id="machine-operation" class="machine-operation" aria-live="polite">0000011₂ = 3₁₀</div>
@@ -186,12 +208,13 @@ function parseValue(raw,base){
 function format(value,base){return value.toString(base).toUpperCase();}
 function handStatus(value){
   var inRange=value>=0n&&value<=1023n;
-  var bits=document.querySelectorAll('[data-bit]');
+  var bits=document.querySelectorAll('.finger[data-bit]');
   bits.forEach(function(button){
     var position=Number(button.dataset.bit);
     var raised=inRange&&(value&(1n<<BigInt(position)))!==0n;
     button.setAttribute('aria-pressed',String(raised));
-    button.querySelector('.bit').textContent=raised?'1':'0';
+    var digit=button.querySelector('.bit');
+    if(digit)digit.textContent=raised?'1':'0';
   });
   if(!inRange){
     sum.textContent='Prsty zobrazují pouze celá čísla od 0 do 1023.';
@@ -288,6 +311,10 @@ var machineTiles=document.getElementById('machine-tiles');
 var machineNumber=document.getElementById('machine-decimal');
 var machineBinary=document.getElementById('machine-binary');
 var machineOperation=document.getElementById('machine-operation');
+var machineFirst=document.getElementById('machine-first');
+var machineSecond=document.getElementById('machine-second');
+var machineOperator=document.getElementById('machine-operator');
+var machineCarry=document.getElementById('machine-carry');
 var machineStatus=document.getElementById('machine-status');
 var machineAuto=document.getElementById('machine-auto');
 function machineMax(){return (1n<<BigInt(machineBits))-1n;}
@@ -318,7 +345,11 @@ function machineBuild(){
 }
 function machinePaint(oldValue,mode,delta){
   machineNumber.textContent=machineValue.toString();
-  machineBinary.textContent=machineDigits(machineValue);
+  machineBinary.textContent=machineValue.toString(2);
+  machineFirst.textContent=(mode==='step'?oldValue:machineValue).toString(2);
+  machineSecond.textContent=mode==='step'?'1':'0';
+  machineOperator.textContent=mode==='step'&&(delta<0)?'−':'+';
+  machineCarry.textContent=mode==='step' && delta>0 ? machineCarryText(oldValue) : '';
   var changed=oldValue^machineValue;
   var cells=machineTiles.children;
   var flipIndex=0;
@@ -340,7 +371,7 @@ function machinePaint(oldValue,mode,delta){
   }
   if(mode==='step'){
     var sym=delta>0?'+':'−';
-    machineOperation.textContent=machineDigits(oldValue)+'₂ '+sym+' 1₂ = '+machineDigits(machineValue)+'₂   ('+oldValue+' '+sym+' 1 = '+machineValue+')';
+    machineOperation.textContent=oldValue+' '+sym+' 1 = '+machineValue+' v rozsahu '+machineBits+' bitů';
     var carry=(delta>0)?machineTrailingOnes(oldValue):machineTrailingZeros(oldValue);
     if(delta>0 && oldValue===machineMax()){
       machineStatus.textContent='Přetečení: všechny destičky byly 1, po přičtení se v tomto '+machineBits+'bitovém čítači zobrazí 0.';
@@ -362,6 +393,17 @@ function machineSum(n){
 }
 function machineTrailingOnes(n){
   var count=0;while(count<machineBits && (n&1n)===1n){count++;n>>=1n;}return count;
+}
+function machineCarryText(value){
+  var positions=machineTrailingOnes(value);
+  if(positions===0)return '';
+  // Přenosy z bitu 0 do vyšších řádů. Je-li čítač plný, poslední přenos přeteče mimo něj.
+  var width=Math.max(machineValue.toString(2).length,value.toString(2).length+Number(value===machineMax()));
+  var str=Array(width).fill(' ');
+  for(var bit=1;bit<=positions;bit++){
+    var idx=width-1-bit;if(idx>=0)str[idx]='1';
+  }
+  return 'přenos  '+str.join('');
 }
 function machineTrailingZeros(n){
   var count=0;while(count<machineBits && (n&1n)===0n){count++;n>>=1n;}return count;
