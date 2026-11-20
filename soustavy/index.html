@@ -3,53 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#145d77">
-<meta name="description" content="Převod čísel mezi soustavami 2–36 a názorné binární počítání na deseti prstech.">
-<title>Číselné soustavy – Bernio</title>
+<title>Číselné soustavy – počítadla</title>
 <style>
-:root{color-scheme:light;--bg:#f3f7f8;--card:#fff;--ink:#17313d;--muted:#607681;--line:#d7e3e8;--brand:#145d77;--soft:#e5f3f8;--active:#10796f;--shadow:0 12px 34px #123e4e13}
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:linear-gradient(180deg,#eaf5f8 0,#f7f9f9 260px);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:var(--ink)}
-button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #64a9ca;outline-offset:2px}
-a{color:var(--brand)}.wrap{width:min(980px,calc(100% - 24px));margin:auto;padding:25px 0 60px}
-.back{text-decoration:none;font-weight:700;font-size:.94rem}.hero{padding:26px 4px 24px}.tag{display:inline-block;color:var(--brand);font-size:.77rem;font-weight:850;letter-spacing:.11em;text-transform:uppercase}
-h1{font-size:clamp(2rem,5vw,3.2rem);margin:8px 0 7px;letter-spacing:-.035em;line-height:1.1}h2{font-size:1.25rem;letter-spacing:-.015em;margin:0 0 7px}
-p{line-height:1.55}.sub{margin:0;color:var(--muted);max-width:660px}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:clamp(18px,3vw,28px);box-shadow:var(--shadow);margin-bottom:16px}
-.converter{display:grid;grid-template-columns:minmax(0,1fr) 56px minmax(0,1fr);gap:14px;align-items:end}
-.field{min-width:0}.field label{display:block;margin-bottom:9px;font-size:.85rem;font-weight:800;color:#395b69}
-.field select{width:100%;height:45px;border-radius:11px;border:1px solid var(--line);background:#fff;color:var(--ink);padding:0 12px;margin-bottom:11px}
-.value-wrap{display:flex;align-items:stretch;gap:7px}
-.value-wrap input,.value-wrap output{display:flex;align-items:center;min-width:0;width:100%;min-height:58px;padding:13px;border:1px solid #aec8d4;border-radius:12px;background:#fafdff;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:clamp(1rem,2.5vw,1.35rem);font-weight:700;letter-spacing:.02em;overflow:auto;white-space:nowrap}
-.value-wrap input:focus{background:#fff}.value-wrap output{background:#eef8f6;border-color:#b8dacf;word-break:normal}
-.swap{width:48px;height:48px;border:1px solid var(--line);border-radius:50%;background:var(--soft);font-size:1.45rem;color:var(--brand);font-weight:800;margin-bottom:4px}
-.swap:hover{background:#d4ebf2}.tiny{color:var(--muted);font-size:.79rem;margin-top:8px;min-height:18px}
-.copy{border:1px solid #b8dacf;border-radius:11px;background:#fff;color:var(--active);font-weight:800;padding:0 13px;white-space:nowrap}.copy:disabled{opacity:.4;cursor:default}
-.error{min-height:21px;color:#ac3d37;font-size:.88rem;font-weight:650;margin:12px 0 0}
-.presets{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:13px}.presets span{font-size:.85rem;color:var(--muted);margin-right:4px}
-.preset,.soft-btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 13px;font-weight:700;color:var(--brand)}
-.preset:hover,.soft-btn:hover{background:var(--soft)}
-.overview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:15px}
-.base-card{background:#f8fbfc;border:1px solid var(--line);border-radius:12px;padding:13px;min-width:0;position:relative}
-.base-card strong{font-size:.88rem}.base-card small{display:block;color:var(--muted);font-size:.75rem;margin:3px 0 9px}.base-card code{display:block;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:clamp(1rem,2.8vw,1.24rem);font-weight:850;overflow:auto;white-space:nowrap;padding-bottom:3px;min-height:24px}
-.hand-intro{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:start}.hand-intro p{margin:0 0 12px;color:var(--muted);font-size:.93rem}
-.sum{background:var(--soft);border:1px solid #cce5ef;padding:12px 14px;border-radius:12px;font-size:1rem;font-weight:750;overflow-wrap:anywhere;margin:6px 0 17px}
-.hands{display:grid;grid-template-columns:1fr 1fr;gap:15px}
-.hand{min-width:0;border:1px solid var(--line);border-radius:15px;background:#f7fafb;padding:14px}
-.hand-title{font-size:.86rem;font-weight:850;margin:0 0 10px}
-.fingers{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;align-items:end}
-.finger{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;min-width:0;min-height:82px;padding:9px 2px;border:1px solid #bad1dc;border-radius:20px 20px 10px 10px;background:#e8f0f4;color:#3e6575;transition:background .15s,transform .15s,border-color .15s}
-.finger[aria-pressed="true"]{background:#145d77;color:#fff;border-color:#145d77;transform:translateY(-5px)}
-.finger strong{font-size:clamp(.79rem,1.8vw,1.05rem)}.finger .bit{font-size:.73rem;opacity:.88}.finger-labels{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin-top:7px}
-.finger-labels span{font-size:.65rem;color:var(--muted);text-align:center;overflow-wrap:anywhere}
-.note{font-size:.85rem;color:var(--muted);margin:13px 0 0}.note strong{color:var(--ink)}
-details{margin-top:10px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff}
-summary{cursor:pointer;font-weight:800;color:var(--brand)}.explanation{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere;line-height:1.8;font-size:.87rem;margin-bottom:0}
-footer{margin-top:24px;text-align:center;font-size:.82rem;color:var(--muted)}
-@media(max-width:700px){.converter{grid-template-columns:1fr;gap:6px}.swap{margin:0 auto;transform:rotate(90deg)}.hands{grid-template-columns:1fr}.wrap{padding-top:14px}.panel{border-radius:17px}.hand{padding:11px}.finger{min-height:75px}}
-@media(max-width:370px){.overview{grid-template-columns:1fr}.value-wrap output,.value-wrap input{font-size:1rem}.finger{min-height:67px}.finger-labels span{font-size:.59rem}}
-@media(prefers-reduced-motion:reduce){*{transition:none!important}}
 
+:root{--bg:#f3f7f8;--card:#fff;--ink:#17313d;--muted:#607681;--line:#d7e3e8;--brand:#145d77;--soft:#e5f3f8;--shadow:0 12px 34px #123e4e13}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#eaf5f8,#f7f9f9 260px);font:16px system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:var(--ink)}
+button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #64a9ca;outline-offset:2px}
+.wrap{width:min(980px,calc(100% - 24px));margin:auto;padding:24px 0 45px}
+h1{font-size:clamp(2rem,5vw,3rem);margin:0 0 20px;letter-spacing:-.035em}
+h2{font-size:1.25rem;letter-spacing:-.015em;margin:0 0 7px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:clamp(18px,3vw,28px);box-shadow:var(--shadow);margin-bottom:16px}
+.soft-btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 13px;font-weight:700;color:var(--brand)}
+.soft-btn:hover{background:var(--soft)}
+@media(max-width:700px){.wrap{padding-top:14px}.panel{border-radius:17px}}
 /* Mechanický binární čítač – názorné překlápěcí destičky */
 .machine-panel{padding:0;overflow:hidden}
 .machine-head{padding:24px clamp(18px,3vw,28px) 13px}
@@ -125,15 +92,95 @@ footer{margin-top:24px;text-align:center;font-size:.82rem;color:var(--muted)}
 .duo-help{margin:9px 0 0;font-size:.8rem;color:var(--muted)}
 @media(max-width:720px){.duo-grid{grid-template-columns:1fr}.duo-counter{padding:14px}.duo-digits{min-height:91px}}
 @media(prefers-reduced-motion:reduce){.duo-tile.duo-changed{animation:none}}
+
+/* Sčítání a odčítání pod sebou */
+.arithmetic-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+  margin-top: 18px;
+}
+
+.arithmetic-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: #f8fbfc;
+}
+
+.arithmetic-card h3 {
+  margin: 0 0 15px;
+  font-size: 1rem;
+}
+
+.arithmetic-stack {
+  width: 100%;
+  overflow-x: auto;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: clamp(1.35rem, 3.3vw, 2rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.arithmetic-calculation {
+  display: table;
+  margin: 0 auto;
+  width: max-content;
+  text-align: right;
+}
+
+.arithmetic-row {
+  display: flex;
+  justify-content: flex-end;
+  white-space: pre;
+  line-height: 1.3;
+}
+
+.arithmetic-carry {
+  color: #bd551f;
+  font-size: .65em;
+  min-height: 1.4em;
+}
+
+.arithmetic-line {
+  border-top: 3px solid var(--brand);
+  margin: 5px 0;
+}
+
+.arithmetic-result {
+  color: var(--brand);
+}
+
+.arithmetic-note {
+  margin: 13px 0 0;
+  text-align: center;
+  font-size: .83rem;
+  color: var(--muted);
+}
+
+@media (max-width: 720px) {
+  .arithmetic-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.arithmetic-options{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0 18px}
+.arithmetic-options label,.arithmetic-input-label{font-size:.85rem;font-weight:800;color:#395b69}
+.arithmetic-options select,.arithmetic-input{border:1px solid #bad0d8;border-radius:10px;background:white;color:var(--ink);padding:10px 12px}
+.arithmetic-input-label{display:block;margin:0 0 7px}
+.arithmetic-input{width:100%;font:700 1.1rem ui-monospace,Consolas,monospace}
+.arithmetic-error{color:#b43d38;font-size:.8rem;min-height:1.3em;margin:5px 0 10px}
+.arithmetic-carry{font-size:1em;line-height:1.1}
+.arithmetic-carry .mark{display:inline-block;width:1ch;text-align:center;vertical-align:bottom;color:#bd551f;font-size:1em}
+.arithmetic-carry .mark span{font-size:.63em;vertical-align:top}
 </style>
 </head>
 <body>
 <main class="wrap">
-<a class="back" href="../">← Všechna počítadla</a>
-<header class="hero"><span class="tag">Matematika · interaktivně</span><h1>Číselné soustavy</h1><p class="sub">Překlápěj bity jako na mechanickém počítadle a sleduj sčítání v binární soustavě. Nechybí ani převody mezi soustavami a počítání na prstech.</p></header>
-
+<h1>Číselné soustavy</h1>
 <section class="panel machine-panel" aria-labelledby="mechanical-title">
-  <div class="machine-head"><h2 id="mechanical-title">Mechanické binární počítadlo</h2><p>Přičítej jedničku jako na modelu z videa. Při přenosu do vyššího řádu se otočí i další destičky.</p></div>
+  <div class="machine-head"><h2 id="mechanical-title">Mechanické binární počítadlo</h2><p>Přičítej, odčítej nebo přepínej jednotlivé bity.</p></div>
   <div class="machine-stage">
     <div id="machine-decimal" class="machine-decimal" aria-label="Desítkové číslo" aria-live="polite">3</div>
     <div class="machine-text">v desítkové soustavě</div>
@@ -154,7 +201,7 @@ footer{margin-top:24px;text-align:center;font-size:.82rem;color:var(--muted)}
   </div>
   <div class="machine-explain">
     <div id="machine-operation" class="machine-operation" aria-live="polite">0000011₂ = 3₁₀</div>
-    <div id="machine-status" class="machine-status">Zkus přičíst 1: na počítadle vznikne 0000100₂, tedy 4.</div>
+    <div id="machine-status" class="machine-status">Rozklad: 2 + 1.</div>
   </div>
   <div class="machine-controls">
     <button class="machine-action" id="machine-minus" type="button">−1 Odečíst</button>
@@ -164,16 +211,20 @@ footer{margin-top:24px;text-align:center;font-size:.82rem;color:var(--muted)}
   </div>
   <div class="machine-options">
     <label for="machine-bits">Počet destiček</label>
-    <select id="machine-bits"><option value="7" selected>7 bitů (0–127)</option><option value="10">10 bitů (0–1023)</option></select>
+    <select id="machine-bits"><option value="7" selected="selected">7 bitů (0–127)</option><option value="10">10 bitů (0–1023)</option></select>
     <button class="soft-btn" id="machine-example" type="button">Ukázat přenos 7 + 1</button>
   </div>
-  <p class="machine-foot">Na destičku můžeš také kliknout a změnit přímo její bit. Počítadlo i převodník níže se navzájem synchronizují u čísel, která se na destičky vejdou.</p>
+  <p class="machine-foot">Na destičku můžeš také kliknout a změnit přímo
+ její bit. Počítadlo a propojená počítadla níže se synchronizují u čísel,
+ která se na destičky vejdou.</p>
 </section>
 
 
 <section class="panel" aria-labelledby="duo-title">
   <h2 id="duo-title">Dvě propojená počítadla</h2>
-  <p class="duo-lead">Zvol soustavu na každé straně zvlášť. Přičítej, odčítej nebo přepiš číslo na libovolném počítadle – druhé se okamžitě přepočítá. Kliknout můžeš i přímo na jednotlivé číslice.</p>
+  <p class="duo-lead">Zvol soustavu na každé straně zvlášť. Přičítej, 
+odčítej nebo přepiš číslo na libovolném počítadle – druhé se okamžitě 
+přepočítá. Kliknout můžeš i přímo na jednotlivé číslice.</p>
   <div class="duo-grid">
     <div class="duo-counter">
       <div class="duo-heading"><h3>Počítadlo A</h3><span id="duo-name-a">BIN</span></div>
@@ -193,172 +244,81 @@ footer{margin-top:24px;text-align:center;font-size:.82rem;color:var(--muted)}
     </div>
   </div>
   <p id="duo-status" class="duo-center-note" role="status" aria-live="polite">Obě počítadla znázorňují stejné číslo.</p>
-  <p class="duo-help">Destičky jsou označené hodnotami řádů (1, základ, základ²…). Klepnutí na číslici přičte hodnotu jejího řádu a případně provede přenos. Podporované soustavy: 2 až 36, číslice A–Z znamenají 10 až 35.</p>
+  <p class="duo-help">Destičky jsou označené hodnotami řádů (1, základ, 
+základ²…). Klepnutí na číslici přičte hodnotu jejího řádu a případně 
+provede přenos. Podporované soustavy: 2 až 36, číslice A–Z znamenají 10 
+až 35.</p>
 </section>
 
-<section class="panel" aria-labelledby="converter-title">
-<h2 id="converter-title">Převod čísel</h2>
-<div class="converter">
-  <div class="field"><label for="from-base">Z jaké soustavy</label><select id="from-base"></select><div class="value-wrap"><input id="input" type="text" value="3" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Číslo k převodu" inputmode="text"></div><div class="tiny">Zadej celé číslo, např. 101010</div></div>
-  <button class="swap" id="swap" type="button" aria-label="Prohodit soustavy" title="Prohodit soustavy">⇄</button>
-  <div class="field"><label for="to-base">Do jaké soustavy</label><select id="to-base"></select><div class="value-wrap"><output id="result" for="input from-base to-base" aria-live="polite"></output><button id="copy" class="copy" type="button" aria-label="Kopírovat výsledek">Kopírovat</button></div><div class="tiny">Převod probíhá automaticky</div></div>
-</div>
-<p id="error" class="error" role="status" aria-live="polite"></p>
-<div class="presets"><span>Vyzkoušej:</span><button class="preset" data-number="0" type="button">0</button><button class="preset" data-number="7" type="button">7</button><button class="preset" data-number="42" type="button">42</button><button class="preset" data-number="255" type="button">255</button><button class="preset" data-number="1023" type="button">1023</button></div>
-<div class="overview" aria-label="Přehled běžných soustav">
-  <div class="base-card"><strong>Dvojková</strong><small>Základ 2 · BIN</small><code id="base-2">–</code></div>
-  <div class="base-card"><strong>Osmičková</strong><small>Základ 8 · OCT</small><code id="base-8">–</code></div>
-  <div class="base-card"><strong>Desítková</strong><small>Základ 10 · DEC</small><code id="base-10">–</code></div>
-  <div class="base-card"><strong>Šestnáctková</strong><small>Základ 16 · HEX</small><code id="base-16">–</code></div>
-</div>
-<details><summary>Jak převod funguje?</summary><p id="explanation" class="explanation"></p><p class="note">Každá pozice číslice má hodnotu mocniny základu soustavy. Například 101010₂ = 32 + 8 + 2 = 42₁₀. Číslice A–Z znamenají hodnoty 10–35.</p></details>
-</section>
-<section class="panel" aria-labelledby="hand-title">
-  <div class="hand-intro"><div><h2 id="hand-title">Binární počítání na prstech</h2><p>Každý prst znamená jeden bit. Zvednutý prst je <strong>1</strong>, ostatní jsou <strong>0</strong>. Kliknutím měň hodnotu.</p></div><button id="clear-hands" class="soft-btn" type="button">Vynulovat prsty</button></div>
-  <div class="sum" id="sum" aria-live="polite">42 = 32 + 8 + 2</div>
-  <div class="hands">
-    <div class="hand"><p class="hand-title">Levá ruka · vyšší bity</p><div class="fingers" id="left-hand"></div><div class="finger-labels" id="left-labels"></div></div>
-    <div class="hand"><p class="hand-title">Pravá ruka · nižší bity</p><div class="fingers" id="right-hand"></div><div class="finger-labels" id="right-labels"></div></div>
+<section class="panel" aria-labelledby="arithmetic-title">
+  <h2 id="arithmetic-title">Sčítání a odčítání v číselných soustavách</h2>
+  <p class="duo-lead">
+    První číslo se přebírá z propojených počítadel. Druhé nastav samostatně; oba výpočty se průběžně přepočítávají.
+  </p>
+
+  <div class="arithmetic-options">
+    <label for="arithmetic-operation">Operace</label>
+    <select id="arithmetic-operation">
+      <option value="add">Sčítání (+)</option>
+      <option value="subtract">Odčítání (−)</option>
+    </select>
   </div>
-  <p class="note" id="hand-note">Deseti prsty tak lze znázornit čísla <strong>0 až 1023</strong>.</p>
+
+  <div class="arithmetic-grid">
+    <div class="arithmetic-card">
+      <h3 id="arithmetic-title-a">Počítadlo A</h3>
+      <label class="arithmetic-input-label" for="arithmetic-operand-a">Druhý sčítanec / menšitel</label>
+      <input class="arithmetic-input" id="arithmetic-operand-a" type="text"
+             autocomplete="off" spellcheck="false" value="1">
+      <p class="arithmetic-error" id="arithmetic-error-a" role="status"></p>
+      <div id="arithmetic-a" class="arithmetic-stack"></div>
+      <p id="arithmetic-note-a" class="arithmetic-note"></p>
+    </div>
+
+    <div class="arithmetic-card">
+      <h3 id="arithmetic-title-b">Počítadlo B</h3>
+      <label class="arithmetic-input-label" for="arithmetic-operand-b">Druhý sčítanec / menšitel</label>
+      <input class="arithmetic-input" id="arithmetic-operand-b" type="text"
+             autocomplete="off" spellcheck="false" value="1">
+      <p class="arithmetic-error" id="arithmetic-error-b" role="status"></p>
+      <div id="arithmetic-b" class="arithmetic-stack"></div>
+      <p id="arithmetic-note-b" class="arithmetic-note"></p>
+    </div>
+  </div>
 </section>
-<footer>Bernio · jednoduchý převodník, který funguje i bez připojení k internetu po uložení stránky</footer>
+
 </main>
 <script>
-(function(){
+(() => {
 'use strict';
-var digits='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-var from=document.getElementById('from-base');
-var to=document.getElementById('to-base');
-var input=document.getElementById('input');
-var result=document.getElementById('result');
-var error=document.getElementById('error');
-var copy=document.getElementById('copy');
-var sum=document.getElementById('sum');
-var explanation=document.getElementById('explanation');
-var handNote=document.getElementById('hand-note');
-var lastValue=null, lastResult='';
-var names={2:'2 – dvojková (BIN)',8:'8 – osmičková (OCT)',10:'10 – desítková (DEC)',16:'16 – šestnáctková (HEX)'};
-for(var base=2;base<=36;base++){
-  [from,to].forEach(function(select){
-    var opt=document.createElement('option');opt.value=String(base);opt.textContent=names[base]||String(base)+' – soustava';select.appendChild(opt);
+function superscript(n){
+  var upper='⁰¹²³⁴⁵⁶⁷⁸⁹';
+  return String(n).replace(/\d/g,function(d){
+    return upper[Number(d)];
   });
 }
-from.value='10';to.value='2';
-function parseValue(raw,base){
-  var text=raw.trim().replace(/[\s_]/g,'').toUpperCase();
-  if(!text)throw Error('Nejdřív zadej číslo.');
-  if(text.length>256)throw Error('Zadej nejvýše 256 číslic.');
-  var negative=false;
-  if(text[0]==='-'||text[0]==='+'){negative=text[0]==='-';text=text.slice(1);}
-  if(!text)throw Error('Nejdřív zadej číslo.');
-  var value=0n;
-  for(var i=0;i<text.length;i++){
-    var digit=digits.indexOf(text[i]);
-    if(digit<0||digit>=base)throw Error('Číslice „'+text[i]+'“ nepatří do soustavy se základem '+base+'.');
-    value=value*BigInt(base)+BigInt(digit);
-  }
-  return negative?-value:value;
-}
+const digits = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const names = {2:'2 – dvojková (BIN)',8:'8 – osmičková (OCT)',10:'10 – desítková (DEC)',16:'16 – šestnáctková (HEX)'};
+let sharedValue = 3n;
 function format(value,base){return value.toString(base).toUpperCase();}
-function handStatus(value){
-  var inRange=value>=0n&&value<=1023n;
-  var bits=document.querySelectorAll('.finger[data-bit]');
-  bits.forEach(function(button){
-    var position=Number(button.dataset.bit);
-    var raised=inRange&&(value&(1n<<BigInt(position)))!==0n;
-    button.setAttribute('aria-pressed',String(raised));
-    var digit=button.querySelector('.bit');
-    if(digit)digit.textContent=raised?'1':'0';
-  });
-  if(!inRange){
-    sum.textContent='Prsty zobrazují pouze celá čísla od 0 do 1023.';
-    handNote.textContent='Kliknutím na prst začneš počítat od nuly.';
-    return;
+function parseValue(raw,base){
+  const s=raw.trim().replace(/[\s_]/g,'').toUpperCase();
+  if(!s)throw Error('Zadej číslo.');
+  if(s.length>620)throw Error('Zadej kratší číslo.');
+  let n=0n;
+  for(const c of s){
+    const digit=digits.indexOf(c);
+    if(digit<0||digit>=base)throw Error('Číslice „'+c+'“ nepatří do této soustavy.');
+    n=n*BigInt(base)+BigInt(digit);
   }
-  var terms=[];
-  for(var i=9;i>=0;i--)if((value&(1n<<BigInt(i)))!==0n)terms.push(String(1<<i));
-  sum.textContent=value.toString()+' = '+(terms.length?terms.join(' + '):'žádný zvednutý prst');
-  handNote.textContent='Zvednuté prsty: '+terms.length+' z 10. Rozsah: 0 až 1023.';
+  return n;
 }
-function showExplanation(raw,base,value){
-  var s=raw.trim().replace(/[\s_]/g,'').toUpperCase().replace(/^[+-]/,'');
-  var parts=[];
-  for(var i=0;i<s.length;i++){
-    if(s[i]==='0')continue;
-    parts.push(s[i]+' × '+base+'^'+(s.length-1-i));
-    if(parts.length===16){if(i<s.length-1)parts.push('…');break;}
-  }
-  explanation.textContent=(value<0n?'-(':'')+(parts.join(' + ')||'0')+(value<0n?')':'')+' = '+value.toString()+' (v desítkové soustavě)';
+function setShared(value){
+  sharedValue=value;
+  dualSync(value);
+  machineSync(value);
 }
-function render(){
-  var base=Number(from.value);
-  try{
-    var value=parseValue(input.value,base);
-    lastValue=value;
-    lastResult=format(value,Number(to.value));
-    result.textContent=lastResult;
-    copy.disabled=false;
-    error.textContent='';
-    [2,8,10,16].forEach(function(b){document.getElementById('base-'+b).textContent=format(value,b);});
-    showExplanation(input.value,base,value);
-    handStatus(value);
-    machineSync(value);
-    dualSync(value);
-  }catch(e){
-    lastValue=null;lastResult='';
-    result.textContent='–';copy.disabled=true;error.textContent=e.message;
-    [2,8,10,16].forEach(function(b){document.getElementById('base-'+b).textContent='–';});
-    explanation.textContent='Zadej platné celé číslo.';
-    handStatus(-1n);
-  }
-}
-var left=[{bit:9,name:'malíček'},{bit:8,name:'prsteníček'},{bit:7,name:'prostředníček'},{bit:6,name:'ukazováček'},{bit:5,name:'palec'}];
-var right=[{bit:4,name:'palec'},{bit:3,name:'ukazováček'},{bit:2,name:'prostředníček'},{bit:1,name:'prsteníček'},{bit:0,name:'malíček'}];
-function makeHand(items,handId,labelsId){
-  var target=document.getElementById(handId);
-  var labels=document.getElementById(labelsId);
-  items.forEach(function(item){
-    var button=document.createElement('button');
-    button.type='button';button.className='finger';button.dataset.bit=String(item.bit);button.setAttribute('aria-pressed','false');
-    button.setAttribute('aria-label',item.name+', hodnota '+String(1<<item.bit));
-    var num=document.createElement('strong');num.textContent=String(1<<item.bit);
-    var digit=document.createElement('span');digit.className='bit';digit.textContent='0';
-    button.appendChild(num);button.appendChild(digit);
-    button.addEventListener('click',function(){
-      var value=(lastValue!==null&&lastValue>=0n&&lastValue<=1023n)?lastValue:0n;
-      var bit=1n<<BigInt(item.bit);
-      value=value^bit;
-      input.value=format(value,Number(from.value));
-      render();
-    });
-    target.appendChild(button);
-    var label=document.createElement('span');label.textContent=item.name;labels.appendChild(label);
-  });
-}
-makeHand(left,'left-hand','left-labels');
-makeHand(right,'right-hand','right-labels');
-[from,to,input].forEach(function(el){el.addEventListener(el===input?'input':'change',render);});
-document.getElementById('swap').addEventListener('click',function(){
-  var old=from.value;from.value=to.value;to.value=old;
-  if(lastValue!==null)input.value=lastResult;
-  render();
-});
-document.querySelectorAll('[data-number]').forEach(function(btn){btn.addEventListener('click',function(){input.value=format(BigInt(btn.dataset.number),Number(from.value));render();});});
-document.getElementById('clear-hands').addEventListener('click',function(){input.value='0';render();});
-copy.addEventListener('click',function(){
-  if(!lastResult)return;
-  function done(){copy.textContent='Zkopírováno';setTimeout(function(){copy.textContent='Kopírovat';},1300);}
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(lastResult).then(done).catch(function(){fallback();});
-  }else fallback();
-  function fallback(){
-    var area=document.createElement('textarea');area.value=lastResult;area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();
-    try{if(document.execCommand('copy'))done();else error.textContent='Zkopíruj číslo ručně.';}catch(e){error.textContent='Zkopíruj číslo ručně.';}
-    area.remove();
-  }
-});
-
+function syncFromMachine(){setShared(machineValue);}
 /* Interaktivní mechanický binární čítač */
 var machineBits=7;
 var machineValue=3n;
@@ -468,8 +428,7 @@ function machineChange(next,mode,delta){
   var old=machineValue;
   machineValue=next;
   machinePaint(old,mode,delta||0);
-  input.value=format(machineValue,Number(from.value));
-  render();
+  syncFromMachine();
 }
 function machineStep(delta){
   var size=machineMax()+1n;
@@ -492,7 +451,7 @@ document.getElementById('machine-reset').addEventListener('click',function(){mac
 document.getElementById('machine-example').addEventListener('click',function(){machineStop();machineChange(7n,'example');machineStep(1);});
 document.getElementById('machine-bits').addEventListener('change',function(){
   machineStop();machineBits=Number(this.value);machineBuild();
-  if(lastValue!==null&&lastValue>=0n&&lastValue<=machineMax())machineValue=lastValue;
+  if(sharedValue<=machineMax())machineValue=sharedValue;
   else if(machineValue>machineMax())machineValue=machineValue%(machineMax()+1n);
   machinePaint(machineValue,'reset',0);
 });
@@ -528,7 +487,7 @@ function dualDraw(id,oldValue){
   }
   for(var i=0;i<end.length;i++){
     (function(i){
-      var pos=end.length-i-1;
+      var pos=current.length-(current.length-end.length+i)-1;
       var character=end[i];
       var tilePos=current.length-end.length+i;
       var oldChar=old===null?'':old.padStart(current.length,'0')[tilePos];
@@ -538,30 +497,31 @@ function dualDraw(id,oldValue){
       button.textContent=character;
       var weight=BigInt(base)**BigInt(pos);
       var weightText=weight.toString();
-      button.title='Přičíst '+weightText+' (řád '+base+'^'+pos+')';
+      button.title='Přičíst '+weightText+' (řád '+base+superscript(pos)+')';
       button.setAttribute('aria-label','Přičíst '+weightText+' na počítadle '+id.toUpperCase());
       button.addEventListener('click',function(){dualStep(weight,id);});
       var label=document.createElement('small');
-      label.textContent=pos===0?'1':base+'^'+pos;
+      label.innerHTML=pos===0?'1':base+'<sup>'+pos+'</sup>';
       place.appendChild(button);place.appendChild(label);ui.digits.appendChild(place);
     })(i);
   }
 }
 function dualSync(value){
-  if(value<0n){dualSetStatus('Dvě propojená počítadla pracují s nezápornými celými čísly.');return;}
+  if(value<0n)return;
   var old=dualValue;
   dualValue=value;
-  dualDraw('a',dualPrevious.a===null?null:old);
-  dualDraw('b',dualPrevious.b===null?null:old);
+  dualDraw('a',old);
+  dualDraw('b',old);
   dualPrevious.a=dualValue;dualPrevious.b=dualValue;
+
+  arithmeticRecord();
 }
 function dualCommit(value,id,action){
   if(value<0n){dualUIs[id].error.textContent='Počítadlo nemůže jít pod nulu.';return;}
   if(format(value,2).length>2048){dualUIs[id].error.textContent='Pro názorné počítadlo je číslo příliš velké (maximum 2048 bitů).';return;}
   machineStop();
   var old=dualValue;
-  input.value=format(value,Number(from.value));
-  render();
+  setShared(value);
   dualSetStatus('Počítadlo '+id.toUpperCase()+': '+action+'. '+old.toString()+' → '+value.toString()+' (v desítkové soustavě).');
 }
 function dualStep(by,id){
@@ -580,7 +540,7 @@ function dualSetup(id,initialBase){
     dualDraw(id,null);
     dualSetStatus('Počítadlo '+id.toUpperCase()+' nyní používá soustavu se základem '+select.value+'. Hodnota zůstala stejná.');
   });
-  ui.input.addEventListener('input',function(){
+  ui.input.addEventListener('change',function(){
     try{
       var value=parseValue(ui.input.value,Number(ui.select.value));
       if(value<0n)throw Error('Zadej nezáporné celé číslo.');
@@ -591,12 +551,138 @@ function dualSetup(id,initialBase){
   document.getElementById('duo-plus-'+id).addEventListener('click',function(){dualStep(1n,id);});
   document.getElementById('duo-minus-'+id).addEventListener('click',function(){dualStep(-1n,id);});
 }
+/* Samostatný druhý operand, stejná hodnota v obou soustavách. */
+let arithmeticOperand = 1n;
+let arithmeticMode = 'add';
+
+function arithmeticRecord() {
+  arithmeticPaint();
+}
+
+function arithmeticPaint() {
+  ['a', 'b'].forEach(function(id) {
+    const base = Number(dualUIs[id].select.value);
+    const firstValue = dualValue;
+    const secondValue = arithmeticOperand;
+    const subtraction = arithmeticMode === 'subtract';
+    const resultValue = subtraction ? firstValue - secondValue : firstValue + secondValue;
+    const symbol = subtraction ? '−' : '+';
+
+    const first = format(firstValue, base);
+    const second = format(secondValue, base);
+    const result = format(resultValue, base);
+    const width = Math.max(first.length, second.length, result.length, 1);
+    const a = first.padStart(width, '0');
+    const b = second.padStart(width, '0');
+    const marks = Array(width).fill(' ');
+    let carry = 0;
+    let count = 0;
+
+    // Záporný výsledek lze zobrazit, ale sloupcová výpůjčka se nekreslí.
+    if (resultValue >= 0n) {
+      for (let i = width - 1; i >= 0; i--) {
+        const x = digits.indexOf(a[i]);
+        const y = digits.indexOf(b[i]);
+        carry = subtraction ? Number(x - y - carry < 0)
+                            : Number(x + y + carry >= base);
+        if (carry && i > 0) {
+          marks[i-1] = '1';
+          count++;
+        }
+      }
+    }
+
+    const visible = 28;
+    const shortened = width > visible;
+    const shorten = str => shortened ? '…' + str.slice(-visible) : str;
+    const target = document.getElementById('arithmetic-' + id);
+    target.replaceChildren();
+    const stack = document.createElement('div');
+    stack.className = 'arithmetic-calculation';
+
+    function addRow(value, cls) {
+      const row = document.createElement('div');
+      row.className = 'arithmetic-row ' + (cls || '');
+      row.textContent = value;
+      stack.appendChild(row);
+    }
+
+    // Každá značka je přesně nad jednou číslicí (stejný krok 1ch).
+    const carryRow = document.createElement('div');
+    carryRow.className = 'arithmetic-row arithmetic-carry';
+    const left = document.createElement('span');
+    left.textContent = '  ';
+    left.style.whiteSpace = 'pre';
+    carryRow.appendChild(left);
+    const shownMarks = shortened ? marks.slice(-visible) : marks;
+    if (shortened) {
+      const ellipsis = document.createElement('span');
+      ellipsis.textContent = '…';
+      carryRow.appendChild(ellipsis);
+    }
+    shownMarks.forEach(function(mark) {
+      const cell = document.createElement('span');
+      cell.className = 'mark';
+      const small = document.createElement('span');
+      small.textContent = mark;
+      cell.appendChild(small);
+      carryRow.appendChild(cell);
+    });
+    stack.appendChild(carryRow);
+    addRow('  ' + shorten(a));
+    addRow(symbol + ' ' + shorten(b));
+    const line = document.createElement('div');
+    line.className = 'arithmetic-line';
+    stack.appendChild(line);
+    addRow('  ' + shorten(resultValue < 0n ? result : result.padStart(width,'0')),
+           'arithmetic-result');
+    target.appendChild(stack);
+
+    document.getElementById('arithmetic-title-' + id).textContent =
+      'Počítadlo ' + id.toUpperCase() + ' – základ ' + base;
+    document.getElementById('arithmetic-operand-' + id).value = second;
+    document.getElementById('arithmetic-error-' + id).textContent = '';
+    const note = document.getElementById('arithmetic-note-' + id);
+    note.textContent = resultValue < 0n
+      ? 'Výsledek je záporný; výpůjčky se v tomto případě nezobrazují.'
+      : count ? (subtraction ? 'Výpůjčky' : 'Přenosy') + ' do vyšších řádů: ' + count + '.'
+      : 'Bez přenosu či výpůjčky.';
+    if (shortened) note.textContent += ' Zobrazeny poslední číslice.';
+  });
+}
+
+function arithmeticSetup() {
+  const op = document.getElementById('arithmetic-operation');
+  op.addEventListener('change', function(){
+    arithmeticMode = op.value;
+    arithmeticPaint();
+  });
+  ['a','b'].forEach(function(id) {
+    const field = document.getElementById('arithmetic-operand-' + id);
+    field.addEventListener('change', function() {
+      try {
+        const value = parseValue(field.value, Number(dualUIs[id].select.value));
+        if (format(value,2).length > 2048) throw Error('Příliš velké číslo.');
+        arithmeticOperand = value;
+        arithmeticPaint();
+      } catch(e) {
+        document.getElementById('arithmetic-error-' + id).textContent = e.message;
+      }
+    });
+  });
+}
 dualSetup('a',2);
 dualSetup('b',10);
+arithmeticSetup();
+['a', 'b'].forEach(function(id) {
+  document.getElementById('duo-base-' + id)
+    .addEventListener('change', arithmeticPaint);
+});
+
 
 machineBuild();
 machinePaint(machineValue,'init',0);
-render();
+setShared(3n);
 })();
 </script>
 </body>
